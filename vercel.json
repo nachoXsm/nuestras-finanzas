@@ -1,0 +1,5 @@
+json{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/nuestras-finanzas.html" }
+  ]
+}
