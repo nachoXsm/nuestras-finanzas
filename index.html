@@ -516,6 +516,14 @@ canvas { max-width: 100%; display: block; }
             <option value="variable">Variable</option>
           </select>
         </div>
+        <div class="field">
+          <label>Mes</label>
+          <select id="i_mes"><option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option></select>
+        </div>
+        <div class="field">
+          <label>Año</label>
+          <input type="number" id="i_anio" placeholder="2026" min="2020" max="2040">
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn-cancel" onclick="toggleForm('fIngreso')">Cancelar</button>
@@ -614,6 +622,14 @@ canvas { max-width: 100%; display: block; }
             <label>Día del mes</label>
             <input type="number" id="g_dia" placeholder="Ej: 5" min="1" max="31">
           </div>
+          <div class="field">
+            <label>Mes</label>
+            <select id="g_mes"><option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option></select>
+          </div>
+          <div class="field">
+            <label>Año</label>
+            <input type="number" id="g_anio" placeholder="2026" min="2020" max="2040">
+          </div>
         </div>
         <div class="form-actions">
           <button class="btn-cancel" onclick="cancelGasto()">Cancelar</button>
@@ -638,12 +654,20 @@ canvas { max-width: 100%; display: block; }
             <input type="text" id="t_nombre" placeholder="Visa Santander">
           </div>
           <div class="field">
-            <label>Cierre (día)</label>
+            <label>Cierre — día</label>
             <input type="number" id="t_cierre" placeholder="20" min="1" max="31">
           </div>
           <div class="field">
-            <label>Vencimiento (día)</label>
+            <label>Cierre — mes</label>
+            <select id="t_cierre_mes"><option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option></select>
+          </div>
+          <div class="field">
+            <label>Vencimiento — día</label>
             <input type="number" id="t_venc" placeholder="10" min="1" max="31">
+          </div>
+          <div class="field">
+            <label>Vencimiento — mes</label>
+            <select id="t_venc_mes"><option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option></select>
           </div>
           <div class="field">
             <label>Titular</label>
@@ -858,7 +882,27 @@ async function loadAll() {
 // ============================================
 // FORMS
 // ============================================
-function toggleForm(id) { document.getElementById(id).classList.toggle('open'); updateCardSelects(); }
+function toggleForm(id) {
+  const el = document.getElementById(id);
+  const wasOpen = el.classList.contains('open');
+  el.classList.toggle('open');
+  updateCardSelects();
+  if (!wasOpen) {
+    // Set default month/year to currently selected
+    if (id==='fIngreso') {
+      document.getElementById('i_mes').value = state.mes;
+      document.getElementById('i_anio').value = state.anio;
+    }
+    if (id==='fGasto') {
+      document.getElementById('g_mes').value = state.mes;
+      document.getElementById('g_anio').value = state.anio;
+    }
+    if (id==='fTarjeta') {
+      document.getElementById('t_cierre_mes').value = state.mes;
+      document.getElementById('t_venc_mes').value = state.mes;
+    }
+  }
+}
 function toggleCardFields() {
   const isTarjeta = document.getElementById('g_medio').value==='tarjeta';
   document.getElementById('gTarjetaField').style.display = isTarjeta?'':'none';
@@ -877,7 +921,9 @@ async function saveIngreso() {
   const desc = document.getElementById('i_desc').value.trim();
   const monto = parseFloat(document.getElementById('i_monto').value);
   if (!desc||!monto) return toast('Completá descripción y monto');
-  const body = { mes:state.mes, anio:state.anio, descripcion:desc, monto,
+  const iMes = parseInt(document.getElementById('i_mes').value)||state.mes;
+  const iAnio = parseInt(document.getElementById('i_anio').value)||state.anio;
+  const body = { mes:iMes, anio:iAnio, descripcion:desc, monto,
     quien:document.getElementById('i_quien').value, tipo:document.getElementById('i_tipo').value };
   setSyncing('syncing');
   try {
@@ -901,6 +947,8 @@ function editIngreso(id) {
   document.getElementById('i_monto').value = i.monto;
   document.getElementById('i_quien').value = i.quien;
   document.getElementById('i_tipo').value = i.tipo;
+  document.getElementById('i_mes').value = i.mes||state.mes;
+  document.getElementById('i_anio').value = i.anio||state.anio;
   document.getElementById('fIngreso').classList.add('open');
   document.getElementById('fIngreso').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -926,8 +974,10 @@ async function saveGasto() {
   const tarjeta_id = medio==='tarjeta'?document.getElementById('g_tarjeta').value:null;
   const cuotas = medio==='tarjeta'?parseInt(document.getElementById('g_cuotas').value):1;
   const cuotaMonto = Math.round(monto/cuotas);
+  const gMes = parseInt(document.getElementById('g_mes').value)||state.mes;
+  const gAnio = parseInt(document.getElementById('g_anio').value)||state.anio;
   const body = {
-    mes:state.mes, anio:state.anio, descripcion:desc, monto:cuotaMonto,
+    mes:gMes, anio:gAnio, descripcion:desc, monto:cuotaMonto,
     cat:document.getElementById('g_cat').value, tipo:document.getElementById('g_tipo').value,
     medio, tarjeta_id, quien:document.getElementById('g_quien').value,
     dia:parseInt(document.getElementById('g_dia').value)||null,
@@ -949,7 +999,7 @@ async function saveGasto() {
       if (cuotas>1) {
         const futures = [];
         for (let c=2; c<=cuotas; c++) {
-          let m=state.mes+c-1, y=state.anio;
+          let m=gMes+c-1, y=gAnio;
           while(m>12){m-=12;y++;}
           futures.push({...body, mes:m, anio:y, cuota_actual:c, gasto_origen_id:origen.id});
         }
@@ -969,6 +1019,8 @@ function editGasto(id) {
   editingGastoId=id;
   document.getElementById('g_desc').value=g.descripcion||'';
   document.getElementById('g_monto').value=g.monto;
+  document.getElementById('g_mes').value=g.mes||state.mes;
+  document.getElementById('g_anio').value=g.anio||state.anio;
   document.getElementById('g_cat').value=g.cat;
   document.getElementById('g_tipo').value=g.tipo;
   document.getElementById('g_medio').value=g.medio;
@@ -997,7 +1049,7 @@ function cancelTarjeta() {
 async function saveTarjeta() {
   const nombre = document.getElementById('t_nombre').value.trim();
   if (!nombre) return toast('Ingresá el nombre');
-  const body = { nombre, cierre:parseInt(document.getElementById('t_cierre').value)||null, vencimiento:parseInt(document.getElementById('t_venc').value)||null, titular:document.getElementById('t_titular').value };
+  const body = { nombre, cierre:parseInt(document.getElementById('t_cierre').value)||null, cierre_mes:parseInt(document.getElementById('t_cierre_mes').value)||null, vencimiento:parseInt(document.getElementById('t_venc').value)||null, venc_mes:parseInt(document.getElementById('t_venc_mes').value)||null, titular:document.getElementById('t_titular').value };
   setSyncing('syncing');
   try {
     if (editingTarjetaId) {
@@ -1019,7 +1071,9 @@ function editTarjeta(id) {
   editingTarjetaId=id;
   document.getElementById('t_nombre').value=t.nombre;
   document.getElementById('t_cierre').value=t.cierre||'';
+  document.getElementById('t_cierre_mes').value=t.cierre_mes||state.mes;
   document.getElementById('t_venc').value=t.vencimiento||'';
+  document.getElementById('t_venc_mes').value=t.venc_mes||state.mes;
   document.getElementById('t_titular').value=t.titular;
   document.getElementById('btnSaveTarjeta').textContent='Actualizar';
   document.getElementById('fTarjeta').classList.add('open');
@@ -1137,7 +1191,7 @@ function renderAll() {
         <div class="card-block-head">
           <div>
             <div class="card-name">💳 ${t.nombre}</div>
-            <div class="card-meta">${t.titular} · Cierre día ${t.cierre||'?'} · Vence día ${t.vencimiento||'?'}</div>
+            <div class="card-meta">${t.titular} · Cierre ${t.cierre||'?'}/${t.cierre_mes||'?'} · Vence ${t.vencimiento||'?'}/${t.venc_mes||'?'}</div>
           </div>
           <div style="text-align:right">
             <div class="card-total">${fmt(tTot)}</div>
