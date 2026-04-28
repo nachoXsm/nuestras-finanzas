@@ -643,6 +643,145 @@ canvas { max-width:100%; display:block; }
 </div>
 
 <!-- APP -->
+
+<!-- GROUP SCREEN -->
+<div id="groupScreen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9997;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 24px;gap:0">
+
+  <!-- Welcome state -->
+  <div id="gsWelcome" style="display:flex;flex-direction:column;align-items:center;gap:20px;width:100%;max-width:340px">
+    <div style="font-family:var(--font-display);font-weight:800;font-size:2rem;letter-spacing:-1px;text-align:center;line-height:1.1">
+      nuestras<span style="color:var(--teal);font-weight:300;display:block">finanzas</span>
+    </div>
+    <div style="font-size:0.72rem;color:var(--text3);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-top:-10px">
+      Organizamos hoy · Construimos mañana
+    </div>
+
+    <div style="width:100%;height:1px;background:var(--border);margin:4px 0"></div>
+
+    <div style="text-align:center">
+      <div style="font-family:var(--font-display);font-weight:700;font-size:1rem;margin-bottom:6px">¡Bienvenido/a! 👋</div>
+      <div style="font-size:0.85rem;color:var(--text2);line-height:1.5">Creá tu grupo familiar o unite<br>al de alguien con un código</div>
+    </div>
+
+    <button onclick="showCreateGroup()" style="
+      width:100%;background:var(--teal);color:white;border:none;
+      padding:14px;border-radius:99px;font-family:var(--font-display);
+      font-size:0.95rem;font-weight:700;cursor:pointer;letter-spacing:0.3px;
+      transition:all 0.2s">
+      ✨ Crear mi grupo
+    </button>
+
+    <button onclick="showJoinGroup()" style="
+      width:100%;background:transparent;color:var(--teal);
+      border:2px solid var(--teal);
+      padding:13px;border-radius:99px;font-family:var(--font-display);
+      font-size:0.95rem;font-weight:700;cursor:pointer;letter-spacing:0.3px;
+      transition:all 0.2s">
+      🔑 Unirme con código
+    </button>
+
+    <div style="font-size:0.72rem;color:var(--text3);text-align:center">
+      Tus datos son privados y solo<br>los ve tu grupo
+    </div>
+  </div>
+
+  <!-- Create group state -->
+  <div id="gsCreate" style="display:none;flex-direction:column;gap:16px;width:100%;max-width:340px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <button onclick="showWelcome()" style="background:var(--surf2);border:1px solid var(--border);
+        color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem">‹</button>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem">Crear grupo</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--font-display)">Nombre del grupo</label>
+      <input id="gc_nombre" type="text" placeholder="Ej: Familia García, Nacho y Celi…"
+        style="background:var(--surf2);border:1px solid var(--border);color:var(--text);
+        padding:12px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.95rem;width:100%">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--font-display)">Persona 1</label>
+        <input id="gc_p1" type="text" placeholder="Tu nombre"
+          style="background:var(--surf2);border:1px solid var(--border);color:var(--text);
+          padding:12px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.95rem;width:100%">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--font-display)">Persona 2</label>
+        <input id="gc_p2" type="text" placeholder="Su nombre"
+          style="background:var(--surf2);border:1px solid var(--border);color:var(--text);
+          padding:12px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.95rem;width:100%">
+      </div>
+    </div>
+
+    <div id="gcError" style="color:var(--red);font-size:0.8rem;min-height:16px"></div>
+
+    <button onclick="createGroup()" id="btnCreateGroup" style="
+      width:100%;background:var(--teal);color:white;border:none;
+      padding:14px;border-radius:99px;font-family:var(--font-display);
+      font-size:0.95rem;font-weight:700;cursor:pointer;">
+      Crear grupo →
+    </button>
+  </div>
+
+  <!-- Join group state -->
+  <div id="gsJoin" style="display:none;flex-direction:column;gap:16px;width:100%;max-width:340px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <button onclick="showWelcome()" style="background:var(--surf2);border:1px solid var(--border);
+        color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem">‹</button>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem">Unirme a un grupo</div>
+    </div>
+
+    <div style="font-size:0.85rem;color:var(--text2);line-height:1.5">
+      Pedile el código de 6 letras a quien creó el grupo y escribilo acá:
+    </div>
+
+    <input id="gj_codigo" type="text" placeholder="ABC-123" maxlength="7"
+      oninput="this.value=this.value.toUpperCase()"
+      style="background:var(--surf2);border:2px solid var(--border);color:var(--text);
+      padding:16px;border-radius:12px;font-family:var(--font-display);font-size:1.4rem;
+      font-weight:700;width:100%;text-align:center;letter-spacing:4px">
+
+    <div id="gjError" style="color:var(--red);font-size:0.8rem;min-height:16px"></div>
+
+    <button onclick="joinGroup()" style="
+      width:100%;background:var(--teal);color:white;border:none;
+      padding:14px;border-radius:99px;font-family:var(--font-display);
+      font-size:0.95rem;font-weight:700;cursor:pointer;">
+      Entrar al grupo →
+    </button>
+  </div>
+
+  <!-- Group created success -->
+  <div id="gsSuccess" style="display:none;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:340px;text-align:center">
+    <div style="font-size:3rem">🎉</div>
+    <div style="font-family:var(--font-display);font-weight:800;font-size:1.2rem">¡Grupo creado!</div>
+    <div style="font-size:0.85rem;color:var(--text2)">Compartí este código con tu grupo:</div>
+    <div id="gsCode" style="
+      font-family:var(--font-display);font-size:2.2rem;font-weight:900;
+      color:var(--teal);letter-spacing:6px;
+      background:var(--teal-soft);border:2px solid var(--teal);
+      padding:16px 28px;border-radius:16px;">
+    </div>
+    <button onclick="copyCode()" style="
+      background:var(--surf2);color:var(--text);border:1px solid var(--border);
+      padding:10px 20px;border-radius:99px;font-family:var(--font-display);
+      font-size:0.85rem;font-weight:600;cursor:pointer;">
+      📋 Copiar código
+    </button>
+    <button onclick="enterApp()" style="
+      width:100%;background:var(--teal);color:white;border:none;
+      padding:14px;border-radius:99px;font-family:var(--font-display);
+      font-size:0.95rem;font-weight:700;cursor:pointer;margin-top:4px">
+      Entrar a la app →
+    </button>
+  </div>
+
+</div>
+
 <div class="app" id="appMain" style="display:none">
 
   <!-- HEADER -->
@@ -897,6 +1036,9 @@ let state = {
   mes: now.getMonth()+1,
   anio: now.getFullYear(),
   ingresos: [], gastos: [], tarjetas: [],
+  grupoId: null,
+  persona1: 'Nacho',
+  persona2: 'Celi',
   editingType: null, editingId: null,
   editingTarjetaId: null
 };
@@ -973,10 +1115,11 @@ function selectMonth(m, y) {
 async function loadAll() {
   setSyncing('syncing');
   try {
+    const gid = state.grupoId;
     const [tarjetas, ingresos, gastos] = await Promise.all([
-      dbGet('tarjetas'),
-      dbGet('ingresos', `mes=eq.${state.mes}&anio=eq.${state.anio}`),
-      dbGet('gastos', `mes=eq.${state.mes}&anio=eq.${state.anio}`)
+      dbGet('tarjetas', `grupo_id=eq.${gid}`),
+      dbGet('ingresos', `grupo_id=eq.${gid}&mes=eq.${state.mes}&anio=eq.${state.anio}`),
+      dbGet('gastos', `grupo_id=eq.${gid}&mes=eq.${state.mes}&anio=eq.${state.anio}`)
     ]);
     state.tarjetas=tarjetas; state.ingresos=ingresos; state.gastos=gastos;
     setSyncing('ok'); renderAll();
@@ -1029,7 +1172,7 @@ async function saveIngreso() {
   if (!desc||!monto) return toast('Completá descripción y monto');
   const iMes = parseInt(document.getElementById('i_mes').value)||state.mes;
   const iAnio = parseInt(document.getElementById('i_anio').value)||state.anio;
-  const body = { mes:iMes, anio:iAnio, descripcion:desc, monto,
+  const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, descripcion:desc, monto,
     quien:document.getElementById('i_quien').value, tipo:document.getElementById('i_tipo').value };
   setSyncing('syncing');
   try {
@@ -1083,7 +1226,7 @@ async function saveGasto() {
   const gMes = parseInt(document.getElementById('g_mes').value)||state.mes;
   const gAnio = parseInt(document.getElementById('g_anio').value)||state.anio;
   const body = {
-    mes:gMes, anio:gAnio, descripcion:desc, monto:cuotaMonto,
+    grupo_id:state.grupoId, mes:gMes, anio:gAnio, descripcion:desc, monto:cuotaMonto,
     cat:document.getElementById('g_cat').value, tipo:document.getElementById('g_tipo').value,
     medio, tarjeta_id, quien:document.getElementById('g_quien').value,
     dia:parseInt(document.getElementById('g_dia').value)||null,
@@ -1173,7 +1316,7 @@ function cancelTarjeta() {
 async function saveTarjeta() {
   const nombre = document.getElementById('t_nombre').value.trim();
   if (!nombre) return toast('Ingresá el nombre');
-  const body = { nombre, cierre:parseInt(document.getElementById('t_cierre').value)||null, cierre_mes:parseInt(document.getElementById('t_cierre_mes').value)||null, vencimiento:parseInt(document.getElementById('t_venc').value)||null, venc_mes:parseInt(document.getElementById('t_venc_mes').value)||null, titular:document.getElementById('t_titular').value };
+  const body = { grupo_id:state.grupoId, nombre, cierre:parseInt(document.getElementById('t_cierre').value)||null, cierre_mes:parseInt(document.getElementById('t_cierre_mes').value)||null, vencimiento:parseInt(document.getElementById('t_venc').value)||null, venc_mes:parseInt(document.getElementById('t_venc_mes').value)||null, titular:document.getElementById('t_titular').value };
   setSyncing('syncing');
   try {
     if (editingTarjetaId) {
@@ -1355,8 +1498,8 @@ function renderAll() {
   document.getElementById('flujoContent').innerHTML = `
     <div class="flujo-card">
       <div class="flujo-title">🏦 Flujo mensual</div>
-      ${nachoInc>0?`<div class="flujo-row"><span class="flujo-label">Ingresos Nacho</span><span class="flujo-val" style="color:var(--green)">${fmt(nachoInc)}</span></div>`:''}
-      ${celiInc>0?`<div class="flujo-row"><span class="flujo-label">Ingresos Celi</span><span class="flujo-val" style="color:var(--green)">${fmt(celiInc)}</span></div>`:''}
+      ${nachoInc>0?`<div class="flujo-row"><span class="flujo-label">${state.persona1||'Nacho'}</span><span class="flujo-val" style="color:var(--green)">${fmt(nachoInc)}</span></div>`:''}
+      ${celiInc>0?`<div class="flujo-row"><span class="flujo-label">${state.persona2||'Celi'}</span><span class="flujo-val" style="color:var(--green)">${fmt(celiInc)}</span></div>`:''}
       ${compInc>0?`<div class="flujo-row"><span class="flujo-label">Compartido</span><span class="flujo-val" style="color:var(--green)">${fmt(compInc)}</span></div>`:''}
       <div class="flujo-row"><span class="flujo-label" style="color:var(--text);font-weight:600">Total ingresos</span><span class="flujo-val" style="color:var(--green);font-weight:600">${fmt(totalInc)}</span></div>
       <div class="flujo-row"><span class="flujo-label">Gastos fijos</span><span class="flujo-val" style="color:var(--blue)">${fmt(fijos)}</span></div>
@@ -1551,7 +1694,24 @@ function unlock(){
   sessionStorage.setItem('nf_sess',Date.now().toString());
   const l=document.getElementById('lockScreen');
   l.style.transition='opacity 0.35s';l.style.opacity='0';
-  setTimeout(()=>{l.style.display='none';},350);
+  setTimeout(async ()=>{
+    l.style.display='none';
+    // After auth, check group
+    const grupo = loadGroup();
+    if (!grupo) {
+      showGroupScreen();
+      return;
+    }
+    try {
+      state.grupoId = grupo.id;
+      await loadAll();
+      addGroupBadge();
+      document.getElementById('loader').style.display='none';
+      document.getElementById('appMain').style.display='block';
+    } catch(e) {
+      document.querySelector('.loader-sub').textContent='❌ Error de conexión';
+    }
+  },350);
 }
 async function tryBiometric(){
   if(window.PublicKeyCredential){
@@ -1600,14 +1760,28 @@ async function init() {
   initTheme();
   buildManifest();
   updateMonthLabel();
+
+  // Check auth session
   if(isSession()){
     document.getElementById('lockScreen').style.display='none';
   } else {
     document.getElementById('lockScreen').style.display='flex';
     setTimeout(tryBiometric, 500);
+    return; // unlock() will call init flow
   }
+
+  // Check group
+  const grupo = loadGroup();
+  if (!grupo) {
+    showGroupScreen();
+    return;
+  }
+
+  // Has group — load app
   try {
+    state.grupoId = grupo.id;
     await loadAll();
+    addGroupBadge();
     document.getElementById('loader').style.display='none';
     document.getElementById('appMain').style.display='block';
   } catch(e) {
@@ -1641,7 +1815,7 @@ renderAll = function() {
     <div class="scard">
       <div class="sc-label">Ingresos</div>
       <div class="sc-value teal">${fmt(totalInc)}</div>
-      <div class="sc-sub">Nacho + Celi</div>
+      <div class="sc-sub">${state.persona1||'Nacho'} + ${state.persona2||'Celi'}</div>
     </div>
     <div class="scard">
       <div class="sc-label">Gastos</div>
@@ -1772,8 +1946,8 @@ renderAll = function() {
     <div style="height:12px"></div>
     <div class="fcard">
       <div class="fcard-title">🏦 Flujo mensual</div>
-      ${nachoInc>0?`<div class="frow"><span class="frow-label">Ingresos Nacho</span><span class="frow-val" style="color:var(--green)">${fmt(nachoInc)}</span></div>`:''}
-      ${celiInc>0?`<div class="frow"><span class="frow-label">Ingresos Celi</span><span class="frow-val" style="color:var(--green)">${fmt(celiInc)}</span></div>`:''}
+      ${nachoInc>0?`<div class="frow"><span class="frow-label">${state.persona1||'Nacho'}</span><span class="frow-val" style="color:var(--green)">${fmt(nachoInc)}</span></div>`:''}
+      ${celiInc>0?`<div class="frow"><span class="frow-label">${state.persona2||'Celi'}</span><span class="frow-val" style="color:var(--green)">${fmt(celiInc)}</span></div>`:''}
       ${compInc>0?`<div class="frow"><span class="frow-label">Compartido</span><span class="frow-val" style="color:var(--green)">${fmt(compInc)}</span></div>`:''}
       <div class="frow"><span class="frow-label" style="font-weight:700;color:var(--text)">Total ingresos</span><span class="frow-val" style="color:var(--green)">${fmt(totalInc)}</span></div>
       <div class="frow"><span class="frow-label">Gastos fijos</span><span class="frow-val" style="color:var(--lavender)">${fmt(fijos)}</span></div>
@@ -1860,6 +2034,163 @@ function buildManifest(){
 function getBgColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#141d35':'#ffffff';}
 function getTextColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#e8eeff':'#0b0f1e';}
 function getMutedColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#3d527a':'#8899cc';}
+
+// ============================================
+// GROUP SYSTEM
+// ============================================
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    if (i === 3) code += '-';
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function loadGroup() {
+  const saved = localStorage.getItem('nf_grupo');
+  if (saved) {
+    try { return JSON.parse(saved); } catch(e) {}
+  }
+  return null;
+}
+
+function saveGroupLocal(grupo) {
+  localStorage.setItem('nf_grupo', JSON.stringify(grupo));
+}
+
+function showWelcome() {
+  document.getElementById('gsWelcome').style.display = 'flex';
+  document.getElementById('gsCreate').style.display = 'none';
+  document.getElementById('gsJoin').style.display = 'none';
+  document.getElementById('gsSuccess').style.display = 'none';
+}
+
+function showCreateGroup() {
+  document.getElementById('gsWelcome').style.display = 'none';
+  document.getElementById('gsCreate').style.display = 'flex';
+}
+
+function showJoinGroup() {
+  document.getElementById('gsWelcome').style.display = 'none';
+  document.getElementById('gsJoin').style.display = 'flex';
+}
+
+async function createGroup() {
+  const nombre = document.getElementById('gc_nombre').value.trim();
+  const p1 = document.getElementById('gc_p1').value.trim();
+  const p2 = document.getElementById('gc_p2').value.trim();
+  const err = document.getElementById('gcError');
+
+  if (!nombre || !p1 || !p2) {
+    err.textContent = 'Completá todos los campos'; return;
+  }
+
+  document.getElementById('btnCreateGroup').textContent = 'Creando…';
+  const codigo = generateCode();
+
+  try {
+    const res = await dbPost('grupos', { codigo, nombre, persona1: p1, persona2: p2 });
+    const grupo = res[0];
+    saveGroupLocal(grupo);
+
+    // Show success
+    document.getElementById('gsCreate').style.display = 'none';
+    document.getElementById('gsSuccess').style.display = 'flex';
+    document.getElementById('gsCode').textContent = codigo;
+  } catch(e) {
+    err.textContent = 'Error al crear el grupo. Intentá de nuevo.';
+    document.getElementById('btnCreateGroup').textContent = 'Crear grupo →';
+  }
+}
+
+async function joinGroup() {
+  const codigo = document.getElementById('gj_codigo').value.trim().toUpperCase();
+  const err = document.getElementById('gjError');
+
+  if (codigo.length < 6) { err.textContent = 'Ingresá el código completo'; return; }
+
+  try {
+    const res = await dbGet('grupos', `codigo=eq.${codigo}`);
+    if (!res || res.length === 0) {
+      err.textContent = 'Código no encontrado. Revisá y volvé a intentar.'; return;
+    }
+    const grupo = res[0];
+    saveGroupLocal(grupo);
+    enterApp();
+  } catch(e) {
+    err.textContent = 'Error de conexión. Revisá tu internet.';
+  }
+}
+
+function copyCode() {
+  const code = document.getElementById('gsCode').textContent;
+  navigator.clipboard.writeText(code).then(() => toast('✅ Código copiado'));
+}
+
+function enterApp() {
+  document.getElementById('groupScreen').style.display = 'none';
+  startApp();
+}
+
+function updatePersonaNames() {
+  const grupo = loadGroup();
+  if (!grupo) return;
+  // Update all selects with persona names dynamically
+  const p1 = grupo.persona1 || 'Persona 1';
+  const p2 = grupo.persona2 || 'Persona 2';
+
+  // Update quien selects
+  ['i_quien','g_quien','t_titular'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    Array.from(sel.options).forEach(opt => {
+      if (opt.value === 'Nacho' || opt.value === p1) { opt.value = p1; opt.text = p1; }
+      if (opt.value === 'Celi'  || opt.value === p2) { opt.value = p2; opt.text = p2; }
+    });
+  });
+
+  // Update header subtitle
+  const sub = document.querySelector('.hdr-sub');
+  if (sub) sub.textContent = `${p1} & ${p2}`;
+
+  // Update summary card
+  state.persona1 = p1;
+  state.persona2 = p2;
+}
+
+async function startApp() {
+  const grupo = loadGroup();
+  if (!grupo) return;
+  state.grupoId = grupo.id;
+  updatePersonaNames();
+  await loadAll();
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('appMain').style.display = 'block';
+}
+
+function showGroupScreen() {
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('groupScreen').style.display = 'flex';
+  showWelcome();
+}
+
+// Add grupo_id to header — show group name and option to switch
+function addGroupBadge() {
+  const grupo = loadGroup();
+  if (!grupo) return;
+  const sub = document.querySelector('.logo-sub');
+  if (sub) sub.innerHTML = `${grupo.persona1} & ${grupo.persona2} 
+    <span onclick="switchGroup()" style="color:var(--teal);cursor:pointer;font-size:0.6rem;margin-left:4px">· Cambiar</span>`;
+}
+
+function switchGroup() {
+  if (!confirm('¿Querés cambiar de grupo? Tus datos actuales no se borran.')) return;
+  localStorage.removeItem('nf_grupo');
+  location.reload();
+}
+
 
 init();
 </script>
