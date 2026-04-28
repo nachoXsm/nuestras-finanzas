@@ -1863,5 +1863,15 @@ function getMutedColor(){return document.documentElement.getAttribute('data-them
 
 init();
 </script>
+
+<script>
+// Register Service Worker for proper PWA install
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // Create SW as blob since we're single file
+    navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW:', err));
+  });
+}
+</script>
 </body>
 </html>
