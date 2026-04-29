@@ -697,23 +697,30 @@ canvas { max-width:100%; display:block; }
 
     <div style="display:flex;flex-direction:column;gap:5px">
       <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--font-display)">Nombre del grupo</label>
-      <input id="gc_nombre" type="text" placeholder="Ej: Familia García, Nacho y Celi…"
+      <input id="gc_nombre" type="text" placeholder="Ej: Familia García, Casa compartida…"
         style="background:var(--surf2);border:1px solid var(--border);color:var(--text);
         padding:12px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.95rem;width:100%">
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div style="display:flex;flex-direction:column;gap:5px">
-        <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--font-display)">Persona 1</label>
-        <input id="gc_p1" type="text" placeholder="Tu nombre"
-          style="background:var(--surf2);border:1px solid var(--border);color:var(--text);
-          padding:12px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.95rem;width:100%">
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--font-display)">Integrantes (2 a 6)</label>
+        <button onclick="addPersonField()" id="btnAddPerson" style="background:var(--teal-soft);color:var(--teal);border:1px solid var(--teal);
+          padding:4px 10px;border-radius:99px;font-family:var(--font-display);font-size:0.72rem;font-weight:700;cursor:pointer">
+          + Agregar
+        </button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:5px">
-        <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:var(--font-display)">Persona 2</label>
-        <input id="gc_p2" type="text" placeholder="Su nombre"
-          style="background:var(--surf2);border:1px solid var(--border);color:var(--text);
-          padding:12px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.95rem;width:100%">
+      <div id="personFields" style="display:flex;flex-direction:column;gap:8px">
+        <div class="person-field" style="display:flex;align-items:center;gap:8px">
+          <input type="text" placeholder="Nombre 1" class="pf-input"
+            style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);
+            padding:11px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.9rem">
+        </div>
+        <div class="person-field" style="display:flex;align-items:center;gap:8px">
+          <input type="text" placeholder="Nombre 2" class="pf-input"
+            style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);
+            padding:11px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.9rem">
+        </div>
       </div>
     </div>
 
@@ -1492,9 +1499,14 @@ function renderAll() {
       </div>`).join('');
 
   // FLUJO
-  const nachoInc=ingresos.filter(i=>i.quien==='Nacho').reduce((a,i)=>a+parseFloat(i.monto),0);
-  const celiInc=ingresos.filter(i=>i.quien==='Celi').reduce((a,i)=>a+parseFloat(i.monto),0);
-  const compInc=ingresos.filter(i=>i.quien==='Compartido').reduce((a,i)=>a+parseFloat(i.monto),0);
+  const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
+  const personaIngresos = personas.map(p => ({
+    nombre: p,
+    total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
+  }));
+  const nachoInc = personaIngresos[0]?.total || 0;
+  const celiInc = personaIngresos[1]?.total || 0;
+  const compInc = 0;
   document.getElementById('flujoContent').innerHTML = `
     <div class="flujo-card">
       <div class="flujo-title">🏦 Flujo mensual</div>
@@ -1530,9 +1542,14 @@ function renderInforme() {
   const catTotals={};
   gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+parseFloat(g.monto);});
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
-  const nachoInc=ingresos.filter(i=>i.quien==='Nacho').reduce((a,i)=>a+parseFloat(i.monto),0);
-  const celiInc=ingresos.filter(i=>i.quien==='Celi').reduce((a,i)=>a+parseFloat(i.monto),0);
-  const compInc=ingresos.filter(i=>i.quien==='Compartido').reduce((a,i)=>a+parseFloat(i.monto),0);
+  const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
+  const personaIngresos = personas.map(p => ({
+    nombre: p,
+    total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
+  }));
+  const nachoInc = personaIngresos[0]?.total || 0;
+  const celiInc = personaIngresos[1]?.total || 0;
+  const compInc = 0;
   const nachoG=gastos.filter(g=>g.quien==='Nacho').reduce((a,g)=>a+parseFloat(g.monto),0);
   const celiG=gastos.filter(g=>g.quien==='Celi').reduce((a,g)=>a+parseFloat(g.monto),0);
   const ambosG=gastos.filter(g=>g.quien==='Ambos').reduce((a,g)=>a+parseFloat(g.monto),0);
@@ -1815,7 +1832,7 @@ renderAll = function() {
     <div class="scard">
       <div class="sc-label">Ingresos</div>
       <div class="sc-value teal">${fmt(totalInc)}</div>
-      <div class="sc-sub">${state.persona1||'Nacho'} + ${state.persona2||'Celi'}</div>
+      <div class="sc-sub">${(state.personas||[state.persona1||'Nacho',state.persona2||'Celi']).join(' + ')}</div>
     </div>
     <div class="scard">
       <div class="sc-label">Gastos</div>
@@ -1939,9 +1956,14 @@ renderAll = function() {
       </div>`).join('');
 
   // FLUJO
-  const nachoInc=ingresos.filter(i=>i.quien==='Nacho').reduce((a,i)=>a+parseFloat(i.monto),0);
-  const celiInc=ingresos.filter(i=>i.quien==='Celi').reduce((a,i)=>a+parseFloat(i.monto),0);
-  const compInc=ingresos.filter(i=>i.quien==='Compartido').reduce((a,i)=>a+parseFloat(i.monto),0);
+  const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
+  const personaIngresos = personas.map(p => ({
+    nombre: p,
+    total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
+  }));
+  const nachoInc = personaIngresos[0]?.total || 0;
+  const celiInc = personaIngresos[1]?.total || 0;
+  const compInc = 0;
   document.getElementById('flujoContent').innerHTML = `
     <div style="height:12px"></div>
     <div class="fcard">
@@ -1976,9 +1998,14 @@ renderInforme = function() {
   const catTotals={};
   gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+parseFloat(g.monto);});
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
-  const nachoInc=ingresos.filter(i=>i.quien==='Nacho').reduce((a,i)=>a+parseFloat(i.monto),0);
-  const celiInc=ingresos.filter(i=>i.quien==='Celi').reduce((a,i)=>a+parseFloat(i.monto),0);
-  const compInc=ingresos.filter(i=>i.quien==='Compartido').reduce((a,i)=>a+parseFloat(i.monto),0);
+  const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
+  const personaIngresos = personas.map(p => ({
+    nombre: p,
+    total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
+  }));
+  const nachoInc = personaIngresos[0]?.total || 0;
+  const celiInc = personaIngresos[1]?.total || 0;
+  const compInc = 0;
   const nachoG=gastos.filter(g=>g.quien==='Nacho').reduce((a,g)=>a+parseFloat(g.monto),0);
   const celiG=gastos.filter(g=>g.quien==='Celi').reduce((a,g)=>a+parseFloat(g.monto),0);
   const ambosG=gastos.filter(g=>g.quien==='Ambos').reduce((a,g)=>a+parseFloat(g.monto),0);
@@ -2077,25 +2104,64 @@ function showJoinGroup() {
   document.getElementById('gsJoin').style.display = 'flex';
 }
 
+function addPersonField() {
+  const container = document.getElementById('personFields');
+  const fields = container.querySelectorAll('.person-field');
+  if (fields.length >= 6) {
+    toast('Máximo 6 integrantes'); return;
+  }
+  const n = fields.length + 1;
+  const div = document.createElement('div');
+  div.className = 'person-field';
+  div.style.cssText = 'display:flex;align-items:center;gap:8px';
+  div.innerHTML = `
+    <input type="text" placeholder="Nombre ${n}" class="pf-input"
+      style="flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);
+      padding:11px 14px;border-radius:12px;font-family:var(--font-display);font-size:0.9rem">
+    <button onclick="removePersonField(this)" style="background:var(--red-soft);color:var(--red);
+      border:1px solid var(--red);width:32px;height:32px;border-radius:50%;
+      font-size:1rem;cursor:pointer;flex-shrink:0">✕</button>`;
+  container.appendChild(div);
+  if (container.querySelectorAll('.person-field').length >= 6) {
+    document.getElementById('btnAddPerson').style.opacity = '0.4';
+    document.getElementById('btnAddPerson').disabled = true;
+  }
+}
+
+function removePersonField(btn) {
+  btn.closest('.person-field').remove();
+  document.getElementById('btnAddPerson').style.opacity = '1';
+  document.getElementById('btnAddPerson').disabled = false;
+  // Renumber placeholders
+  document.querySelectorAll('.pf-input').forEach((inp, i) => {
+    if (!inp.value) inp.placeholder = `Nombre ${i+1}`;
+  });
+}
+
 async function createGroup() {
   const nombre = document.getElementById('gc_nombre').value.trim();
-  const p1 = document.getElementById('gc_p1').value.trim();
-  const p2 = document.getElementById('gc_p2').value.trim();
+  const personas = Array.from(document.querySelectorAll('.pf-input'))
+    .map(i => i.value.trim()).filter(v => v.length > 0);
   const err = document.getElementById('gcError');
 
-  if (!nombre || !p1 || !p2) {
-    err.textContent = 'Completá todos los campos'; return;
-  }
+  if (!nombre) { err.textContent = 'Escribí el nombre del grupo'; return; }
+  if (personas.length < 2) { err.textContent = 'Agregá al menos 2 integrantes'; return; }
 
   document.getElementById('btnCreateGroup').textContent = 'Creando…';
   const codigo = generateCode();
 
   try {
-    const res = await dbPost('grupos', { codigo, nombre, persona1: p1, persona2: p2 });
+    const res = await dbPost('grupos', {
+      codigo, nombre,
+      persona1: personas[0],
+      persona2: personas[1] || '',
+      personas: JSON.stringify(personas)
+    });
     const grupo = res[0];
+    // Store personas array locally
+    grupo.personasArray = personas;
     saveGroupLocal(grupo);
 
-    // Show success
     document.getElementById('gsCreate').style.display = 'none';
     document.getElementById('gsSuccess').style.display = 'flex';
     document.getElementById('gsCode').textContent = codigo;
@@ -2117,6 +2183,13 @@ async function joinGroup() {
       err.textContent = 'Código no encontrado. Revisá y volvé a intentar.'; return;
     }
     const grupo = res[0];
+    // Parse personas array if stored
+    if (grupo.personas) {
+      try { grupo.personasArray = JSON.parse(grupo.personas); } catch(e) {}
+    }
+    if (!grupo.personasArray) {
+      grupo.personasArray = [grupo.persona1, grupo.persona2].filter(Boolean);
+    }
     saveGroupLocal(grupo);
     enterApp();
   } catch(e) {
@@ -2137,27 +2210,45 @@ function enterApp() {
 function updatePersonaNames() {
   const grupo = loadGroup();
   if (!grupo) return;
-  // Update all selects with persona names dynamically
-  const p1 = grupo.persona1 || 'Persona 1';
-  const p2 = grupo.persona2 || 'Persona 2';
 
-  // Update quien selects
-  ['i_quien','g_quien','t_titular'].forEach(id => {
+  const personas = grupo.personasArray ||
+    [grupo.persona1, grupo.persona2].filter(Boolean);
+
+  state.personas = personas;
+  state.persona1 = personas[0] || 'Persona 1';
+  state.persona2 = personas[1] || 'Persona 2';
+
+  // Update "quien" selects dynamically with all personas + Todos
+  ['i_quien', 'g_quien'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
-    Array.from(sel.options).forEach(opt => {
-      if (opt.value === 'Nacho' || opt.value === p1) { opt.value = p1; opt.text = p1; }
-      if (opt.value === 'Celi'  || opt.value === p2) { opt.value = p2; opt.text = p2; }
-    });
+    const current = sel.value;
+    // For gastos: add "Todos" option, for ingresos: just personas
+    const options = id === 'g_quien'
+      ? ['Todos', ...personas]
+      : personas;
+    sel.innerHTML = options.map(p =>
+      `<option value="${p}">${p}</option>`
+    ).join('');
+    if (options.includes(current)) sel.value = current;
   });
 
-  // Update header subtitle
-  const sub = document.querySelector('.hdr-sub');
-  if (sub) sub.textContent = `${p1} & ${p2}`;
+  // Update titular select for tarjetas
+  const tit = document.getElementById('t_titular');
+  if (tit) {
+    tit.innerHTML = [...personas, 'Compartida'].map(p =>
+      `<option value="${p}">${p}</option>`
+    ).join('');
+  }
 
-  // Update summary card
-  state.persona1 = p1;
-  state.persona2 = p2;
+  // Update header
+  const sub = document.querySelector('.hdr-sub');
+  if (sub) {
+    const names = personas.length <= 3
+      ? personas.join(' & ')
+      : `${personas[0]} & ${personas.length - 1} más`;
+    sub.textContent = names;
+  }
 }
 
 async function startApp() {
@@ -2180,9 +2271,11 @@ function showGroupScreen() {
 function addGroupBadge() {
   const grupo = loadGroup();
   if (!grupo) return;
-  const sub = document.querySelector('.logo-sub');
-  if (sub) sub.innerHTML = `${grupo.persona1} & ${grupo.persona2} 
-    <span onclick="switchGroup()" style="color:var(--teal);cursor:pointer;font-size:0.6rem;margin-left:4px">· Cambiar</span>`;
+  const personas = grupo.personasArray || [grupo.persona1, grupo.persona2].filter(Boolean);
+  const names = personas.length <= 3 ? personas.join(' & ') : `${personas[0]} & ${personas.length-1} más`;
+  const sub = document.querySelector('.hdr-sub');
+  if (sub) sub.innerHTML = `${names} <span onclick="switchGroup()" 
+    style="color:var(--teal);cursor:pointer;font-size:0.58rem;margin-left:3px;opacity:0.8">· Cambiar</span>`;
 }
 
 function switchGroup() {
