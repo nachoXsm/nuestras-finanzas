@@ -2257,19 +2257,45 @@ async function fetchRates() {
 
 async function fetchArgentinaRates() {
   try {
-    const res = await fetch('https://api.bluelytics.com.ar/v2/latest');
-    if (!res.ok) return;
-    const data = await res.json();
-    arsSpecial = {
-      oficial: data.oficial?.value_sell || 0,
-      blue:    data.blue?.value_sell    || 0,
-      mep:     data.blue_euro?.value_sell || 0,
-      ccl:     data.oficial_euro?.value_sell || 0,
-      crypto:  0
+    // dolarapi.com — actualización al minuto, gratuita
+    const endpoints = {
+      oficial: 'https://dolarapi.com/v1/dolares/oficial',
+      blue:    'https://dolarapi.com/v1/dolares/blue',
+      mep:     'https://dolarapi.com/v1/dolares/bolsa',
+      ccl:     'https://dolarapi.com/v1/dolares/contadoconliquidacion',
+      crypto:  'https://dolarapi.com/v1/dolares/cripto',
     };
+
+    const results = await Promise.allSettled(
+      Object.entries(endpoints).map(async ([key, url]) => {
+        const r = await fetch(url);
+        const d = await r.json();
+        return { key, venta: d.venta || 0, compra: d.compra || 0 };
+      })
+    );
+
+    arsSpecial = {};
+    results.forEach(r => {
+      if (r.status === 'fulfilled') {
+        arsSpecial[r.value.key] = { venta: r.value.venta, compra: r.value.compra };
+      }
+    });
+
     renderArsRates();
   } catch(e) {
-    console.log('Argentina rates unavailable');
+    // Fallback to bluelytics
+    try {
+      const res = await fetch('https://api.bluelytics.com.ar/v2/latest');
+      const data = await res.json();
+      arsSpecial = {
+        oficial: { venta: data.oficial?.value_sell || 0, compra: data.oficial?.value_buy || 0 },
+        blue:    { venta: data.blue?.value_sell    || 0, compra: data.blue?.value_buy    || 0 },
+        mep:     { venta: data.blue_euro?.value_sell || 0, compra: data.blue_euro?.value_buy || 0 },
+        ccl:     { venta: data.oficial_euro?.value_sell || 0, compra: 0 },
+        crypto:  { venta: 0, compra: 0 }
+      };
+      renderArsRates();
+    } catch(e2) { console.log('Argentina rates unavailable'); }
   }
 }
 
@@ -2359,22 +2385,31 @@ function renderArsRates() {
 
   el.innerHTML = ARS_SPECIAL_RATES.map(r => {
     const val = arsSpecial[r.key];
-    if (!val) return '';
+    if (!val || (!val.venta && !val.compra)) return '';
     return `<div style="background:var(--surf);border:1px solid var(--border);
       border-radius:var(--r-sm);padding:13px 16px;
       display:flex;justify-content:space-between;align-items:center">
       <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:1.1rem">${r.icon}</span>
+        <span style="font-size:1.2rem">${r.icon}</span>
         <div>
           <div style="font-family:var(--font-display);font-weight:700;font-size:0.88rem">${r.label}</div>
-          <div style="font-size:0.68rem;color:var(--text3)">1 USD =</div>
+          <div style="font-size:0.65rem;color:var(--text3)">1 USD</div>
         </div>
       </div>
-      <div style="font-family:var(--font-display);font-weight:800;font-size:1rem;color:var(--teal)">
-        $${formatConv(val)}
+      <div style="text-align:right">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:1rem;color:var(--teal)">
+          $${formatConv(val.venta)}
+        </div>
+        ${val.compra ? `<div style="font-size:0.65rem;color:var(--text3)">Compra: $${formatConv(val.compra)}</div>` : ''}
       </div>
     </div>`;
   }).join('');
+
+  // Update convLastUpdate with Argentina time
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+  const el2 = document.getElementById('convLastUpdate');
+  if (el2) el2.textContent = `Actualizado ${now.toLocaleDateString('es-AR', {day:'2-digit',month:'short'})} ${timeStr}`;
 }
 
 function quickConvert(from, to) {
