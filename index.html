@@ -6,6 +6,7 @@
 <title>NuestrasFinanzas</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,400&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <link rel="manifest" id="pwa-manifest">
 <link rel="icon" type="image/png" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -886,7 +887,20 @@ canvas { max-width:100%; display:block; }
       </div>
       <div class="form-panel" id="fGasto">
         <div class="form-grid">
-          <div class="field" style="grid-column:1/-1"><label>Descripción</label><input type="text" id="g_desc" placeholder="Alquiler, Supermercado…"></div>
+          <div class="field" style="grid-column:1/-1">
+            <label>Descripción</label>
+            <div style="display:flex;gap:8px;align-items:stretch">
+              <input type="text" id="g_desc" placeholder="Alquiler, Supermercado…" style="flex:1">
+              <button type="button" onclick="triggerOCR()" title="Escanear ticket"
+                style="background:var(--teal-soft);border:1px solid var(--teal);color:var(--teal);
+                padding:0 14px;border-radius:var(--r-sm);font-size:1.1rem;cursor:pointer;
+                white-space:nowrap;transition:all 0.2s;flex-shrink:0" id="btnOCR">
+                📷
+              </button>
+            </div>
+            <input type="file" id="ocrInput" accept="image/*" capture="environment"
+              style="display:none" onchange="processOCR(this)">
+          </div>
           <div class="field"><label>Monto</label><input type="number" id="g_monto" placeholder="0"></div>
           <div class="field"><label>Categoría</label>
             <select id="g_cat">
@@ -921,6 +935,18 @@ canvas { max-width:100%; display:block; }
           </div>
           <div class="field"><label>Año</label><input type="number" id="g_anio" placeholder="2026" min="2020" max="2040"></div>
         </div>
+        <!-- OCR Progress -->
+        <div id="ocrProgress" style="display:none;background:var(--teal-soft);border:1px solid var(--teal);
+          border-radius:var(--r-sm);padding:14px;margin-top:10px;text-align:center">
+          <div style="font-size:1.5rem;margin-bottom:6px" id="ocrEmoji">📷</div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:0.88rem;color:var(--teal)" id="ocrStatusText">
+            Leyendo ticket…
+          </div>
+          <div style="margin-top:8px;background:var(--surf3);border-radius:99px;height:4px;overflow:hidden">
+            <div id="ocrBar" style="height:100%;background:var(--teal);border-radius:99px;width:0%;transition:width 0.3s"></div>
+          </div>
+        </div>
+
         <div class="form-actions">
           <button class="btn-cancel" onclick="cancelGasto()">Cancelar</button>
           <button class="btn-save" onclick="saveGasto()" id="btnSaveGasto">Guardar</button>
@@ -2155,6 +2181,172 @@ function buildManifest(){
 function getBgColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#141d35':'#ffffff';}
 function getTextColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#e8eeff':'#0b0f1e';}
 function getMutedColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#3d527a':'#8899cc';}
+
+
+// ============================================
+// OCR — TICKET SCANNER
+// ============================================
+
+function triggerOCR() {
+  document.getElementById('ocrInput').click();
+}
+
+async function processOCR(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+
+  // Show progress
+  const prog = document.getElementById('ocrProgress');
+  const bar  = document.getElementById('ocrBar');
+  const txt  = document.getElementById('ocrStatusText');
+  const emoji = document.getElementById('ocrEmoji');
+  prog.style.display = 'block';
+  bar.style.width = '0%';
+  txt.textContent = 'Procesando imagen…';
+  emoji.textContent = '🔍';
+  document.getElementById('btnOCR').disabled = true;
+
+  try {
+    const { createWorker } = Tesseract;
+    const worker = await createWorker('spa', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const pct = Math.round(m.progress * 100);
+          bar.style.width = pct + '%';
+          txt.textContent = `Leyendo ticket… ${pct}%`;
+        }
+      }
+    });
+
+    const { data: { text } } = await worker.recognize(file);
+    await worker.terminate();
+
+    emoji.textContent = '✅';
+    txt.textContent = 'Ticket leído, extrayendo datos…';
+    bar.style.width = '100%';
+
+    // Parse the OCR text
+    const parsed = parseTicketText(text);
+    fillGastoForm(parsed);
+
+    setTimeout(() => {
+      prog.style.display = 'none';
+      toast('✅ Ticket escaneado — revisá y confirmá los datos');
+    }, 800);
+
+  } catch(e) {
+    emoji.textContent = '❌';
+    txt.textContent = 'No se pudo leer. Intentá con mejor iluminación.';
+    bar.style.width = '0%';
+    console.error('OCR error:', e);
+    setTimeout(() => { prog.style.display = 'none'; }, 2500);
+  }
+
+  document.getElementById('btnOCR').disabled = false;
+  input.value = ''; // reset for next scan
+}
+
+function parseTicketText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const result = { descripcion: '', monto: '', categoria: 'Otros', dia: '' };
+
+  // ---- FIND TOTAL ----
+  // Look for patterns like: TOTAL $1.234,56 | Total: 1234.56 | IMPORTE TOTAL 5000
+  const totalPatterns = [
+    /total\s*:?\s*\$?\s*([\d.,]+)/i,
+    /importe\s*total\s*:?\s*\$?\s*([\d.,]+)/i,
+    /a\s*pagar\s*:?\s*\$?\s*([\d.,]+)/i,
+    /monto\s*total\s*:?\s*\$?\s*([\d.,]+)/i,
+    /total\s+a\s+abonar\s*:?\s*\$?\s*([\d.,]+)/i,
+    /subtotal\s*:?\s*\$?\s*([\d.,]+)/i,
+  ];
+
+  for (const pattern of totalPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      let num = match[1].replace(/\./g, '').replace(',', '.');
+      result.monto = parseFloat(num) || '';
+      break;
+    }
+  }
+
+  // If no total found, look for the largest number in the text
+  if (!result.monto) {
+    const numbers = [...text.matchAll(/\$?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)/g)]
+      .map(m => parseFloat(m[1].replace(/\./g, '').replace(',', '.')))
+      .filter(n => n > 0 && n < 10000000);
+    if (numbers.length) result.monto = Math.max(...numbers);
+  }
+
+  // ---- FIND DESCRIPTION ----
+  // Usually the first meaningful line (store name / business)
+  const skipWords = ['ticket','factura','recibo','fecha','cuit','iva','subtotal',
+    'total','tel','direccion','domicilio','gracias','vuelto','efectivo','tarjeta'];
+
+  for (const line of lines.slice(0, 8)) {
+    const lower = line.toLowerCase();
+    const isSkip = skipWords.some(w => lower.includes(w));
+    const hasLetters = /[a-záéíóúñ]{3,}/i.test(line);
+    const isNumber = /^[\d\s$.,]+$/.test(line);
+    if (!isSkip && hasLetters && !isNumber && line.length >= 3 && line.length <= 50) {
+      result.descripcion = line
+        .replace(/[^a-záéíóúñüA-ZÁÉÍÓÚÑÜ0-9\s&.-]/g, '')
+        .trim()
+        .slice(0, 40);
+      break;
+    }
+  }
+
+  // ---- GUESS CATEGORY ----
+  const textLower = text.toLowerCase();
+  const catKeywords = {
+    'Alimentación':    ['super','mercado','carrefour','disco','jumbo','coto','dia','farmacity','verduleria','panaderia','carniceria','almacen','kiosco','cafe','restaurant','delivery','pedidos','rappi','mc donalds','burger','pizza','sushi'],
+    'Transporte':      ['uber','cabify','taxi','nafta','combustible','ypf','shell','axion','peaje','subte','colectivo','tren','bus'],
+    'Salud':           ['farmacia','medico','clinica','hospital','sanatorio','laboratorio','drogueria'],
+    'Entretenimiento': ['cine','teatro','spotify','netflix','disney','hbo','amazon','juego'],
+    'Servicios':       ['edenor','edesur','metrogas','aysa','telecom','personal','claro','movistar','fibertel','cablevision'],
+    'Ropa':            ['zara','hym','kosiuko','legacy','rapsodia','indumentaria','calzado','zapateria'],
+    'Educación':       ['universidad','colegio','instituto','libreria','udemy','coursera'],
+    'Vivienda':        ['alquiler','expensas','inmobiliaria','ferreteria','sodimac','easy'],
+    'Mascota':         ['veterinaria','petshop','balanceado'],
+    'Suscripciones':   ['suscripcion','subscripcion','mensualidad','cuota'],
+  };
+
+  for (const [cat, keywords] of Object.entries(catKeywords)) {
+    if (keywords.some(kw => textLower.includes(kw))) {
+      result.categoria = cat;
+      break;
+    }
+  }
+
+  // ---- FIND DATE ----
+  const dateMatch = text.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+  if (dateMatch) {
+    result.dia = parseInt(dateMatch[1]);
+  }
+
+  return result;
+}
+
+function fillGastoForm(parsed) {
+  if (parsed.descripcion) {
+    document.getElementById('g_desc').value = parsed.descripcion;
+  }
+  if (parsed.monto) {
+    document.getElementById('g_monto').value = parsed.monto;
+  }
+  if (parsed.categoria) {
+    const catSel = document.getElementById('g_cat');
+    if (catSel) {
+      // Find matching option
+      const opt = Array.from(catSel.options).find(o => o.value === parsed.categoria);
+      if (opt) catSel.value = parsed.categoria;
+    }
+  }
+  if (parsed.dia) {
+    document.getElementById('g_dia').value = parsed.dia;
+  }
+}
 
 // ============================================
 // CURRENCY CONVERTER
