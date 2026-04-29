@@ -1225,39 +1225,54 @@ function cancelGasto() {
 async function saveGasto() {
   const desc = document.getElementById('g_desc').value.trim();
   const monto = parseFloat(document.getElementById('g_monto').value);
-  if (!desc||!monto) return toast('Completá descripción y monto');
+  if (!desc || !monto) return toast('Completá descripción y monto');
+
   const medio = document.getElementById('g_medio').value;
-  const tarjeta_id = medio==='tarjeta'?document.getElementById('g_tarjeta').value:null;
-  const cuotas = medio==='tarjeta'?parseInt(document.getElementById('g_cuotas').value):1;
-  const cuotaMonto = Math.round(monto/cuotas);
-  const gMes = parseInt(document.getElementById('g_mes').value)||state.mes;
-  const gAnio = parseInt(document.getElementById('g_anio').value)||state.anio;
-  const body = {
-    grupo_id:state.grupoId, mes:gMes, anio:gAnio, descripcion:desc, monto:cuotaMonto,
-    cat:document.getElementById('g_cat').value, tipo:document.getElementById('g_tipo').value,
-    medio, tarjeta_id, quien:document.getElementById('g_quien').value,
-    dia:parseInt(document.getElementById('g_dia').value)||null,
-    cuotas, cuota_actual:1, gasto_origen_id:null
-  };
+  const cuotas = medio==='tarjeta' ? parseInt(document.getElementById('g_cuotas').value)||1 : 1;
+  const cuotaMonto = Math.round(monto / cuotas);
+  const gMes = parseInt(document.getElementById('g_mes').value) || state.mes;
+  const gAnio = parseInt(document.getElementById('g_anio').value) || state.anio;
+
+  // Get tarjeta_id safely
+  let tarjeta_id = null;
+  if (medio === 'tarjeta') {
+    const tSel = document.getElementById('g_tarjeta');
+    tarjeta_id = (tSel && tSel.value) ? tSel.value : null;
+  }
+
   setSyncing('syncing');
   try {
     if (editingGastoId) {
-      // Edit: only update this specific gasto, no cuotas propagation
+      // EDIT: patch only the fields that changed
       const editBody = {
-        descripcion: descripcion, monto: parseFloat(document.getElementById('g_monto').value)||0,
+        descripcion: desc,
+        monto: monto, // use full monto when editing, not divided
         cat: document.getElementById('g_cat').value,
         tipo: document.getElementById('g_tipo').value,
         medio: medio,
         tarjeta_id: tarjeta_id,
         quien: document.getElementById('g_quien').value,
-        dia: parseInt(document.getElementById('g_dia').value)||null,
-        mes: gMes, anio: gAnio
+        dia: parseInt(document.getElementById('g_dia').value) || null,
+        mes: gMes,
+        anio: gAnio
       };
       const res = await dbPatch('gastos', editingGastoId, editBody);
       state.gastos = state.gastos.map(g=>g.id===editingGastoId?res[0]:g);
       editingGastoId=null; toast('✅ Gasto actualizado');
     } else {
-      // Create first cuota
+      // Create first cuota — build body here
+      const body = {
+        grupo_id: state.grupoId,
+        mes: gMes, anio: gAnio,
+        descripcion: desc,
+        monto: cuotaMonto,
+        cat: document.getElementById('g_cat').value,
+        tipo: document.getElementById('g_tipo').value,
+        medio, tarjeta_id,
+        quien: document.getElementById('g_quien').value,
+        dia: parseInt(document.getElementById('g_dia').value) || null,
+        cuotas, cuota_actual: 1, gasto_origen_id: null
+      };
       const res = await dbPost('gastos', body);
       const origen = res[0];
       state.gastos.push(origen);
