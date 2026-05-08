@@ -2279,7 +2279,7 @@ function updatePersonaNames() {
     const current = sel.value;
     // For gastos: add "Todos" option, for ingresos: just personas
     const options = id === 'g_quien'
-      ? ['Todos', ...personas]
+      ? ['Ambos', ...personas]
       : personas;
     sel.innerHTML = options.map(p =>
       `<option value="${p}">${p}</option>`
