@@ -327,6 +327,111 @@
     /* Fix body background for light mode */
     body { background: radial-gradient(circle at top, var(--bg-soft), var(--bg)) !important; color: var(--text) !important; }
 
+    
+    /* ===== FLUJO FIXES ===== */
+    .flujo-card { 
+      padding: 20px !important; 
+      border-radius: 20px !important;
+      margin-bottom: 16px !important;
+    }
+    .flujo-title { 
+      font-size: 17px !important; 
+      font-weight: 800 !important; 
+      margin-bottom: 16px !important;
+      letter-spacing: -.3px !important;
+      display: block !important;
+    }
+    .flujo-row { 
+      display: flex !important; 
+      justify-content: space-between !important;
+      align-items: center !important;
+      padding: 10px 0 !important; 
+      border-bottom: 1px solid rgba(255,255,255,.06) !important;
+    }
+    body:not(.dark) .flujo-row { border-bottom-color: rgba(20,33,61,.06) !important; }
+    .flujo-row:last-child { border-bottom: none !important; }
+    .flujo-label { 
+      font-size: 13px !important; 
+      color: var(--muted) !important;
+    }
+    .flujo-val { 
+      font-size: 14px !important; 
+      font-weight: 800 !important;
+      text-align: right !important;
+    }
+    .flujo-row.hl .flujo-label { 
+      color: var(--text) !important; 
+      font-weight: 700 !important; 
+      font-size: 14px !important;
+    }
+    .flujo-row.hl .flujo-val { 
+      font-size: 20px !important; 
+      color: var(--green) !important;
+    }
+    /* Meta cards */
+    .meta-grid { 
+      display: grid !important; 
+      grid-template-columns: repeat(3,1fr) !important; 
+      gap: 10px !important;
+      margin-top: 16px !important;
+    }
+    .meta-card { 
+      border-radius: 16px !important; 
+      padding: 16px !important; 
+      text-align: center !important;
+    }
+    .meta-lbl { 
+      font-size: 10px !important; 
+      color: var(--muted) !important; 
+      text-transform: uppercase !important;
+      letter-spacing: 1.5px !important; 
+      margin-bottom: 8px !important; 
+      font-weight: 600 !important;
+      display: block !important;
+    }
+    .meta-val { 
+      font-size: 18px !important; 
+      font-weight: 800 !important; 
+      color: var(--green) !important;
+    }
+
+    /* ===== CATEGORIAS FIXES ===== */
+    #catList { margin-bottom: 16px !important; }
+    .cat-row { 
+      display: flex !important; 
+      align-items: center !important; 
+      gap: 10px !important; 
+      margin-bottom: 12px !important;
+      padding: 4px 0 !important;
+    }
+    .cat-name { 
+      font-size: 13px !important; 
+      font-weight: 600 !important; 
+      width: 120px !important; 
+      flex-shrink: 0 !important;
+    }
+    .cat-bar-bg { 
+      flex: 1 !important; 
+      background: rgba(255,255,255,.08) !important; 
+      border-radius: 999px !important; 
+      height: 8px !important; 
+      overflow: hidden !important;
+    }
+    body:not(.dark) .cat-bar-bg { background: rgba(20,33,61,.08) !important; }
+    .cat-bar-fill { 
+      height: 100% !important; 
+      border-radius: 999px !important; 
+      transition: width .6s ease !important;
+    }
+    .cat-amt { 
+      font-size: 12px !important; 
+      font-weight: 700 !important; 
+      color: var(--teal) !important; 
+      width: 90px !important; 
+      text-align: right !important;
+      flex-shrink: 0 !important;
+    }
+
     </style>
 </head>
 <body>
@@ -1191,12 +1296,19 @@ function renderAll() {
   const catMax=catSorted[0]?.[1]||1;
   document.getElementById('catList').innerHTML = catSorted.length===0
     ? `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos aún</div></div>`
-    : catSorted.map(([cat,tot])=>`
-      <div class="cat-row">
-        <div class="cat-name">${cat}</div>
+    : catSorted.map(([cat,tot])=>{
+      const CAT_ICONS = {
+        'Vivienda':'🏠','Alimentación':'🍽️','Transporte':'🚗','Salud':'💊',
+        'Educación':'📚','Entretenimiento':'🎬','Servicios':'⚡','Ropa':'👕',
+        'Mascota':'🐾','Suscripciones':'📱','Otros':'📦'
+      };
+      const icon = CAT_ICONS[cat] || '📦';
+      return `<div class="cat-row">
+        <div class="cat-name">${icon} ${cat}</div>
         <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round(tot/catMax*100)}%;background:${CAT_COLORS[cat]||'#888'}"></div></div>
         <div class="cat-amt">${fmt(tot)}</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
   // FLUJO
   const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
