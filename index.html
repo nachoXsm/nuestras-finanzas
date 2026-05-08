@@ -1318,6 +1318,8 @@ function switchTab(name) {
   document.getElementById('tab-'+name).classList.add('active');
   if(name==='informe') renderInforme();
   if(name==='conversor') initConversor();
+  if(name==='flujo') renderFlujo();
+  if(name==='categorias') renderCatList();
 }
 
 // ============================================
@@ -2416,6 +2418,40 @@ if('serviceWorker' in navigator){
 }
 
 // ============================================
+function renderCatList() {
+  var el = document.getElementById('catList');
+  if (!el || !state) return;
+  var gs = state.gastos || [];
+  var CAT_ICONS = {'Vivienda':'🏠','Alimentación':'🍽️','Transporte':'🚗','Salud':'💊',
+    'Educación':'📚','Entretenimiento':'🎬','Servicios':'⚡','Ropa':'👕',
+    'Mascota':'🐾','Suscripciones':'📱','Otros':'📦'};
+  var CAT_COLORS = {'Vivienda':'#12c7b7','Alimentación':'#f7c948','Transporte':'#6c63ff',
+    'Salud':'#ff7a59','Educación':'#6c63ff','Entretenimiento':'#6c63ff',
+    'Servicios':'#f7c948','Ropa':'#6c63ff','Mascota':'#1ec98f',
+    'Suscripciones':'#ff7a59','Otros':'#95a6c7'};
+  var totals = {};
+  gs.forEach(function(g){ totals[g.cat] = (totals[g.cat]||0) + parseFloat(g.monto||0); });
+  var sorted = Object.entries(totals).sort(function(a,b){return b[1]-a[1];});
+  var max = sorted[0] ? sorted[0][1] : 1;
+  if (!sorted.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:#95a6c7"><div style="font-size:2rem;margin-bottom:8px">📊</div><div>Sin datos aún</div></div>';
+    return;
+  }
+  el.innerHTML = sorted.map(function(entry) {
+    var cat = entry[0], tot = entry[1];
+    var icon = CAT_ICONS[cat]||'📦';
+    var color = CAT_COLORS[cat]||'#12c7b7';
+    var pct = Math.round(tot/max*100);
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">' +
+      '<div style="font-size:13px;font-weight:600;min-width:140px;flex-shrink:0">' + icon + ' ' + cat + '</div>' +
+      '<div style="flex:1;background:rgba(255,255,255,.08);border-radius:999px;height:8px;overflow:hidden">' +
+        '<div style="height:100%;border-radius:999px;width:' + pct + '%;background:' + color + ';transition:width .6s"></div>' +
+      '</div>' +
+      '<div style="font-size:12px;font-weight:700;color:#12c7b7;width:90px;text-align:right;flex-shrink:0">' + fmt(tot) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
 // RENDER FLUJO - clean separate function
 // ============================================
 function _r(lbl, val, col, bold) {
