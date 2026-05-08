@@ -240,199 +240,36 @@
     .lang-btn{cursor:pointer;transition:all .2s;border:2px solid transparent}
     .lang-btn.active{border-color:var(--primary);background:rgba(18,199,183,.12)!important}
   
-    /* CSS var aliases - backup JS uses these names */
-    :root {
-      --green: #1ec98f;
-      --red: #ff7a59;
-      --yellow: #f7c948;
-      --orange: #f7c948;
-      --teal: #12c7b7;
-      --blue: #6c63ff;
-      --lavender: #6c63ff;
-      --surf: rgba(255,255,255,.05);
-      --surf2: rgba(255,255,255,.08);
-      --text3: #95a6c7;
-      --mono: #12c7b7;
-      --sun: #f7c948;
-      --brand: #12c7b7;
-    }
-    
-    /* DARK MODE - backup uses body.dark */
-    body.dark {
-      --bg: #08111f;
-      --bg-soft: #0d1830;
-      --card: #101a2f;
-      --card-2: #15233d;
-      --text: #ffffff;
-      --muted: #95a6c7;
-    }
-    body:not(.dark) {
-      --bg: #f0f4ff;
-      --bg-soft: #e8eeff;
-      --card: #ffffff;
-      --card-2: #f5f7ff;
-      --text: #14213d;
-      --muted: #7b8798;
-      --border: rgba(20,33,61,.1);
-      --surf: rgba(20,33,61,.04);
-      --surf2: rgba(20,33,61,.06);
-      --text3: #7b8798;
-      --green: #0ea572;
-      --red: #e05c3a;
-      --teal: #0fa89b;
-    }
-    body:not(.dark) .balance-card { background: linear-gradient(135deg,#1a3a6e,var(--secondary)) !important; }
-    body:not(.dark) .tcard { background: linear-gradient(135deg,#1e3a8a,#3b4fd4) !important; color: white !important; }
-    body:not(.dark) .tcard-meta { color: rgba(255,255,255,.6) !important; }
-    body:not(.dark) .hdr { background: var(--bg); }
-    body:not(.dark) .bottom-nav { background: rgba(240,244,255,.95) !important; }
-    body:not(.dark) .field input,
-    body:not(.dark) .field select { background: rgba(20,33,61,.05) !important; color: var(--text) !important; border-color: rgba(20,33,61,.12) !important; }
-    body:not(.dark) .field select option { background: white !important; color: #14213d !important; }
-    body:not(.dark) .pin-key { background: white !important; color: #14213d !important; border-color: rgba(20,33,61,.1) !important; }
-    body:not(.dark) .gs-input { background: white !important; color: #14213d !important; border-color: rgba(20,33,61,.12) !important; }
-    body:not(.dark) .tab { background: rgba(20,33,61,.06) !important; color: var(--muted) !important; }
-    body:not(.dark) .month-chip, body:not(.dark) .mnav-btn { background: rgba(20,33,61,.06) !important; color: var(--text) !important; }
-    body:not(.dark) .sum-card, body:not(.dark) .flujo-card, body:not(.dark) .meta-card,
-    body:not(.dark) .conv-card, body:not(.dark) .chart-card, body:not(.dark) .inf-card,
-    body:not(.dark) .item-card, body:not(.dark) .income-item, body:not(.dark) .rate-card, body:not(.dark) .ars-rate { 
-      background: white !important; 
-      border-color: rgba(20,33,61,.08) !important;
-      color: #14213d !important;
-    }
-    body:not(.dark) .flujo-lbl, body:not(.dark) .sum-label, body:not(.dark) .meta-lbl { color: #7b8798 !important; }
-    body:not(.dark) .income-name, body:not(.dark) .item-name { color: #14213d !important; }
-    body:not(.dark) .hdr-btn { background: rgba(20,33,61,.06) !important; color: #14213d !important; border-color: rgba(20,33,61,.1) !important; }
-    body:not(.dark) { background: radial-gradient(circle at top, var(--bg-soft), var(--bg)) !important; }
+    :root{--green:#1ec98f;--red:#ff7a59;--yellow:#f7c948;--orange:#f7c948;--teal:#12c7b7;--blue:#6c63ff;--lavender:#6c63ff;--surf:rgba(255,255,255,.05);--surf2:rgba(255,255,255,.08);--text3:#95a6c7;--mono:#12c7b7;--sun:#f7c948;--brand:#12c7b7}
+    body.dark{--bg:#08111f;--card:#101a2f;--card-2:#15233d;--text:#fff;--muted:#95a6c7;--border:rgba(255,255,255,.06)}
+    body:not(.dark){--bg:#f0f4ff;--bg-soft:#e8eeff;--card:#fff;--card-2:#f5f7ff;--text:#14213d;--muted:#7b8798;--surf:rgba(20,33,61,.04);--surf2:rgba(20,33,61,.06);--text3:#7b8798;--green:#0ea572;--teal:#0fa89b;--border:rgba(20,33,61,.08)}
+    body{background:radial-gradient(circle at top,var(--bg-soft,#0d1830),var(--bg))!important;color:var(--text)!important}
+    body:not(.dark) .balance-card{background:linear-gradient(135deg,#1a3a6e,var(--secondary))!important}
+    body:not(.dark) .tcard{background:linear-gradient(135deg,#1e3a8a,#3b4fd4)!important;color:white!important}
+    body:not(.dark) .field input,body:not(.dark) .field select{background:rgba(20,33,61,.05)!important;color:var(--text)!important;border-color:rgba(20,33,61,.1)!important}
+    body:not(.dark) .field select option{background:white!important;color:#14213d!important}
+    body:not(.dark) .tab{background:rgba(20,33,61,.06)!important;color:var(--muted)!important}
+    body:not(.dark) .month-chip,body:not(.dark) .mnav-btn,body:not(.dark) .hdr-btn{background:rgba(20,33,61,.06)!important;color:var(--text)!important}
+    body:not(.dark) .bottom-nav{background:rgba(240,244,255,.95)!important}
+    body:not(.dark) .sum-card,body:not(.dark) .income-item,body:not(.dark) .item-card,body:not(.dark) .rate-card,body:not(.dark) .ars-rate{background:white!important;border-color:rgba(20,33,61,.08)!important}
+    #summary{display:grid!important;grid-template-columns:1fr 1fr!important;gap:14px!important;margin-bottom:20px!important}
+    .sum-card{border-radius:20px!important;padding:16px!important}
+    .sum-label{font-size:11px!important;color:var(--muted)!important;text-transform:uppercase!important;letter-spacing:1.2px!important;display:block!important;margin-bottom:8px!important;font-weight:600!important}
+    .sum-val{font-size:22px!important;font-weight:800!important;display:block!important;letter-spacing:-.5px!important}
+    .sum-val.green{color:#1ec98f!important}.sum-val.red{color:#ff7a59!important}
+    .sum-val.blue,.sum-val.orange{color:#12c7b7!important}.sum-val.purple{color:#6c63ff!important}
+    .sum-sub{font-size:11px!important;color:var(--muted)!important;display:block!important;margin-top:4px!important}
+    .cat-row{display:flex!important;align-items:center!important;gap:10px!important;margin-bottom:14px!important}
+    .cat-name{font-size:13px!important;font-weight:600!important;min-width:130px!important;flex-shrink:0!important}
+    .cat-bar-bg{flex:1!important;background:rgba(255,255,255,.08)!important;border-radius:999px!important;height:8px!important;overflow:hidden!important}
+    body:not(.dark) .cat-bar-bg{background:rgba(20,33,61,.08)!important}
+    .cat-bar-fill{height:100%!important;border-radius:999px!important;transition:width .6s!important}
+    .cat-amt{font-size:12px!important;font-weight:700!important;color:#12c7b7!important;width:90px!important;text-align:right!important}
+    .lang-btn.active{border:2px solid #12c7b7!important;background:rgba(18,199,183,.15)!important}
+    .progress{height:4px!important;background:rgba(255,255,255,.08)!important;border-radius:999px!important;margin-top:10px!important;overflow:hidden!important}
+    .progress-fill{height:100%!important;border-radius:999px!important}
 
-    /* Missing flujo classes */
-    .flujo-title { font-size: 16px; font-weight: 800; margin-bottom: 14px; letter-spacing: -.3px; }
-    .flujo-label { font-size: 13px; color: var(--muted); }
-
-    /* Missing catList number display */
-    .cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-    .cat-name { font-size: 13px; font-weight: 600; min-width: 100px; }
-    .cat-amt { font-size: 12px; font-weight: 700; color: var(--teal); min-width: 80px; text-align: right; }
-    
-    /* Fix sum-card to show properly */
-    .sum-card { padding: 16px !important; }
-    .sum-val { font-size: 20px !important; font-weight: 800 !important; display: block !important; margin: 6px 0 4px !important; }
-    .sum-label { font-size: 11px !important; color: var(--muted) !important; text-transform: uppercase !important; letter-spacing: 1px !important; display: block !important; }
-    .sum-sub { font-size: 11px !important; color: var(--muted) !important; display: block !important; }
-
-    /* Lang buttons visible */
-    .lang-btn { cursor: pointer !important; transition: all .2s !important; }
-    .lang-btn.active { border: 2px solid var(--teal) !important; background: rgba(18,199,183,.15) !important; }
-    
-    /* Fix body background for light mode */
-    body { background: radial-gradient(circle at top, var(--bg-soft), var(--bg)) !important; color: var(--text) !important; }
-
-    
-    /* ===== FLUJO FIXES ===== */
-    .flujo-card { 
-      padding: 20px !important; 
-      border-radius: 20px !important;
-      margin-bottom: 16px !important;
-    }
-    .flujo-title { 
-      font-size: 17px !important; 
-      font-weight: 800 !important; 
-      margin-bottom: 16px !important;
-      letter-spacing: -.3px !important;
-      display: block !important;
-    }
-    .flujo-row { 
-      display: flex !important; 
-      justify-content: space-between !important;
-      align-items: center !important;
-      padding: 10px 0 !important; 
-      border-bottom: 1px solid rgba(255,255,255,.06) !important;
-    }
-    body:not(.dark) .flujo-row { border-bottom-color: rgba(20,33,61,.06) !important; }
-    .flujo-row:last-child { border-bottom: none !important; }
-    .flujo-label { 
-      font-size: 13px !important; 
-      color: var(--muted) !important;
-    }
-    .flujo-val { 
-      font-size: 14px !important; 
-      font-weight: 800 !important;
-      text-align: right !important;
-    }
-    .flujo-row.hl .flujo-label { 
-      color: var(--text) !important; 
-      font-weight: 700 !important; 
-      font-size: 14px !important;
-    }
-    .flujo-row.hl .flujo-val { 
-      font-size: 20px !important; 
-      color: var(--green) !important;
-    }
-    /* Meta cards */
-    .meta-grid { 
-      display: grid !important; 
-      grid-template-columns: repeat(3,1fr) !important; 
-      gap: 10px !important;
-      margin-top: 16px !important;
-    }
-    .meta-card { 
-      border-radius: 16px !important; 
-      padding: 16px !important; 
-      text-align: center !important;
-    }
-    .meta-lbl { 
-      font-size: 10px !important; 
-      color: var(--muted) !important; 
-      text-transform: uppercase !important;
-      letter-spacing: 1.5px !important; 
-      margin-bottom: 8px !important; 
-      font-weight: 600 !important;
-      display: block !important;
-    }
-    .meta-val { 
-      font-size: 18px !important; 
-      font-weight: 800 !important; 
-      color: var(--green) !important;
-    }
-
-    /* ===== CATEGORIAS FIXES ===== */
-    #catList { margin-bottom: 16px !important; }
-    .cat-row { 
-      display: flex !important; 
-      align-items: center !important; 
-      gap: 10px !important; 
-      margin-bottom: 12px !important;
-      padding: 4px 0 !important;
-    }
-    .cat-name { 
-      font-size: 13px !important; 
-      font-weight: 600 !important; 
-      width: 120px !important; 
-      flex-shrink: 0 !important;
-    }
-    .cat-bar-bg { 
-      flex: 1 !important; 
-      background: rgba(255,255,255,.08) !important; 
-      border-radius: 999px !important; 
-      height: 8px !important; 
-      overflow: hidden !important;
-    }
-    body:not(.dark) .cat-bar-bg { background: rgba(20,33,61,.08) !important; }
-    .cat-bar-fill { 
-      height: 100% !important; 
-      border-radius: 999px !important; 
-      transition: width .6s ease !important;
-    }
-    .cat-amt { 
-      font-size: 12px !important; 
-      font-weight: 700 !important; 
-      color: var(--teal) !important; 
-      width: 90px !important; 
-      text-align: right !important;
-      flex-shrink: 0 !important;
-    }
-
-    </style>
+</style>
 </head>
 <body>
 
@@ -849,24 +686,18 @@ function toast(msg, ms=2500) {
 function initTheme() {
   const saved = localStorage.getItem('nf_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
-  if(saved==='dark') document.body.classList.add('dark');
-  else document.body.classList.remove('dark');
-  var btn = document.getElementById('themeBtn');
-  if(btn) btn.textContent = saved==='dark'?'☀️':'🌙';
-  var ind = document.getElementById('themeIndicator');
-  if(ind) ind.textContent = saved==='dark'?'🌙':'☀️';
+  if(saved==='dark') document.body.classList.add('dark'); else document.body.classList.remove('dark');
+  var btn=document.getElementById('themeBtn');if(btn)btn.textContent=saved==='dark'?'☀️':'🌙';
+  var ind=document.getElementById('themeIndicator');if(ind)ind.textContent=saved==='dark'?'🌙':'☀️';
 }
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme', next);
-  if(next==='dark') document.body.classList.add('dark');
-  else document.body.classList.remove('dark');
+  if(next==='dark') document.body.classList.add('dark'); else document.body.classList.remove('dark');
   localStorage.setItem('nf_theme', next);
-  var btn = document.getElementById('themeBtn');
-  if(btn) btn.textContent = next==='dark'?'☀️':'🌙';
-  var ind = document.getElementById('themeIndicator');
-  if(ind) ind.textContent = next==='dark'?'🌙':'☀️';
+  var btn=document.getElementById('themeBtn');if(btn)btn.textContent=next==='dark'?'☀️':'🌙';
+  var ind=document.getElementById('themeIndicator');if(ind)ind.textContent=next==='dark'?'🌙':'☀️';
 }
 
 // ============================================
@@ -1183,28 +1014,27 @@ function renderAll() {
 
   // SUMMARY
   document.getElementById('summary').innerHTML = `
-    <div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.25)">
-      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Ingresos</div>
-      <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--green)">${fmt(totalInc)}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">${state.persona1||'Nacho'} + ${state.persona2||'Celi'}</div>
+    <div class="sum-card">
+      <div class="sum-label">Ingresos</div>
+      <div class="sum-val green">${fmt(totalInc)}</div>
+      <div class="sum-sub">Nacho + Celi</div>
     </div>
-    <div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.25)">
-      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Gastos</div>
-      <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--red)">${fmt(totalGas)}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">${pct}% del ingreso</div>
-      <div style="height:4px;background:rgba(255,255,255,.08);border-radius:999px;margin-top:8px;overflow:hidden"><div style="height:100%;border-radius:999px;width:${pct}%;background:${pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)'}"></div></div>
+    <div class="sum-card">
+      <div class="sum-label">Gastos</div>
+      <div class="sum-val red">${fmt(totalGas)}</div>
+      <div class="sum-sub">${pct}% del ingreso</div>
+      <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)'}"></div></div>
     </div>
-    <div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.25)">
-      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Fijos</div>
-      <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--blue)">${fmt(fijos)}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">${totalGas>0?Math.round(fijos/totalGas*100):0}% del total</div>
+    <div class="sum-card">
+      <div class="sum-label">Fijos</div>
+      <div class="sum-val blue">${fmt(fijos)}</div>
+      <div class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}% del total</div>
     </div>
-    <div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.25)">
-      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Flujo libre</div>
-      <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(saldo)}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">${saldo>=0?'disponible':'déficit'}</div>
-    </div>
-  `;
+    <div class="sum-card">
+      <div class="sum-label">Flujo libre</div>
+      <div class="sum-val ${saldo>=0?'orange':'red'}">${fmt(saldo)}</div>
+      <div class="sum-sub">${saldo>=0?'disponible':'déficit'}</div>
+    </div>`;
 
   // INGRESOS
   const iEl = document.getElementById('ingresoList');
@@ -1296,22 +1126,13 @@ function renderAll() {
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const catMax=catSorted[0]?.[1]||1;
   document.getElementById('catList').innerHTML = catSorted.length===0
-    ? `<div style="text-align:center;padding:32px 20px;color:var(--muted)"><div style="font-size:2rem;margin-bottom:8px">📊</div><div>Sin datos aún</div></div>`
-    : catSorted.map(([cat,tot])=>{
-      const CAT_ICONS={'Vivienda':'🏠','Alimentación':'🍽️','Transporte':'🚗','Salud':'💊',
-        'Educación':'📚','Entretenimiento':'🎬','Servicios':'⚡','Ropa':'👕',
-        'Mascota':'🐾','Suscripciones':'📱','Otros':'📦'};
-      const icon = CAT_ICONS[cat]||'📦';
-      const color = CAT_COLORS[cat]||'#12c7b7';
-      const pct = Math.round(tot/catMax*100);
-      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:4px 0">
-        <div style="font-size:13px;font-weight:600;min-width:130px;flex-shrink:0">${icon} ${cat}</div>
-        <div style="flex:1;background:rgba(255,255,255,.08);border-radius:999px;height:8px;overflow:hidden">
-          <div style="height:100%;border-radius:999px;width:${pct}%;background:${color};transition:width .6s"></div>
-        </div>
-        <div style="font-size:12px;font-weight:700;color:var(--teal);width:90px;text-align:right;flex-shrink:0">${fmt(tot)}</div>
-      </div>`;
-    }).join('');;
+    ? `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos aún</div></div>`
+    : catSorted.map(([cat,tot])=>`
+      <div class="cat-row">
+        <div class="cat-name">${cat}</div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round(tot/catMax*100)}%;background:${CAT_COLORS[cat]||'#888'}"></div></div>
+        <div class="cat-amt">${fmt(tot)}</div>
+      </div>`).join('');
 
   // FLUJO
   const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
@@ -1322,26 +1143,7 @@ function renderAll() {
   const nachoInc = personaIngresos[0]?.total || 0;
   const celiInc = personaIngresos[1]?.total || 0;
   const compInc = 0;
-  document.getElementById('flujoContent').innerHTML = `
-    <div class="flujo-card">
-      <div class="flujo-title">🏦 Flujo mensual</div>
-      ${nachoInc>0?`<div class="flujo-row"><span class="flujo-label">${state.persona1||'Nacho'}</span><span class="flujo-val" style="color:var(--green)">${fmt(nachoInc)}</span></div>`:''}
-      ${celiInc>0?`<div class="flujo-row"><span class="flujo-label">${state.persona2||'Celi'}</span><span class="flujo-val" style="color:var(--green)">${fmt(celiInc)}</span></div>`:''}
-      ${compInc>0?`<div class="flujo-row"><span class="flujo-label">Compartido</span><span class="flujo-val" style="color:var(--green)">${fmt(compInc)}</span></div>`:''}
-      <div class="flujo-row"><span class="flujo-label" style="color:var(--text);font-weight:600">Total ingresos</span><span class="flujo-val" style="color:var(--green);font-weight:600">${fmt(totalInc)}</span></div>
-      <div class="flujo-row"><span class="flujo-label">Gastos fijos</span><span class="flujo-val" style="color:var(--blue)">${fmt(fijos)}</span></div>
-      <div class="flujo-row"><span class="flujo-label">Flujo tras fijos</span><span class="flujo-val">${fmt(totalInc-fijos)}</span></div>
-      <div class="flujo-row"><span class="flujo-label">Gastos variables</span><span class="flujo-val" style="color:var(--text3)">${fmt(variables)}</span></div>
-      <div class="flujo-row"><span class="flujo-label">En tarjeta</span><span class="flujo-val" style="color:var(--brand)">${fmt(enTarjeta)}</span></div>
-      <div class="flujo-row highlight"><span class="flujo-label">💰 Flujo libre</span><span class="flujo-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(saldo)}</span></div>
-    </div>
-    <div class="section-head"><div class="section-title">🎯 Metas de ahorro</div></div>
-    ${totalInc===0?`<div class="empty"><div class="empty-text">Agregá ingresos para ver las metas</div></div>`:`
-    <div class="ahorro-grid">
-      <div class="ahorro-card"><div class="ahorro-label">10%</div><div class="ahorro-val">${fmt(totalInc*.1)}</div></div>
-      <div class="ahorro-card"><div class="ahorro-label">20%</div><div class="ahorro-val">${fmt(totalInc*.2)}</div></div>
-      <div class="ahorro-card"><div class="ahorro-label">Real</div><div class="ahorro-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(Math.max(0,saldo))}</div></div>
-    </div>`}`;
+  document.getElementById('flujoContent').innerHTML = ''; renderFlujo();
 }
 
 // ============================================
@@ -2597,12 +2399,69 @@ startApp = async function(){
 };
 
 // Override toggleTheme
-// toggleTheme override removed - handled in base function
+var _ttBase = toggleTheme;
+toggleTheme = function(){
+  _ttBase();
+  var isDark = document.body.classList.contains('dark');
+  var ind = document.getElementById('themeIndicator');
+  if(ind) ind.textContent = isDark ? '🌙' : '☀️';
+  var btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = isDark ? '☀️' : '🌙';
+};
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('/sw.js').catch(function(){});
   });
+}
+
+// ============================================
+// RENDER FLUJO - clean separate function
+// ============================================
+function _r(lbl, val, col, bold) {
+  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+    '<span style="color:' + (bold?'#fff':'#95a6c7') + ';font-weight:' + (bold?700:500) + ';font-size:13px">' + lbl + '</span>' +
+    '<span style="color:' + (col||'#fff') + ';font-weight:700;font-size:' + (bold?15:14) + 'px">' + val + '</span></div>';
+}
+function _dv() { return '<div style="height:1px;background:rgba(255,255,255,.1);margin:4px 0"></div>'; }
+function _gc(lbl, val) {
+  return '<div style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;text-align:center">' +
+    '<div style="color:#95a6c7;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:8px">' + lbl + '</div>' +
+    '<div style="color:#1ec98f;font-weight:800;font-size:20px;letter-spacing:-.5px">' + fmt(val) + '</div></div>';
+}
+function renderFlujo() {
+  var el = document.getElementById('flujoContent');
+  if (!el || !state) return;
+  var p1 = state.persona1||'P1', p2 = state.persona2||'P2';
+  var gs = state.gastos||[], inc = state.ingresos||[];
+  var tI = inc.reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
+  var tG = gs.reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var fj = gs.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var vr = gs.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var eT = gs.filter(function(g){return g.medio==='tarjeta';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var sl = tI - tG;
+  var p1I = inc.filter(function(i){return i.quien===p1;}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
+  var p2I = inc.filter(function(i){return i.quien===p2;}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
+  var cpI = inc.filter(function(i){return i.quien==='Compartido';}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
+  el.innerHTML =
+    '<div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:20px;margin-bottom:16px">' +
+    '<div style="font-size:17px;font-weight:800;margin-bottom:16px">🏦 Flujo mensual</div>' +
+    (p1I>0?_r(p1,fmt(p1I),'#12c7b7'):'') +
+    (p2I>0?_r(p2,fmt(p2I),'#12c7b7'):'') +
+    (cpI>0?_r('Compartido',fmt(cpI),'#12c7b7'):'') +
+    _dv() +
+    _r('Total ingresos',fmt(tI),'#1ec98f',true) +
+    _r('Gastos fijos',fmt(fj),'#6c63ff') +
+    _r('Flujo tras fijos',fmt(tI-fj),'#ffffff') +
+    _r('Gastos variables',fmt(vr),'#ff7a59') +
+    _r('En tarjeta',fmt(eT),'#f7c948') +
+    _dv() +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 0">' +
+    '<span style="font-size:16px;font-weight:800">💰 Flujo libre</span>' +
+    '<span style="font-size:22px;font-weight:800;color:' + (sl>=0?'#1ec98f':'#ff7a59') + '">' + fmt(sl) + '</span></div></div>' +
+    '<div style="font-size:17px;font-weight:800;margin:4px 0 14px">🎯 Metas de ahorro</div>' +
+    (tI===0?'<div style="text-align:center;padding:20px;color:#95a6c7">Agregá ingresos para ver metas</div>':
+    '<div style="display:flex;gap:12px">'+_gc('10%',tI*.1)+_gc('20%',tI*.2)+_gc('Real',Math.max(0,sl))+'</div>');
 }
 
 </script>
