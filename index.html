@@ -300,6 +300,19 @@ canvas{max-width:100%;display:block}
   background: rgba(20,33,61,.06);
 }
 
+
+/* Summary cards (renderAll) */
+.sum-card{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.04);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.sum-label{color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+.sum-val{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.sum-val.green{color:var(--success)}
+.sum-val.red{color:var(--danger)}
+.sum-val.blue{color:var(--primary)}
+.sum-val.purple{color:var(--secondary)}
+.sum-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.progress{height:4px;background:rgba(255,255,255,.08);border-radius:999px;margin-top:10px;overflow:hidden}
+.progress-fill{height:100%;border-radius:999px;background:var(--primary)}
+
 </style>
 </head>
 <body>
@@ -440,7 +453,7 @@ canvas{max-width:100%;display:block}
   </div>
 
   <!-- STATS -->
-  <div class="stats-grid" id="statsGrid"></div>
+  <div class="stats-grid" id="statsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px;margin-bottom:20px"></div>
 
   <!-- TABS -->
   <div class="tabs-wrap">
@@ -1180,7 +1193,7 @@ function renderAll() {
   const pct = totalInc>0?Math.min(100,Math.round(totalGas/totalInc*100)):0;
 
   // SUMMARY
-  document.getElementById('summary').innerHTML = `
+  document.getElementById('statsGrid').innerHTML = `
     <div class="sum-card">
       <div class="sum-label">Ingresos</div>
       <div class="sum-val green">${fmt(totalInc)}</div>
@@ -1639,7 +1652,7 @@ renderAll = function() {
   const pct = totalInc>0?Math.min(100,Math.round(totalGas/totalInc*100)):0;
 
   // SUMMARY
-  document.getElementById('summary').innerHTML = `
+  document.getElementById('statsGrid').innerHTML = `
     <div class="scard">
       <div class="sc-label">Ingresos</div>
       <div class="sc-value teal">${fmt(totalInc)}</div>
