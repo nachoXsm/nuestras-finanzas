@@ -252,6 +252,54 @@ input,select,button{font-family:var(--font)}
 .toast.show{opacity:1}
 canvas{max-width:100%;display:block}
 .tab-content{display:none}.tab-content.active{display:block}
+
+[data-theme="light"] {
+  --bg:#f5f7fb;
+  --bg-soft:#eef1f8;
+  --card:#ffffff;
+  --card-2:#f0f4ff;
+  --text:#14213d;
+  --muted:#7b8798;
+  --border:rgba(20,33,61,.08);
+  --shadow:0 8px 24px rgba(20,33,61,.08);
+}
+[data-theme="light"] body {
+  background: radial-gradient(circle at top, var(--bg-soft), var(--bg));
+}
+[data-theme="light"] .bottom-nav {
+  background: rgba(245,247,251,.95);
+  border-top: 1px solid rgba(20,33,61,.08);
+}
+[data-theme="light"] .hdr {
+  background: var(--bg);
+}
+[data-theme="light"] .tcard {
+  background: linear-gradient(135deg,#e8f0ff,#d4e0ff);
+  color: #14213d;
+}
+[data-theme="light"] .field input,
+[data-theme="light"] .field select {
+  background: rgba(20,33,61,.04);
+  color: #14213d;
+}
+[data-theme="light"] .field select option {
+  background: #ffffff;
+  color: #14213d;
+}
+[data-theme="light"] .pin-key {
+  background: #ffffff;
+  color: #14213d;
+}
+[data-theme="light"] .gs-input {
+  background: #ffffff;
+  color: #14213d;
+}
+[data-theme="light"] .month-chip,
+[data-theme="light"] .mnav-btn,
+[data-theme="light"] .hdr-btn {
+  background: rgba(20,33,61,.06);
+}
+
 </style>
 </head>
 <body>
@@ -649,7 +697,83 @@ canvas{max-width:100%;display:block}
 // i18n
 var NF_LANGS={es:{name:'Español',flag:'🇦🇷'},en:{name:'English',flag:'🇺🇸'},pt:{name:'Português',flag:'🇧🇷'}};
 var nfLang=localStorage.getItem('nf_lang')||'es';
-function nfSetLang(c){nfLang=c;localStorage.setItem('nf_lang',c);var w=document.getElementById('langBtnsWrap');if(w)w.innerHTML=nfLangBtns();}
+
+var NF_TRANSLATIONS = {
+  es: {
+    nav_gastos:'Gastos', nav_tarjetas:'Tarjetas', nav_analisis:'Análisis', nav_cuenta:'Cuenta',
+    ingresos:'💰 Ingresos', gastos:'💸 Gastos', tarjetas:'💳 Tarjetas',
+    por_categoria:'📊 Por categoría', conversor:'💱 Conversor', mi_cuenta:'👤 Mi cuenta',
+    agregar:'+ Agregar', guardar:'Guardar', cancelar:'Cancelar',
+    saldo:'SALDO NETO FAMILIAR', todo_orden:'Todo en orden para',
+    hola:'Hola', idioma:'Idioma / Language',
+    meses:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    meses_full:['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
+  },
+  en: {
+    nav_gastos:'Expenses', nav_tarjetas:'Cards', nav_analisis:'Analysis', nav_cuenta:'Account',
+    ingresos:'💰 Income', gastos:'💸 Expenses', tarjetas:'💳 Cards',
+    por_categoria:'📊 By category', conversor:'💱 Converter', mi_cuenta:'👤 My account',
+    agregar:'+ Add', guardar:'Save', cancelar:'Cancel',
+    saldo:'FAMILY NET BALANCE', todo_orden:'All set for',
+    hola:'Hello', idioma:'Language',
+    meses:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    meses_full:['January','February','March','April','May','June','July','August','September','October','November','December'],
+  },
+  pt: {
+    nav_gastos:'Despesas', nav_tarjetas:'Cartões', nav_analisis:'Análise', nav_cuenta:'Conta',
+    ingresos:'💰 Receitas', gastos:'💸 Despesas', tarjetas:'💳 Cartões',
+    por_categoria:'📊 Por categoria', conversor:'💱 Conversor', mi_cuenta:'👤 Minha conta',
+    agregar:'+ Adicionar', guardar:'Salvar', cancelar:'Cancelar',
+    saldo:'SALDO LÍQUIDO FAMILIAR', todo_orden:'Tudo em ordem para',
+    hola:'Olá', idioma:'Idioma',
+    meses:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+    meses_full:['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],
+  }
+};
+
+function nfT(key) {
+  var L = NF_TRANSLATIONS[nfLang] || NF_TRANSLATIONS.es;
+  return L[key] || NF_TRANSLATIONS.es[key] || key;
+}
+
+function nfSetLang(c) {
+  nfLang = c;
+  localStorage.setItem('nf_lang', c);
+  applyLangToUI();
+}
+
+function applyLangToUI() {
+  // Update nav items
+  var navMap = {
+    'nav-gastos': nfT('nav_gastos'),
+    'nav-tarjetas': nfT('nav_tarjetas'),
+    'nav-analisis': nfT('nav_analisis'),
+    'nav-cuenta': nfT('nav_cuenta'),
+  };
+  Object.entries(navMap).forEach(function(e) {
+    var el = document.getElementById(e[0]);
+    if (el) {
+      var icon = el.querySelector('.nav-icon');
+      var iconHTML = icon ? icon.outerHTML : '';
+      el.innerHTML = iconHTML + e[1];
+    }
+  });
+  // Update month selects
+  var meses = nfT('meses');
+  ['i_mes','g_mes','t_cierre_mes','t_venc_mes'].forEach(function(id) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    var val = sel.value;
+    sel.innerHTML = meses.map(function(m,i){ return '<option value="'+(i+1)+'">'+m+'</option>'; }).join('');
+    sel.value = val;
+  });
+  // Update lang buttons
+  var lbw = document.getElementById('langBtnsWrap');
+  if (lbw) lbw.innerHTML = nfLangBtns();
+  // Re-render to update month names etc
+  if (typeof renderAll === 'function') renderAll();
+}
+
 function nfLangBtns(){return Object.entries(NF_LANGS).map(function(e){var active=nfLang===e[0];return '<button onclick="nfSetLang(\''+e[0]+'\')" style="flex:1;padding:12px 6px;border-radius:14px;border:2px solid '+(active?'var(--primary)':'rgba(255,255,255,.08)')+';background:'+(active?'rgba(18,199,183,.15)':'rgba(255,255,255,.04)')+';color:'+(active?'var(--primary)':'var(--muted)')+';font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">'+e[1].flag+'</span>'+e[1].name+'</button>';}).join('');}
 
 
@@ -2440,18 +2564,29 @@ function fabAction() {
 // Override startApp to show bottom nav
 var _baseStartApp = startApp;
 startApp = async function() {
-  await _baseStartApp();
-  document.getElementById('bottomNav').style.display = 'flex';
-  var lbw = document.getElementById('langBtnsWrap');
-  if (lbw) lbw.innerHTML = nfLangBtns();
+  try {
+    await _baseStartApp();
+    document.getElementById('bottomNav').style.display = 'flex';
+    applyLangToUI();
+    var lbw = document.getElementById('langBtnsWrap');
+    if (lbw) lbw.innerHTML = nfLangBtns();
+  } catch(e) {
+    console.error('startApp error:', e);
+    var sub = document.querySelector('.ld-sub');
+    if (sub) sub.textContent = '❌ Error de conexión — intentá recargar';
+  }
 };
 
 // Override toggleTheme to update indicator
 var _baseToggleTheme = toggleTheme;
 toggleTheme = function() {
   _baseToggleTheme();
+  // Sync indicator with actual theme
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   var ind = document.getElementById('themeIndicator');
-  if (ind) ind.textContent = document.body.classList.contains('dark') ? '🌙' : '☀️';
+  if (ind) ind.textContent = isDark ? '🌙' : '☀️';
+  var btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
 };
 
 if ('serviceWorker' in navigator) {
