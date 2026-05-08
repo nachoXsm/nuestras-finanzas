@@ -903,6 +903,7 @@ async function loadAll() {
   setSyncing('syncing');
   try {
     const gid = state.grupoId;
+    if (!gid) throw new Error('Sin grupo ID');
     const [tarjetas, ingresos, gastos] = await Promise.all([
       dbGet('tarjetas', `grupo_id=eq.${gid}`),
       dbGet('ingresos', `grupo_id=eq.${gid}&mes=eq.${state.mes}&anio=eq.${state.anio}`),
@@ -911,7 +912,14 @@ async function loadAll() {
     state.tarjetas=tarjetas; state.ingresos=ingresos; state.gastos=gastos;
     setSyncing('ok'); renderAll();
   } catch(e) {
-    setSyncing('error'); toast('❌ Error de conexión');
+    setSyncing('error');
+    console.error('loadAll error:', e.message);
+    toast('❌ Error: ' + e.message.slice(0,60));
+    // Show error on screen
+    var sub = document.querySelector('.ld-sub');
+    if(sub && document.getElementById('loader').style.display !== 'none') {
+      sub.textContent = '❌ ' + e.message.slice(0,80);
+    }
   }
 }
 
@@ -1517,12 +1525,19 @@ function unlock(){
     }
     try {
       state.grupoId = grupo.id;
+      const ps = grupo.personasArray || [grupo.persona1, grupo.persona2].filter(Boolean);
+      state.personas = ps;
+      state.persona1 = ps[0] || 'Persona 1';
+      state.persona2 = ps[1] || 'Persona 2';
+      if(typeof updatePersonaNames === 'function') updatePersonaNames();
       await loadAll();
-      addGroupBadge();
+      if(typeof addGroupBadge === 'function') addGroupBadge();
       document.getElementById('loader').style.display='none';
       document.getElementById('appMain').style.display='block';
+      document.getElementById('bottomNav').style.display='flex';
+      applyLangToUI();
     } catch(e) {
-      document.querySelector('.loader-sub').textContent='❌ Error de conexión';
+      var ls=document.querySelector('.ld-sub');if(ls)ls.textContent='❌ Error: '+e.message;
     }
   },350);
 }
@@ -1598,7 +1613,7 @@ async function init() {
     document.getElementById('loader').style.display='none';
     document.getElementById('appMain').style.display='block';
   } catch(e) {
-    document.querySelector('.loader-sub').textContent='❌ Error de conexión';
+    var ls=document.querySelector('.ld-sub');if(ls)ls.textContent='❌ Error: '+e.message;
   }
 }
 
