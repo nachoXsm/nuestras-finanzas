@@ -239,7 +239,95 @@
     canvas{max-width:100%;display:block}
     .lang-btn{cursor:pointer;transition:all .2s;border:2px solid transparent}
     .lang-btn.active{border-color:var(--primary);background:rgba(18,199,183,.12)!important}
-  </style>
+  
+    /* CSS var aliases - backup JS uses these names */
+    :root {
+      --green: #1ec98f;
+      --red: #ff7a59;
+      --yellow: #f7c948;
+      --orange: #f7c948;
+      --teal: #12c7b7;
+      --blue: #6c63ff;
+      --lavender: #6c63ff;
+      --surf: rgba(255,255,255,.05);
+      --surf2: rgba(255,255,255,.08);
+      --text3: #95a6c7;
+      --mono: #12c7b7;
+      --sun: #f7c948;
+      --brand: #12c7b7;
+    }
+    
+    /* DARK MODE - backup uses body.dark */
+    body.dark {
+      --bg: #08111f;
+      --bg-soft: #0d1830;
+      --card: #101a2f;
+      --card-2: #15233d;
+      --text: #ffffff;
+      --muted: #95a6c7;
+    }
+    body:not(.dark) {
+      --bg: #f0f4ff;
+      --bg-soft: #e8eeff;
+      --card: #ffffff;
+      --card-2: #f5f7ff;
+      --text: #14213d;
+      --muted: #7b8798;
+      --border: rgba(20,33,61,.1);
+      --surf: rgba(20,33,61,.04);
+      --surf2: rgba(20,33,61,.06);
+      --text3: #7b8798;
+      --green: #0ea572;
+      --red: #e05c3a;
+      --teal: #0fa89b;
+    }
+    body:not(.dark) .balance-card { background: linear-gradient(135deg,#1a3a6e,var(--secondary)) !important; }
+    body:not(.dark) .tcard { background: linear-gradient(135deg,#1e3a8a,#3b4fd4) !important; color: white !important; }
+    body:not(.dark) .tcard-meta { color: rgba(255,255,255,.6) !important; }
+    body:not(.dark) .hdr { background: var(--bg); }
+    body:not(.dark) .bottom-nav { background: rgba(240,244,255,.95) !important; }
+    body:not(.dark) .field input,
+    body:not(.dark) .field select { background: rgba(20,33,61,.05) !important; color: var(--text) !important; border-color: rgba(20,33,61,.12) !important; }
+    body:not(.dark) .field select option { background: white !important; color: #14213d !important; }
+    body:not(.dark) .pin-key { background: white !important; color: #14213d !important; border-color: rgba(20,33,61,.1) !important; }
+    body:not(.dark) .gs-input { background: white !important; color: #14213d !important; border-color: rgba(20,33,61,.12) !important; }
+    body:not(.dark) .tab { background: rgba(20,33,61,.06) !important; color: var(--muted) !important; }
+    body:not(.dark) .month-chip, body:not(.dark) .mnav-btn { background: rgba(20,33,61,.06) !important; color: var(--text) !important; }
+    body:not(.dark) .sum-card, body:not(.dark) .flujo-card, body:not(.dark) .meta-card,
+    body:not(.dark) .conv-card, body:not(.dark) .chart-card, body:not(.dark) .inf-card,
+    body:not(.dark) .item-card, body:not(.dark) .income-item, body:not(.dark) .rate-card, body:not(.dark) .ars-rate { 
+      background: white !important; 
+      border-color: rgba(20,33,61,.08) !important;
+      color: #14213d !important;
+    }
+    body:not(.dark) .flujo-lbl, body:not(.dark) .sum-label, body:not(.dark) .meta-lbl { color: #7b8798 !important; }
+    body:not(.dark) .income-name, body:not(.dark) .item-name { color: #14213d !important; }
+    body:not(.dark) .hdr-btn { background: rgba(20,33,61,.06) !important; color: #14213d !important; border-color: rgba(20,33,61,.1) !important; }
+    body:not(.dark) { background: radial-gradient(circle at top, var(--bg-soft), var(--bg)) !important; }
+
+    /* Missing flujo classes */
+    .flujo-title { font-size: 16px; font-weight: 800; margin-bottom: 14px; letter-spacing: -.3px; }
+    .flujo-label { font-size: 13px; color: var(--muted); }
+
+    /* Missing catList number display */
+    .cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .cat-name { font-size: 13px; font-weight: 600; min-width: 100px; }
+    .cat-amt { font-size: 12px; font-weight: 700; color: var(--teal); min-width: 80px; text-align: right; }
+    
+    /* Fix sum-card to show properly */
+    .sum-card { padding: 16px !important; }
+    .sum-val { font-size: 20px !important; font-weight: 800 !important; display: block !important; margin: 6px 0 4px !important; }
+    .sum-label { font-size: 11px !important; color: var(--muted) !important; text-transform: uppercase !important; letter-spacing: 1px !important; display: block !important; }
+    .sum-sub { font-size: 11px !important; color: var(--muted) !important; display: block !important; }
+
+    /* Lang buttons visible */
+    .lang-btn { cursor: pointer !important; transition: all .2s !important; }
+    .lang-btn.active { border: 2px solid var(--teal) !important; background: rgba(18,199,183,.15) !important; }
+    
+    /* Fix body background for light mode */
+    body { background: radial-gradient(circle at top, var(--bg-soft), var(--bg)) !important; color: var(--text) !important; }
+
+    </style>
 </head>
 <body>
 
@@ -656,14 +744,24 @@ function toast(msg, ms=2500) {
 function initTheme() {
   const saved = localStorage.getItem('nf_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
-  document.getElementById('themeBtn').textContent = saved==='dark'?'☀️':'🌙';
+  if(saved==='dark') document.body.classList.add('dark');
+  else document.body.classList.remove('dark');
+  var btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = saved==='dark'?'☀️':'🌙';
+  var ind = document.getElementById('themeIndicator');
+  if(ind) ind.textContent = saved==='dark'?'🌙':'☀️';
 }
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme', next);
-  document.getElementById('themeBtn').textContent = next==='dark'?'☀️':'🌙';
+  if(next==='dark') document.body.classList.add('dark');
+  else document.body.classList.remove('dark');
   localStorage.setItem('nf_theme', next);
+  var btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = next==='dark'?'☀️':'🌙';
+  var ind = document.getElementById('themeIndicator');
+  if(ind) ind.textContent = next==='dark'?'🌙':'☀️';
 }
 
 // ============================================
@@ -2384,15 +2482,7 @@ startApp = async function(){
 };
 
 // Override toggleTheme
-var _ttBase = toggleTheme;
-toggleTheme = function(){
-  _ttBase();
-  var isDark = document.body.classList.contains('dark');
-  var ind = document.getElementById('themeIndicator');
-  if(ind) ind.textContent = isDark ? '🌙' : '☀️';
-  var btn = document.getElementById('themeBtn');
-  if(btn) btn.textContent = isDark ? '☀️' : '🌙';
-};
+// toggleTheme override removed - handled in base function
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
