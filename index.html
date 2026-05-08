@@ -764,6 +764,7 @@ function toggleForm(id) {
   const wasOpen = el.classList.contains('open');
   el.classList.toggle('open');
   updateCardSelects();
+  updatePersonaNames();
   if (!wasOpen) {
     // Set default month/year to currently selected
     if (id==='fIngreso') {
