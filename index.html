@@ -431,7 +431,7 @@
             </div>
             <input type="file" id="ocrInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
           </div>
-          <div class="field"><label>Monto</label><input type="number" id="g_monto" placeholder="0"></div>
+          <div class="field"><label id="g_monto_label">Monto</label><input type="number" id="g_monto" placeholder="0"></div>
           <div class="field"><label>Categoría</label>
             <select id="g_cat">
               <option value="Vivienda">🏠 Vivienda</option><option value="Alimentación">🍽️ Alimentación</option>
@@ -448,7 +448,7 @@
           </div>
           <div class="field" id="gTarjetaField" style="display:none"><label>Tarjeta</label><select id="g_tarjeta"></select></div>
           <div class="field" id="gCuotasField" style="display:none"><label>Cuotas</label>
-            <select id="g_cuotas"><option value="1">1 cuota</option><option value="2">2</option><option value="3">3</option><option value="6">6</option><option value="9">9</option><option value="12">12</option><option value="18">18</option><option value="24">24</option></select>
+            <select id="g_cuotas"><option value="1">1 cuota</option><option value="2">2 cuotas</option><option value="3">3 cuotas</option><option value="4">4 cuotas</option><option value="5">5 cuotas</option><option value="6">6 cuotas</option><option value="7">7 cuotas</option><option value="8">8 cuotas</option><option value="9">9 cuotas</option><option value="10">10 cuotas</option><option value="11">11 cuotas</option><option value="12">12 cuotas</option><option value="13">13 cuotas</option><option value="14">14 cuotas</option><option value="15">15 cuotas</option><option value="16">16 cuotas</option><option value="17">17 cuotas</option><option value="18">18 cuotas</option><option value="19">19 cuotas</option><option value="20">20 cuotas</option><option value="21">21 cuotas</option><option value="22">22 cuotas</option><option value="23">23 cuotas</option><option value="24">24 cuotas</option></select>
           </div>
           <div class="field"><label>¿Quién paga?</label><select id="g_quien"></select></div>
           <div class="field"><label>Día</label><input type="number" id="g_dia" placeholder="5" min="1" max="31"></div>
@@ -781,9 +781,13 @@ function toggleForm(id) {
   }
 }
 function toggleCardFields() {
-  const isTarjeta = document.getElementById('g_medio').value==='tarjeta';
-  document.getElementById('gTarjetaField').style.display = isTarjeta?'':'none';
-  document.getElementById('gCuotasField').style.display = isTarjeta?'':'none';
+  const isTarjeta = document.getElementById('g_medio').value === 'tarjeta';
+  document.getElementById('gTarjetaField').style.display = isTarjeta ? '' : 'none';
+  document.getElementById('gCuotasField').style.display = isTarjeta ? '' : 'none';
+  const lbl = document.getElementById('g_monto_label');
+  if (lbl) lbl.textContent = isTarjeta ? 'Valor de cada cuota' : 'Monto';
+  const ph = document.getElementById('g_monto');
+  if (ph) ph.placeholder = isTarjeta ? 'Ej: 16.667' : '0';
 }
 function updateCardSelects() {
   const sel = document.getElementById('g_tarjeta');
@@ -850,7 +854,7 @@ async function saveGasto() {
 
   const medio = document.getElementById('g_medio').value;
   const cuotas = medio==='tarjeta' ? parseInt(document.getElementById('g_cuotas').value)||1 : 1;
-  const cuotaMonto = Math.round(monto / cuotas);
+  const cuotaMonto = monto; // Opción A: monto ya es el valor por cuota
   const gMes = parseInt(document.getElementById('g_mes').value) || state.mes;
   const gAnio = parseInt(document.getElementById('g_anio').value) || state.anio;
 
