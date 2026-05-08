@@ -1183,27 +1183,28 @@ function renderAll() {
 
   // SUMMARY
   document.getElementById('summary').innerHTML = `
-    <div class="sum-card">
-      <div class="sum-label">Ingresos</div>
-      <div class="sum-val green">${fmt(totalInc)}</div>
-      <div class="sum-sub">Nacho + Celi</div>
+    <div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.25)">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Ingresos</div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--green)">${fmt(totalInc)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${state.persona1||'Nacho'} + ${state.persona2||'Celi'}</div>
     </div>
-    <div class="sum-card">
-      <div class="sum-label">Gastos</div>
-      <div class="sum-val red">${fmt(totalGas)}</div>
-      <div class="sum-sub">${pct}% del ingreso</div>
-      <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)'}"></div></div>
+    <div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.25)">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Gastos</div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--red)">${fmt(totalGas)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${pct}% del ingreso</div>
+      <div style="height:4px;background:rgba(255,255,255,.08);border-radius:999px;margin-top:8px;overflow:hidden"><div style="height:100%;border-radius:999px;width:${pct}%;background:${pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)'}"></div></div>
     </div>
-    <div class="sum-card">
-      <div class="sum-label">Fijos</div>
-      <div class="sum-val blue">${fmt(fijos)}</div>
-      <div class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}% del total</div>
+    <div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.25)">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Fijos</div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--blue)">${fmt(fijos)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${totalGas>0?Math.round(fijos/totalGas*100):0}% del total</div>
     </div>
-    <div class="sum-card">
-      <div class="sum-label">Flujo libre</div>
-      <div class="sum-val ${saldo>=0?'orange':'red'}">${fmt(saldo)}</div>
-      <div class="sum-sub">${saldo>=0?'disponible':'déficit'}</div>
-    </div>`;
+    <div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.25)">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px">Flujo libre</div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-.5px;color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(saldo)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${saldo>=0?'disponible':'déficit'}</div>
+    </div>
+  `;
 
   // INGRESOS
   const iEl = document.getElementById('ingresoList');
@@ -1295,20 +1296,22 @@ function renderAll() {
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const catMax=catSorted[0]?.[1]||1;
   document.getElementById('catList').innerHTML = catSorted.length===0
-    ? `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos aún</div></div>`
+    ? `<div style="text-align:center;padding:32px 20px;color:var(--muted)"><div style="font-size:2rem;margin-bottom:8px">📊</div><div>Sin datos aún</div></div>`
     : catSorted.map(([cat,tot])=>{
-      const CAT_ICONS = {
-        'Vivienda':'🏠','Alimentación':'🍽️','Transporte':'🚗','Salud':'💊',
+      const CAT_ICONS={'Vivienda':'🏠','Alimentación':'🍽️','Transporte':'🚗','Salud':'💊',
         'Educación':'📚','Entretenimiento':'🎬','Servicios':'⚡','Ropa':'👕',
-        'Mascota':'🐾','Suscripciones':'📱','Otros':'📦'
-      };
-      const icon = CAT_ICONS[cat] || '📦';
-      return `<div class="cat-row">
-        <div class="cat-name">${icon} ${cat}</div>
-        <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round(tot/catMax*100)}%;background:${CAT_COLORS[cat]||'#888'}"></div></div>
-        <div class="cat-amt">${fmt(tot)}</div>
+        'Mascota':'🐾','Suscripciones':'📱','Otros':'📦'};
+      const icon = CAT_ICONS[cat]||'📦';
+      const color = CAT_COLORS[cat]||'#12c7b7';
+      const pct = Math.round(tot/catMax*100);
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:4px 0">
+        <div style="font-size:13px;font-weight:600;min-width:130px;flex-shrink:0">${icon} ${cat}</div>
+        <div style="flex:1;background:rgba(255,255,255,.08);border-radius:999px;height:8px;overflow:hidden">
+          <div style="height:100%;border-radius:999px;width:${pct}%;background:${color};transition:width .6s"></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--teal);width:90px;text-align:right;flex-shrink:0">${fmt(tot)}</div>
       </div>`;
-    }).join('');
+    }).join('');;
 
   // FLUJO
   const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
