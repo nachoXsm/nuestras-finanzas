@@ -1782,7 +1782,18 @@ function switchTab(name) {
 // ============================================
 // AUTH
 // ============================================
-function hashPin(pin){let h=0;for(let i=0;i<pin.length;i++)h=Math.imul(31,h)+pin.charCodeAt(i)|0;return h.toString(36);}
+function hashPin(pin){
+  try {
+    let h=0;
+    for(let i=0;i<pin.length;i++) h=Math.imul(31,h)+pin.charCodeAt(i)|0;
+    return h.toString(36);
+  } catch(e) {
+    // Fallback simple para WebViews muy viejos
+    let h=0;
+    for(let i=0;i<pin.length;i++) h=((h<<5)-h)+pin.charCodeAt(i);
+    return Math.abs(h).toString(36);
+  }
+}
 function isSession(){const s=sessionStorage.getItem('nf_sess');return s&&(Date.now()-parseInt(s))<30*60*1000;}
 function unlock(){
   sessionStorage.setItem('nf_sess',Date.now().toString());
@@ -1790,47 +1801,57 @@ function unlock(){
   l.style.transition='opacity 0.35s';l.style.opacity='0';
   setTimeout(async ()=>{
     l.style.display='none';
-    // After auth, check group
-    const grupo = loadGroup();
-    if (!grupo) {
-      showGroupScreen();
-      return;
-    }
-    try {
-      state.grupoId = grupo.id;
-      await loadAll();
-      addGroupBadge();
-      document.getElementById('loader').style.display='none';
-      document.getElementById('appMain').style.display='block';
-    } catch(e) {
-      document.querySelector('.loader-sub').textContent='❌ Error de conexión';
-    }
+    await initApp();
   },350);
 }
 async function tryBiometric(){
-  if(window.PublicKeyCredential){
-    try{
-      const avail=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  // Timeout de seguridad: si algo falla silently, mostrar PIN igual
+  var bioTimeout = setTimeout(function(){ showPin(); }, 3000);
+  try {
+    if(window.PublicKeyCredential){
+      const avail = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
       if(avail){
-        const stored=localStorage.getItem('nf_cid');
+        const stored = localStorage.getItem('nf_cid');
         if(stored){
-          const credId=Uint8Array.from(atob(stored),c=>c.charCodeAt(0));
-          const a=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{id:credId,type:'public-key'}],userVerification:'required',timeout:60000}});
-          if(a){unlock();return;}
+          const credId = Uint8Array.from(atob(stored), c=>c.charCodeAt(0));
+          const a = await navigator.credentials.get({publicKey:{
+            challenge:(typeof crypto!=='undefined'&&crypto.getRandomValues?crypto.getRandomValues(new Uint8Array(32)):new Uint8Array(32).map(()=>Math.floor(Math.random()*256))),
+            allowCredentials:[{id:credId,type:'public-key'}],
+            userVerification:'required', timeout:8000
+          }});
+          if(a){ clearTimeout(bioTimeout); unlock(); return; }
         } else {
-          const r=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'NuestrasFinanzas',id:location.hostname},user:{id:new Uint8Array(16),name:'nacho-celi',displayName:'Nacho & Celi'},pubKeyCredParams:[{alg:-7,type:'public-key'},{alg:-257,type:'public-key'}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},timeout:60000}});
-          if(r){localStorage.setItem('nf_cid',btoa(String.fromCharCode(...new Uint8Array(r.rawId))));unlock();return;}
+          // Primera vez: intentar registrar Face ID / Touch ID
+          const r = await navigator.credentials.create({publicKey:{
+            challenge:(typeof crypto!=='undefined'&&crypto.getRandomValues?crypto.getRandomValues(new Uint8Array(32)):new Uint8Array(32).map(()=>Math.floor(Math.random()*256))),
+            rp:{name:'NuestrasFinanzas', id:location.hostname},
+            user:{id:new Uint8Array(16), name:'usuario', displayName:'Usuario'},
+            pubKeyCredParams:[{alg:-7,type:'public-key'},{alg:-257,type:'public-key'}],
+            authenticatorSelection:{authenticatorAttachment:'platform', userVerification:'required'},
+            timeout:8000
+          }});
+          if(r){
+            localStorage.setItem('nf_cid', btoa(String.fromCharCode(...new Uint8Array(r.rawId))));
+            clearTimeout(bioTimeout); unlock(); return;
+          }
         }
       }
-    }catch(e){console.log('Bio failed',e.message);}
+    }
+  } catch(e) {
+    console.log('Bio failed:', e.message);
   }
+  clearTimeout(bioTimeout);
   showPin();
 }
 function showPin(){
-  document.querySelector('.lock-btn').style.display='none';
-  document.getElementById('lockHint').style.display='none';
-  document.getElementById('pinWrap').style.display='flex';
-  document.getElementById('pinHint2').textContent=localStorage.getItem('nf_pin')?'Ingresá tu PIN':'Primera vez: creá tu PIN';
+  var orb = document.querySelector('.lock-orb');
+  if(orb) orb.style.display='none';
+  var hint = document.getElementById('lockHint');
+  if(hint) hint.style.display='none';
+  var wrap = document.getElementById('pinWrap');
+  if(wrap) wrap.style.display='flex';
+  var hint2 = document.getElementById('pinHint2');
+  if(hint2) hint2.textContent=localStorage.getItem('nf_pin')?'Ingresá tu PIN':'Primera vez: creá tu PIN';
 }
 let pinBuf='';
 function pinPress(v){
@@ -1851,19 +1872,24 @@ function updatePinDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).cla
 // INIT
 // ============================================
 async function init() {
-  initTheme();
-  buildManifest();
-  updateMonthLabel();
+  try { initTheme(); } catch(e){}
+  try { buildManifest(); } catch(e){}
+  try { updateMonthLabel(); } catch(e){}
 
   // Check auth session
   if(isSession()){
     document.getElementById('lockScreen').style.display='none';
   } else {
     document.getElementById('lockScreen').style.display='flex';
-    setTimeout(tryBiometric, 500);
-    return; // unlock() will call init flow
+    // Esperar un tick para que el DOM esté listo antes del biométrico
+    setTimeout(tryBiometric, 600);
+    return; // unlock() continuará el flujo
   }
 
+  await initApp();
+}
+
+async function initApp() {
   // Check group
   const grupo = loadGroup();
   if (!grupo) {
@@ -1871,15 +1897,18 @@ async function init() {
     return;
   }
 
-  // Has group — load app
+  // Tiene grupo — cargar app
   try {
     state.grupoId = grupo.id;
     await loadAll();
     addGroupBadge();
-    document.getElementById('loader').style.display='none';
-    document.getElementById('appMain').style.display='block';
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('appMain').style.display = 'block';
+    document.querySelector('.bottom-nav').style.display = 'flex';
   } catch(e) {
-    document.querySelector('.loader-sub').textContent='❌ Error de conexión';
+    console.error('initApp error:', e);
+    var sub = document.querySelector('.ld-sub');
+    if(sub) sub.textContent = '❌ Error de conexión. Verificá tu internet.';
   }
 }
 
