@@ -145,22 +145,51 @@
     .income-info{flex:1;min-width:0}.income-name{font-size:14px;font-weight:700}
     .income-meta{font-size:11px;color:var(--muted);margin-top:2px}.income-amount{font-size:14px;font-weight:800;color:var(--success)}
     .group-sublabel{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;padding-left:2px}
+    /* ── ITEM CARDS ── */
+    .nf-item{position:relative;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:14px 14px 12px 18px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;overflow:hidden;transition:border-color .2s,background .2s}
+    .nf-item:hover{border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.055)}
+    .nf-item-bar{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:18px 0 0 18px}
+    .nf-item-body{flex:1;min-width:0}
+    .nf-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+    .nf-item-name{font-size:14px;font-weight:700;letter-spacing:-.2px;line-height:1.35}
+    .nf-item-cuota{font-size:11px;font-weight:600;color:var(--muted)}
+    .nf-item-amount{font-size:16px;font-weight:800;letter-spacing:-.5px;flex-shrink:0;margin-top:1px}
+    .nf-item-amount.exp{color:#ff7a59}
+    .nf-item-amount.inc{color:#1ec98f}
+    .nf-item-amount.neu{color:var(--primary)}
+    .nf-item-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;align-items:center}
+    .nf-item-footer{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:10px}
+    /* Tags */
+    .tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.4px;text-transform:uppercase}
+    .tag-fijo{background:rgba(108,99,255,.18);color:#b0a8ff;border:1px solid rgba(108,99,255,.3)}
+    .tag-var{background:rgba(247,201,72,.13);color:#f7c948;border:1px solid rgba(247,201,72,.28)}
+    .tag-card{background:rgba(18,199,183,.12);color:#12c7b7;border:1px solid rgba(18,199,183,.25)}
+    .tag-cash{background:rgba(30,201,143,.1);color:#1ec98f;border:1px solid rgba(30,201,143,.22)}
+    .tag-cuota{background:rgba(247,201,72,.1);color:#f7c948;border:1px solid rgba(247,201,72,.22)}
+    .tag-quien{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid rgba(255,255,255,.1)}
+    .tag-dia{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid rgba(255,255,255,.08)}
+    /* Botones acción */
+    .nf-btn-edit,.nf-btn-del{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .18s;flex-shrink:0}
+    .nf-btn-edit{background:rgba(18,199,183,.12);color:var(--primary)}
+    .nf-btn-edit:hover{background:rgba(18,199,183,.26);transform:scale(1.08)}
+    .nf-btn-del{background:rgba(255,122,89,.1);color:#ff7a59}
+    .nf-btn-del:hover{background:rgba(255,122,89,.26);transform:scale(1.08)}
+    /* Group label */
+    .nf-group-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin:14px 0 8px 2px;display:flex;align-items:center;gap:8px}
+    .nf-group-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07)}
+    /* Compat legacy */
     .item-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.04);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:10px;transition:all .2s}
     .item-card:hover{border-color:rgba(18,199,183,.2);transform:translateX(2px)}
     .item-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
     .item-info{flex:1;min-width:0}.item-name{font-size:14px;font-weight:700}
     .item-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-    .badge-fijo{background:rgba(108,99,255,.2);color:#a89bff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
-    .badge-var{background:rgba(247,201,72,.15);color:#f7c948;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
-    .badge-tc{background:rgba(18,199,183,.15);color:var(--primary);font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
-    .badge-cuota{background:rgba(247,201,72,.12);color:#f7c948;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
     .item-right{text-align:right;flex-shrink:0}
     .item-amount{font-size:15px;font-weight:800;letter-spacing:-.3px}
     .item-amount.exp{color:var(--danger)}.item-amount.inc{color:var(--success)}
     .item-actions{display:flex;gap:4px;margin-top:4px;justify-content:flex-end}
-    .btn-edit,.btn-del{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:8px;font-size:.82rem;color:var(--muted);transition:all .18s}
-    .btn-edit:hover{color:var(--primary);background:rgba(18,199,183,.1)}
-    .btn-del:hover{color:var(--danger);background:rgba(255,122,89,.1)}
+    .btn-edit,.btn-del,.ibtn{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:8px;font-size:.82rem;color:var(--muted);transition:all .18s}
+    .btn-edit:hover,.ibtn.edit:hover{color:var(--primary);background:rgba(18,199,183,.1)}
+    .btn-del:hover,.ibtn.del:hover{color:var(--danger);background:rgba(255,122,89,.1)}
 
     /* TARJETAS */
     .tcard{background:linear-gradient(135deg,#18294d,#2a3e77);border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
@@ -1481,25 +1510,28 @@ renderAll = function() {
   if (!ingresos.length) {
     iEl.innerHTML = `<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">Agregá tus ingresos del mes</div></div>`;
   } else {
-    const groups = {'Nacho':[],'Celi':[],'Compartido':[]};
-    ingresos.forEach(i=>(groups[i.quien]||[]).push(i));
-    iEl.innerHTML = Object.entries(groups).filter(([,v])=>v.length>0).map(([quien,items])=>`
-      <div style="margin-bottom:10px">
-        <div class="group-label">${quien}</div>
-        ${items.map(i=>`
-          <div class="item" style="margin-bottom:5px">
-            <div class="item-accent" style="background:var(--green)"></div>
-            <div class="item-info">
-              <div class="item-name">${i.descripcion||''}</div>
-              <div class="item-meta"><span class="chip chip-${i.tipo==='fijo'?'fijo':'var'}">${i.tipo}</span></div>
+    const incGroups = {};
+    ingresos.forEach(i=>{ if(!incGroups[i.quien]) incGroups[i.quien]=[]; incGroups[i.quien].push(i); });
+    iEl.innerHTML = Object.entries(incGroups).map(([quien,items])=>`
+      <div class="nf-group-label">${quien}</div>
+      ${items.map(i=>`
+        <div class="nf-item">
+          <div class="nf-item-bar" style="background:#1ec98f"></div>
+          <div class="nf-item-body">
+            <div class="nf-item-top">
+              <div class="nf-item-name">${i.descripcion||''}</div>
+              <div class="nf-item-amount inc">${fmt(i.monto)}</div>
             </div>
-            <div class="item-amount" style="color:var(--green)">${fmt(i.monto)}</div>
-            <div class="item-actions">
-              <button class="ibtn edit" onclick="editIngreso('${i.id}')">✏️</button>
-              <button class="ibtn del" onclick="deleteIngreso('${i.id}')">✕</button>
+            <div class="nf-item-tags">
+              <span class="tag ${i.tipo==='fijo'?'tag-fijo':'tag-var'}">${i.tipo==='fijo'?'Fijo':'Variable'}</span>
             </div>
-          </div>`).join('')}
-      </div>`).join('');
+            <div class="nf-item-footer">
+              <button class="nf-btn-edit" onclick="editIngreso('${i.id}')" title="Editar">✏️</button>
+              <button class="nf-btn-del" onclick="deleteIngreso('${i.id}')" title="Eliminar">🗑</button>
+            </div>
+          </div>
+        </div>`).join('')}
+    `).join('');
   }
 
   // GASTOS
@@ -1509,24 +1541,31 @@ renderAll = function() {
   } else {
     const sorted = [...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
     gEl.innerHTML = sorted.map(g=>{
-      const t = g.tarjeta_id?tarjetas.find(t=>t.id===g.tarjeta_id):null;
+      const t = g.tarjeta_id?tarjetas.find(tc=>tc.id===g.tarjeta_id):null;
       const isCuota = g.cuotas>1;
-      return `<div class="item">
-        <div class="item-accent" style="background:${CAT_COLORS[g.cat]||'#888'}"></div>
-        <div class="item-info">
-          <div class="item-name">${g.descripcion||''}${isCuota?` <span style="color:var(--text3);font-size:0.72rem;font-weight:400">(${g.cuota_actual}/${g.cuotas})</span>`:''}</div>
-          <div class="item-meta">
-            <span class="chip chip-${g.tipo==='fijo'?'fijo':'var'}">${g.tipo==='fijo'?'Fijo':'Var'}</span>
-            <span class="chip chip-${g.medio==='tarjeta'?'card':'cash'}">${g.medio==='tarjeta'?(t?t.nombre:'Tarjeta'):'Efectivo'}</span>
-            ${isCuota?`<span class="chip chip-cuota">Cuotas</span>`:''}
-            <span style="font-size:0.68rem;color:var(--text3)">${g.quien}</span>
-            ${g.dia?`<span style="font-size:0.68rem;color:var(--text3)">día ${g.dia}</span>`:''}
+      const barColor = CAT_COLORS[g.cat]||'#888';
+      const tarjetaNombre = g.medio==='tarjeta'?(t?t.nombre:'Tarjeta'):'';
+      return `<div class="nf-item">
+        <div class="nf-item-bar" style="background:${barColor}"></div>
+        <div class="nf-item-body">
+          <div class="nf-item-top">
+            <div class="nf-item-name">
+              ${g.descripcion||''}
+              ${isCuota?`<span class="nf-item-cuota">(${g.cuota_actual}/${g.cuotas})</span>`:''}
+            </div>
+            <div class="nf-item-amount exp">${fmt(g.monto)}</div>
           </div>
-        </div>
-        <div class="item-amount">${fmt(g.monto)}</div>
-        <div class="item-actions">
-          <button class="ibtn edit" onclick="editGasto('${g.id}')">✏️</button>
-          <button class="ibtn del" onclick="deleteGasto('${g.id}')">✕</button>
+          <div class="nf-item-tags">
+            <span class="tag ${g.tipo==='fijo'?'tag-fijo':'tag-var'}">${g.tipo==='fijo'?'Fijo':'Variable'}</span>
+            <span class="tag ${g.medio==='tarjeta'?'tag-card':'tag-cash'}">${g.medio==='tarjeta'?('💳 '+tarjetaNombre):'💵 Efectivo'}</span>
+            ${isCuota?`<span class="tag tag-cuota">📅 Cuotas</span>`:''}
+            <span class="tag tag-quien">👤 ${g.quien}</span>
+            ${g.dia?`<span class="tag tag-dia">día ${g.dia}</span>`:''}
+          </div>
+          <div class="nf-item-footer">
+            <button class="nf-btn-edit" onclick="editGasto('${g.id}')" title="Editar">✏️</button>
+            <button class="nf-btn-del" onclick="deleteGasto('${g.id}')" title="Eliminar">🗑</button>
+          </div>
         </div>
       </div>`;
     }).join('');
