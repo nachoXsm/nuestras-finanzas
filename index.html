@@ -757,23 +757,62 @@
 <script>
 
 var NF_LANGS={
-  es:{name:'Español',flag:'🇦🇷',meses:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']},
-  en:{name:'English',flag:'🇺🇸',meses:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']},
-  pt:{name:'Português',flag:'🇧🇷',meses:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']}
+  es:{
+    name:'Español', flag:'🇦🇷',
+    meses:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    mesesLong:['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+    greeting:'Hola', greetingSub:'Todo en orden para', thisMonth:'este mes',
+    available:'disponible', deficit:'déficit'
+  },
+  en:{
+    name:'English', flag:'🇺🇸',
+    meses:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    mesesLong:['January','February','March','April','May','June','July','August','September','October','November','December'],
+    greeting:'Hello', greetingSub:'All good for', thisMonth:'this month',
+    available:'available', deficit:'deficit'
+  },
+  pt:{
+    name:'Português', flag:'🇧🇷',
+    meses:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+    mesesLong:['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+    greeting:'Olá', greetingSub:'Tudo certo para', thisMonth:'este mês',
+    available:'disponível', deficit:'déficit'
+  }
 };
 var nfLang=localStorage.getItem('nf_lang')||'es';
+
 function nfSetLang(c){
-  nfLang=c;localStorage.setItem('nf_lang',c);
-  document.querySelectorAll('.lang-btn').forEach(function(b){
-    b.classList.toggle('active',b.dataset.lang===c);
+  nfLang=c; localStorage.setItem('nf_lang',c);
+  var L = NF_LANGS[c];
+  var m = L.meses;
+
+  // Marcar activo en todos los botones de idioma
+  document.querySelectorAll('.lang-btn,.perfil-lang-opt').forEach(function(b){
+    b.classList.toggle('active', b.dataset.lang===c);
   });
-  var m=NF_LANGS[c].meses;
+
+  // Actualizar selects de meses en formularios
   ['i_mes','g_mes','t_cierre_mes','t_venc_mes'].forEach(function(id){
-    var s=document.getElementById(id);if(!s)return;
+    var s=document.getElementById(id); if(!s)return;
     var v=s.value;
     s.innerHTML=m.map(function(x,i){return '<option value="'+(i+1)+'">'+x+'</option>';}).join('');
     s.value=v;
   });
+
+  // Actualizar chip del mes en el header
+  var chip = document.getElementById('monthLabel');
+  if(chip && typeof state !== 'undefined') {
+    chip.textContent = m[state.mes-1] + ' ' + state.anio;
+  }
+
+  // Actualizar greeting
+  var gt = document.getElementById('greetingText');
+  if(gt) gt.textContent = L.greeting + ' 👋';
+  var gsub = document.getElementById('greetingMonth');
+  if(gsub) gsub.textContent = L.thisMonth;
+
+  // Re-renderizar picker de meses si está abierto
+  if(typeof renderPickerYear === 'function') renderPickerYear();
 }
 
 
@@ -867,7 +906,8 @@ function toggleTheme() {
 // MONTH NAVIGATION
 // ============================================
 function updateMonthLabel() {
-  document.getElementById('monthLabel').textContent = `${MONTHS_SHORT[state.mes-1]} ${state.anio}`;
+  var m = NF_LANGS[nfLang] ? NF_LANGS[nfLang].meses : MONTHS_SHORT;
+  document.getElementById('monthLabel').textContent = m[state.mes-1] + ' ' + state.anio;
 }
 function shiftMonth(dir) {
   let m = state.mes + dir, y = state.anio;
@@ -891,7 +931,8 @@ function pickerYear(d) { pickerYearVal += d; renderPickerYear(); }
 function renderPickerYear() {
   document.getElementById('pickerYearLabel').textContent = pickerYearVal;
   const grid = document.getElementById('monthGrid');
-  grid.innerHTML = MONTHS_SHORT.map((m,i)=>`
+  const msArr = NF_LANGS[nfLang] ? NF_LANGS[nfLang].meses : MONTHS_SHORT;
+  grid.innerHTML = msArr.map((m,i)=>`
     <div class="month-opt ${state.mes===i+1&&state.anio===pickerYearVal?'active':''}"
          onclick="selectMonth(${i+1},${pickerYearVal})">${m}</div>`).join('');
 }
@@ -2603,6 +2644,7 @@ async function startApp() {
   document.getElementById('loader').style.display = 'none';
   document.getElementById('appMain').style.display = 'block';
   updateAvatarBtn();
+  nfSetLang(nfLang); // aplicar idioma guardado
 }
 
 function showGroupScreen() {
