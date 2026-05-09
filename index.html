@@ -762,36 +762,163 @@ var NF_LANGS={
     meses:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
     mesesLong:['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
     greeting:'Hola', greetingSub:'Todo en orden para', thisMonth:'este mes',
-    available:'disponible', deficit:'déficit'
+    available:'disponible', deficit:'déficit',
+    // Tabs
+    tabGastos:'Gastos', tabTarjetas:'Tarjetas', tabCat:'Categ.', tabFlujo:'Flujo', tabInforme:'Informe', tabConversor:'💱 Conversor',
+    // Nav
+    navGastos:'Gastos', navTarjetas:'Tarjetas', navAnalisis:'Análisis', navCuenta:'Cuenta',
+    // Secciones
+    secIngresos:'💰 Ingresos', secGastos:'💸 Gastos', secTarjetas:'💳 Tarjetas', secCat:'📊 Por categoría',
+    // Botones
+    btnAgregar:'+ Agregar', btnGuardar:'Guardar', btnActualizar:'Actualizar', btnCancelar:'Cancelar',
+    // Formulario ingreso
+    fDesc:'Descripción', fMonto:'Monto', fQuien:'¿Quién?', fTipo:'Tipo', fMes:'Mes', fAnio:'Año',
+    fTipoFijo:'Fijo', fTipoVar:'Variable', fPlaceholderDesc:'Sueldo, Freelance…',
+    // Formulario gasto
+    fQuienPaga:'¿Quién paga?', fCategoria:'Categoría', fMedioPago:'Medio de pago',
+    fTarjeta:'Tarjeta', fCuotas:'Cuotas', fDia:'Día',
+    fEfectivo:'Efectivo / Débito', fTarjetaCredito:'Tarjeta crédito',
+    fPlaceholderGasto:'Alquiler, Supermercado…',
+    fValorCuota:'Valor de cada cuota',
+    // Formulario tarjeta
+    fNombreTarjeta:'Nombre', fCierreDia:'Cierre — día', fCierreMes:'Cierre — mes',
+    fVencDia:'Vence — día', fVencMes:'Vence — mes', fTitular:'Titular',
+    fPlaceholderTarjeta:'Visa Santander',
+    // Resumen
+    sumIngresos:'💰 Ingresos', sumGastos:'💸 Gastos', sumFijos:'📌 Fijos', sumVariables:'📊 Variables',
+    sumDelIngreso:'% del ingreso', sumDelTotal:'% del total',
+    // Balance card
+    balLabel:'SALDO NETO FAMILIAR', balIngresos:'INGRESOS', balGastos:'GASTOS', balFijos:'FIJOS',
+    balDisponible:'disponible este mes', balDeficit:'déficit este mes',
+    balDeGastos:'% de gastos',
+    // Tags
+    tagFijo:'Fijo', tagVar:'Variable', tagEfectivo:'💵 Efectivo', tagCuotas:'📅 Cuotas',
+    // Empty states
+    emptyIngresos:'Agregá tus ingresos del mes', emptyGastos:'Sin gastos este mes',
+    emptyTarjetas:'Agregá tus tarjetas', emptyCat:'Sin datos aún',
+    // Perfil panel
+    perfilApariencia:'Apariencia', perfilModoOscuro:'Modo oscuro / claro',
+    perfilActOscuro:'Activo: Oscuro', perfilActClaro:'Activo: Claro',
+    perfilIdioma:'Idioma', perfilGrupo:'Grupo',
+    perfilCopiarCodigo:'Copiar código del grupo', perfilCopiarSub:'Para invitar a otra persona',
+    perfilCambiarGrupo:'Cambiar de grupo', perfilCambiarSub:'Unirse a otro grupo',
+    perfilSesion:'Sesión', perfilCerrar:'Cerrar sesión', perfilCerrarSub:'Volvé a la pantalla de inicio',
+    // Flujo
+    flujoMensual:'🏦 Flujo mensual', flujoTotalIngresos:'Total ingresos',
+    flujoFijos:'Gastos fijos', flujoTrasFijos:'Flujo tras fijos',
+    flujoVariables:'Gastos variables', flujoEnTarjeta:'En tarjeta',
+    flujoLibre:'💰 Flujo libre', flujoMetas:'🎯 Metas de ahorro',
+    flujoSinIngresos:'Agregá ingresos para ver las metas',
+    // Conversor
+    convActualizado:'Actualizado', convResultado:'RESULTADO', convCotizaciones:'Cotizaciones vs ARS',
+    convDolarArg:'🇦🇷 Dólar en Argentina',
+    // Toasts
+    toastGuardado:'✅ Guardado', toastActualizado:'✅ Actualizado', toastError:'❌ Error al guardar',
+    toastConexion:'❌ Error de conexión', toastCopiado:'✅ Código copiado', toastFoto:'✅ Foto actualizada',
+    toastExcel:'✅ Excel descargado'
   },
   en:{
     name:'English', flag:'🇺🇸',
     meses:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     mesesLong:['January','February','March','April','May','June','July','August','September','October','November','December'],
     greeting:'Hello', greetingSub:'All good for', thisMonth:'this month',
-    available:'available', deficit:'deficit'
+    available:'available', deficit:'deficit',
+    tabGastos:'Expenses', tabTarjetas:'Cards', tabCat:'Cat.', tabFlujo:'Cash flow', tabInforme:'Report', tabConversor:'💱 Converter',
+    navGastos:'Expenses', navTarjetas:'Cards', navAnalisis:'Analysis', navCuenta:'Account',
+    secIngresos:'💰 Income', secGastos:'💸 Expenses', secTarjetas:'💳 Cards', secCat:'📊 By category',
+    btnAgregar:'+ Add', btnGuardar:'Save', btnActualizar:'Update', btnCancelar:'Cancel',
+    fDesc:'Description', fMonto:'Amount', fQuien:'Who?', fTipo:'Type', fMes:'Month', fAnio:'Year',
+    fTipoFijo:'Fixed', fTipoVar:'Variable', fPlaceholderDesc:'Salary, Freelance…',
+    fQuienPaga:'Who pays?', fCategoria:'Category', fMedioPago:'Payment method',
+    fTarjeta:'Card', fCuotas:'Installments', fDia:'Day',
+    fEfectivo:'Cash / Debit', fTarjetaCredito:'Credit card',
+    fPlaceholderGasto:'Rent, Supermarket…', fValorCuota:'Amount per installment',
+    fNombreTarjeta:'Name', fCierreDia:'Closing — day', fCierreMes:'Closing — month',
+    fVencDia:'Due — day', fVencMes:'Due — month', fTitular:'Holder',
+    fPlaceholderTarjeta:'Visa Santander',
+    sumIngresos:'💰 Income', sumGastos:'💸 Expenses', sumFijos:'📌 Fixed', sumVariables:'📊 Variable',
+    sumDelIngreso:'% of income', sumDelTotal:'% of total',
+    balLabel:'FAMILY NET BALANCE', balIngresos:'INCOME', balGastos:'EXPENSES', balFijos:'FIXED',
+    balDisponible:'available this month', balDeficit:'deficit this month', balDeGastos:'% of expenses',
+    tagFijo:'Fixed', tagVar:'Variable', tagEfectivo:'💵 Cash', tagCuotas:'📅 Installments',
+    emptyIngresos:'Add your income for this month', emptyGastos:'No expenses this month',
+    emptyTarjetas:'Add your cards', emptyCat:'No data yet',
+    perfilApariencia:'Appearance', perfilModoOscuro:'Dark / Light mode',
+    perfilActOscuro:'Active: Dark', perfilActClaro:'Active: Light',
+    perfilIdioma:'Language', perfilGrupo:'Group',
+    perfilCopiarCodigo:'Copy group code', perfilCopiarSub:'To invite someone',
+    perfilCambiarGrupo:'Change group', perfilCambiarSub:'Join another group',
+    perfilSesion:'Session', perfilCerrar:'Log out', perfilCerrarSub:'Back to start screen',
+    flujoMensual:'🏦 Monthly cash flow', flujoTotalIngresos:'Total income',
+    flujoFijos:'Fixed expenses', flujoTrasFijos:'Cash flow after fixed',
+    flujoVariables:'Variable expenses', flujoEnTarjeta:'On card',
+    flujoLibre:'💰 Free cash flow', flujoMetas:'🎯 Savings goals',
+    flujoSinIngresos:'Add income to see goals',
+    convActualizado:'Updated', convResultado:'RESULT', convCotizaciones:'Rates vs ARS',
+    convDolarArg:'🇦🇷 Dollar in Argentina',
+    toastGuardado:'✅ Saved', toastActualizado:'✅ Updated', toastError:'❌ Error saving',
+    toastConexion:'❌ Connection error', toastCopiado:'✅ Code copied', toastFoto:'✅ Photo updated',
+    toastExcel:'✅ Excel downloaded'
   },
   pt:{
     name:'Português', flag:'🇧🇷',
     meses:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
     mesesLong:['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
     greeting:'Olá', greetingSub:'Tudo certo para', thisMonth:'este mês',
-    available:'disponível', deficit:'déficit'
+    available:'disponível', deficit:'déficit',
+    tabGastos:'Despesas', tabTarjetas:'Cartões', tabCat:'Cat.', tabFlujo:'Fluxo', tabInforme:'Relatório', tabConversor:'💱 Conversor',
+    navGastos:'Despesas', navTarjetas:'Cartões', navAnalisis:'Análise', navCuenta:'Conta',
+    secIngresos:'💰 Receitas', secGastos:'💸 Despesas', secTarjetas:'💳 Cartões', secCat:'📊 Por categoria',
+    btnAgregar:'+ Adicionar', btnGuardar:'Salvar', btnActualizar:'Atualizar', btnCancelar:'Cancelar',
+    fDesc:'Descrição', fMonto:'Valor', fQuien:'Quem?', fTipo:'Tipo', fMes:'Mês', fAnio:'Ano',
+    fTipoFijo:'Fixo', fTipoVar:'Variável', fPlaceholderDesc:'Salário, Freelance…',
+    fQuienPaga:'Quem paga?', fCategoria:'Categoria', fMedioPago:'Forma de pagamento',
+    fTarjeta:'Cartão', fCuotas:'Parcelas', fDia:'Dia',
+    fEfectivo:'Dinheiro / Débito', fTarjetaCredito:'Cartão de crédito',
+    fPlaceholderGasto:'Aluguel, Supermercado…', fValorCuota:'Valor de cada parcela',
+    fNombreTarjeta:'Nome', fCierreDia:'Fechamento — dia', fCierreMes:'Fechamento — mês',
+    fVencDia:'Vencimento — dia', fVencMes:'Vencimento — mês', fTitular:'Titular',
+    fPlaceholderTarjeta:'Visa Santander',
+    sumIngresos:'💰 Receitas', sumGastos:'💸 Despesas', sumFijos:'📌 Fixos', sumVariables:'📊 Variáveis',
+    sumDelIngreso:'% da receita', sumDelTotal:'% do total',
+    balLabel:'SALDO FAMILIAR LÍQUIDO', balIngresos:'RECEITAS', balGastos:'DESPESAS', balFijos:'FIXOS',
+    balDisponible:'disponível este mês', balDeficit:'déficit este mês', balDeGastos:'% das despesas',
+    tagFijo:'Fixo', tagVar:'Variável', tagEfectivo:'💵 Dinheiro', tagCuotas:'📅 Parcelas',
+    emptyIngresos:'Adicione suas receitas do mês', emptyGastos:'Sem despesas este mês',
+    emptyTarjetas:'Adicione seus cartões', emptyCat:'Sem dados ainda',
+    perfilApariencia:'Aparência', perfilModoOscuro:'Modo escuro / claro',
+    perfilActOscuro:'Ativo: Escuro', perfilActClaro:'Ativo: Claro',
+    perfilIdioma:'Idioma', perfilGrupo:'Grupo',
+    perfilCopiarCodigo:'Copiar código do grupo', perfilCopiarSub:'Para convidar alguém',
+    perfilCambiarGrupo:'Trocar de grupo', perfilCambiarSub:'Entrar em outro grupo',
+    perfilSesion:'Sessão', perfilCerrar:'Sair', perfilCerrarSub:'Voltar à tela inicial',
+    flujoMensual:'🏦 Fluxo mensal', flujoTotalIngresos:'Total de receitas',
+    flujoFijos:'Despesas fixas', flujoTrasFijos:'Fluxo após fixos',
+    flujoVariables:'Despesas variáveis', flujoEnTarjeta:'No cartão',
+    flujoLibre:'💰 Fluxo livre', flujoMetas:'🎯 Metas de poupança',
+    flujoSinIngresos:'Adicione receitas para ver as metas',
+    convActualizado:'Atualizado', convResultado:'RESULTADO', convCotizaciones:'Cotações vs ARS',
+    convDolarArg:'🇦🇷 Dólar na Argentina',
+    toastGuardado:'✅ Salvo', toastActualizado:'✅ Atualizado', toastError:'❌ Erro ao salvar',
+    toastConexion:'❌ Erro de conexão', toastCopiado:'✅ Código copiado', toastFoto:'✅ Foto atualizada',
+    toastExcel:'✅ Excel baixado'
   }
 };
 var nfLang=localStorage.getItem('nf_lang')||'es';
+function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; return (lang&&lang[key])||(NF_LANGS['es']&&NF_LANGS['es'][key])||key||''; }
 
 function nfSetLang(c){
   nfLang=c; localStorage.setItem('nf_lang',c);
-  var L = NF_LANGS[c];
-  var m = L.meses;
+  var LD = NF_LANGS[c];
+  if(!LD) return;
+  var m = LD.meses;
 
-  // Marcar activo en todos los botones de idioma
+  // Marcar activo en botones de idioma
   document.querySelectorAll('.lang-btn,.perfil-lang-opt').forEach(function(b){
     b.classList.toggle('active', b.dataset.lang===c);
   });
 
-  // Actualizar selects de meses en formularios
+  // Selects de meses
   ['i_mes','g_mes','t_cierre_mes','t_venc_mes'].forEach(function(id){
     var s=document.getElementById(id); if(!s)return;
     var v=s.value;
@@ -799,19 +926,136 @@ function nfSetLang(c){
     s.value=v;
   });
 
-  // Actualizar chip del mes en el header
-  var chip = document.getElementById('monthLabel');
-  if(chip && typeof state !== 'undefined') {
-    chip.textContent = m[state.mes-1] + ' ' + state.anio;
+  // Helper para setear texto si existe el elemento
+  function T(id, txt){ var el=document.getElementById(id); if(el) el.textContent=txt; }
+  function TH(id, html){ var el=document.getElementById(id); if(el) el.innerHTML=html; }
+  function Q(sel, txt){ document.querySelectorAll(sel).forEach(function(el){el.textContent=txt;}); }
+
+  // Header / greeting
+  T('monthLabel', m[typeof state!=='undefined'?state.mes-1:0] + ' ' + (typeof state!=='undefined'?state.anio:''));
+  T('greetingText', LD.greeting + ' 👋');
+  T('greetingMonth', LD.thisMonth);
+
+  // Balance card labels
+  T('balanceSub', typeof state!=='undefined' && (state.ingresos||[]).reduce((a,i)=>a+parseFloat(i.monto||0),0) - (state.gastos||[]).reduce((a,g)=>a+parseFloat(g.monto||0),0) >= 0 ? LD.balDisponible : LD.balDeficit);
+  document.querySelectorAll('.balance-stat-label').forEach(function(el, i){
+    if(i===0) el.textContent=LD.balIngresos;
+    else if(i===1) el.textContent=LD.balGastos;
+    else if(i===2) el.textContent=LD.balFijos;
+  });
+
+  // Tabs — incluye el activo y conversor
+  var tabs = document.querySelectorAll('.tabs-wrap .tab');
+  var tabKeys = ['tabGastos','tabTarjetas','tabCat','tabFlujo','tabInforme','tabConversor'];
+  tabs.forEach(function(tab, i){ 
+    var key = tabKeys[i];
+    if(key && L(key)) tab.textContent = L(key);
+  });
+
+  // Nav bottom
+  var navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(function(nav){
+    var id = nav.id;
+    if(id==='nav-gastos')   nav.innerHTML='<span class="nav-icon">📋</span>'+LD.navGastos;
+    if(id==='nav-tarjetas') nav.innerHTML='<span class="nav-icon">💳</span>'+LD.navTarjetas;
+    if(id==='nav-analisis') nav.innerHTML='<span class="nav-icon">📊</span>'+LD.navAnalisis;
+    if(id==='nav-cuenta')   nav.innerHTML='<span class="nav-icon">👤</span>'+LD.navCuenta;
+  });
+
+  // Secciones principales
+  document.querySelectorAll('.sec-title').forEach(function(el){
+    var t = el.textContent.trim();
+    if(t.includes('Ingreso') || t.includes('Income') || t.includes('Receita'))  el.textContent = LD.secIngresos;
+    if(t.includes('Gasto') || t.includes('Expense') || t.includes('Despesa'))   el.textContent = LD.secGastos;
+    if(t.includes('Tarjeta') || t.includes('Card') || t.includes('Cartão'))     el.textContent = LD.secTarjetas;
+    if(t.includes('categor') || t.includes('Categor') || t.includes('categ'))   el.textContent = LD.secCat;
+  });
+
+  // Botones + Agregar
+  document.querySelectorAll('.sec-action').forEach(function(el){ el.textContent = LD.btnAgregar; });
+
+  // Formulario ingresos
+  function setLabel(id, txt){ var el=document.querySelector('label[for="'+id+'"]'); if(!el){
+    // buscar por campo adyacente
+    var field = document.getElementById(id); if(field){ var lbl=field.previousElementSibling; if(lbl&&lbl.tagName==='LABEL') lbl.textContent=txt; }
+  } else el.textContent=txt; }
+  document.querySelectorAll('.field label').forEach(function(lbl){
+    var t = lbl.textContent.trim();
+    var next = lbl.nextElementSibling;
+    var nextId = next ? next.id : '';
+    if(nextId==='i_desc'||nextId==='g_desc') lbl.textContent=LD.fDesc;
+    if(nextId==='i_monto'||nextId==='g_monto') lbl.textContent=LD.fMonto;
+    if(nextId==='i_quien') lbl.textContent=LD.fQuien;
+    if(nextId==='g_quien') lbl.textContent=LD.fQuienPaga;
+    if(nextId==='i_tipo'||nextId==='g_tipo') lbl.textContent=LD.fTipo;
+    if(nextId==='i_mes'||nextId==='g_mes'||nextId==='t_cierre_mes'||nextId==='t_venc_mes') lbl.textContent=LD.fMes;
+    if(nextId==='i_anio'||nextId==='g_anio') lbl.textContent=LD.fAnio;
+    if(nextId==='g_cat') lbl.textContent=LD.fCategoria;
+    if(nextId==='g_medio') lbl.textContent=LD.fMedioPago;
+    if(nextId==='g_tarjeta') lbl.textContent=LD.fTarjeta;
+    if(nextId==='g_cuotas') lbl.textContent=LD.fCuotas;
+    if(nextId==='g_dia') lbl.textContent=LD.fDia;
+    if(nextId==='t_nombre') lbl.textContent=LD.fNombreTarjeta;
+    if(nextId==='t_cierre') lbl.textContent=LD.fCierreDia;
+    if(nextId==='t_venc') lbl.textContent=LD.fVencDia;
+    if(nextId==='t_titular') lbl.textContent=LD.fTitular;
+  });
+
+  // Label especial de monto cuota
+  var montoLbl = document.getElementById('g_monto_label');
+  if(montoLbl) montoLbl.textContent = LD.fMonto;
+
+  // Placeholders
+  var iDesc = document.getElementById('i_desc'); if(iDesc) iDesc.placeholder = LD.fPlaceholderDesc;
+  var gDesc = document.getElementById('g_desc'); if(gDesc) gDesc.placeholder = LD.fPlaceholderGasto;
+  var tNom  = document.getElementById('t_nombre'); if(tNom) tNom.placeholder = LD.fPlaceholderTarjeta;
+
+  // Select de tipo en formularios
+  ['i_tipo','g_tipo'].forEach(function(id){
+    var sel = document.getElementById(id); if(!sel) return;
+    var v = sel.value;
+    sel.innerHTML = '<option value="fijo">'+LD.fTipoFijo+'</option><option value="variable">'+LD.fTipoVar+'</option>';
+    sel.value = v;
+  });
+
+  // Botones cancelar/guardar en formularios
+  document.querySelectorAll('.btn-cancel').forEach(function(el){ el.textContent=LD.btnCancelar; });
+  document.querySelectorAll('.btn-save').forEach(function(el){
+    if(el.id==='btnSaveGasto'||el.id==='btnSaveTarjeta') {
+      if(el.textContent.trim()==='Actualizar'||el.textContent.trim()==='Update'||el.textContent.trim()==='Atualizar')
+        el.textContent=LD.btnActualizar;
+      else el.textContent=LD.btnGuardar;
+    } else el.textContent=LD.btnGuardar;
+  });
+
+  // Perfil panel
+  T('perfilThemeSub', document.body.classList.contains('dark') ? LD.perfilActOscuro : LD.perfilActClaro);
+  document.querySelectorAll('.perfil-section').forEach(function(el, i){
+    if(i===0) el.textContent=LD.perfilApariencia;
+    if(i===1) el.textContent=LD.perfilIdioma;
+    if(i===2) el.textContent=LD.perfilGrupo;
+    if(i===3) el.textContent=LD.perfilSesion;
+  });
+  document.querySelectorAll('.perfil-row-title').forEach(function(el){
+    var t = el.textContent.trim();
+    if(t==='Modo oscuro / claro'||t==='Dark / Light mode'||t==='Modo escuro / claro') el.textContent=LD.perfilModoOscuro;
+    if(t==='Copiar código del grupo'||t==='Copy group code'||t==='Copiar código do grupo') el.textContent=LD.perfilCopiarCodigo;
+    if(t==='Cambiar de grupo'||t==='Change group'||t==='Trocar de grupo') el.textContent=LD.perfilCambiarGrupo;
+    if(t==='Cerrar sesión'||t==='Log out'||t==='Sair') el.textContent=LD.perfilCerrar;
+  });
+  document.querySelectorAll('.perfil-row-sub').forEach(function(el){
+    var t = el.textContent.trim();
+    if(t==='Para invitar a otra persona'||t==='To invite someone'||t==='Para convidar alguém') el.textContent=LD.perfilCopiarSub;
+    if(t==='Unirse a otro grupo'||t==='Join another group'||t==='Entrar em outro grupo') el.textContent=LD.perfilCambiarSub;
+    if(t==='Volvé a la pantalla de inicio'||t==='Back to start screen'||t==='Voltar à tela inicial') el.textContent=LD.perfilCerrarSub;
+  });
+
+  // Re-render si hay datos cargados (actualiza resumen, tags, etc.)
+  if(typeof renderAll === 'function' && typeof state !== 'undefined' && state.grupoId) {
+    try { renderAll(); } catch(e) { console.log('renderAll lang:', e); }
   }
 
-  // Actualizar greeting
-  var gt = document.getElementById('greetingText');
-  if(gt) gt.textContent = L.greeting + ' 👋';
-  var gsub = document.getElementById('greetingMonth');
-  if(gsub) gsub.textContent = L.thisMonth;
-
-  // Re-renderizar picker de meses si está abierto
+  // Picker de meses
   if(typeof renderPickerYear === 'function') renderPickerYear();
 }
 
@@ -1252,7 +1496,7 @@ function renderAll() {
 
   // INGRESOS
   const iEl = document.getElementById('ingresoList');
-  if (ingresos.length===0) { iEl.innerHTML=`<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">Agregá tus ingresos del mes</div></div>`; }
+  if (ingresos.length===0) { iEl.innerHTML=`<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">${L('emptyIngresos')}</div></div>`; }
   else {
     const groups = {'Nacho':[],'Celi':[],'Compartido':[]};
     ingresos.forEach(i=>(groups[i.quien]||[]).push(i));
@@ -1277,7 +1521,7 @@ function renderAll() {
 
   // GASTOS
   const gEl = document.getElementById('gastoList');
-  if (gastos.length===0) { gEl.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin gastos este mes</div></div>`; }
+  if (gastos.length===0) { gEl.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">${L('emptyGastos')}</div></div>`; }
   else {
     const sorted = [...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
     gEl.innerHTML = sorted.map(g=>{
@@ -1306,7 +1550,7 @@ function renderAll() {
 
   // TARJETAS
   const tEl = document.getElementById('tarjetasList');
-  if (tarjetas.length===0) { tEl.innerHTML=`<div class="empty"><div class="empty-icon">💳</div><div class="empty-text">Agregá tus tarjetas</div></div>`; }
+  if (tarjetas.length===0) { tEl.innerHTML=`<div class="empty"><div class="empty-icon">💳</div><div class="empty-text">${L('emptyTarjetas')}</div></div>`; }
   else {
     tEl.innerHTML = tarjetas.map(t=>{
       const tG = gastos.filter(g=>g.tarjeta_id===t.id);
@@ -1340,7 +1584,7 @@ function renderAll() {
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const catMax=catSorted[0]?.[1]||1;
   document.getElementById('catList').innerHTML = catSorted.length===0
-    ? `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos aún</div></div>`
+    ? `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">${L('emptyCat')}</div></div>`
     : catSorted.map(([cat,tot])=>`
       <div class="cat-row">
         <div class="cat-name">${cat}</div>
@@ -1763,42 +2007,42 @@ renderAll = function() {
   const bsFP   = document.getElementById('bsFijosPct');
   if(bTotal) bTotal.textContent = fmt(saldo);
   if(bTotal) bTotal.style.color = saldo>=0?'#ffffff':'#ffb3a0';
-  if(bSub)   bSub.textContent  = saldo>=0?'disponible este mes':'déficit este mes';
+  if(bSub)   bSub.textContent  = saldo>=0?L('balDisponible'):L('balDeficit');
   if(bsI)    bsI.textContent   = fmt(totalInc);
   if(bsG)    bsG.textContent   = fmt(totalGas);
-  if(bsP)    bsP.textContent   = pct+'% del ingreso';
+  if(bsP)    bsP.textContent   = pct+L('sumDelIngreso');
   if(bsF)    bsF.textContent   = fmt(fijos);
-  if(bsFP)   bsFP.textContent  = (totalGas>0?Math.round(fijos/totalGas*100):0)+'% de gastos';
+  if(bsFP)   bsFP.textContent  = (totalGas>0?Math.round(fijos/totalGas*100):0)+L('balDeGastos');
 
   // SUMMARY — 3 cards: Ingresos / Gastos / Fijos
   const personas = state.personas||[state.persona1||'Nacho',state.persona2||'Celi'];
   document.getElementById('summary').innerHTML = `
     <div class="sum-card">
-      <span class="sum-label">💰 Ingresos</span>
+      <span class="sum-label">${L('sumIngresos')}</span>
       <span class="sum-val green">${fmt(totalInc)}</span>
       <span class="sum-sub">${personas.join(' + ')}</span>
     </div>
     <div class="sum-card">
-      <span class="sum-label">💸 Gastos</span>
+      <span class="sum-label">${L('sumGastos')}</span>
       <span class="sum-val red">${fmt(totalGas)}</span>
-      <span class="sum-sub">${pct}% del ingreso</span>
+      <span class="sum-sub">${pct}${L('sumDelIngreso')}</span>
       <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${pct>80?'var(--danger)':pct>60?'var(--accent)':'var(--success)'}"></div></div>
     </div>
     <div class="sum-card">
-      <span class="sum-label">📌 Fijos</span>
+      <span class="sum-label">${L('sumFijos')}</span>
       <span class="sum-val blue">${fmt(fijos)}</span>
-      <span class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}% del total</span>
+      <span class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}${L('sumDelTotal')}</span>
     </div>
     <div class="sum-card">
-      <span class="sum-label">📊 Variables</span>
+      <span class="sum-label">${L('sumVariables')}</span>
       <span class="sum-val purple">${fmt(variables)}</span>
-      <span class="sum-sub">${totalGas>0?Math.round(variables/totalGas*100):0}% del total</span>
+      <span class="sum-sub">${totalGas>0?Math.round(variables/totalGas*100):0}${L('sumDelTotal')}</span>
     </div>`;
 
   // INGRESOS
   const iEl = document.getElementById('ingresoList');
   if (!ingresos.length) {
-    iEl.innerHTML = `<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">Agregá tus ingresos del mes</div></div>`;
+    iEl.innerHTML = `<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">${L('emptyIngresos')}</div></div>`;
   } else {
     const incGroups = {};
     ingresos.forEach(i=>{ if(!incGroups[i.quien]) incGroups[i.quien]=[]; incGroups[i.quien].push(i); });
@@ -1813,7 +2057,7 @@ renderAll = function() {
               <div class="nf-item-amount inc">${fmt(i.monto)}</div>
             </div>
             <div class="nf-item-tags">
-              <span class="tag ${i.tipo==='fijo'?'tag-fijo':'tag-var'}">${i.tipo==='fijo'?'Fijo':'Variable'}</span>
+              <span class="tag ${i.tipo==='fijo'?'tag-fijo':'tag-var'}">${i.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
             </div>
             <div class="nf-item-footer">
               <button class="nf-btn-edit" onclick="editIngreso('${i.id}')" title="Editar">✏️</button>
@@ -1827,7 +2071,7 @@ renderAll = function() {
   // GASTOS
   const gEl = document.getElementById('gastoList');
   if (!gastos.length) {
-    gEl.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Sin gastos este mes</div></div>`;
+    gEl.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">${L('emptyGastos')}</div></div>`;
   } else {
     const sorted = [...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
     gEl.innerHTML = sorted.map(g=>{
@@ -1846,8 +2090,8 @@ renderAll = function() {
             <div class="nf-item-amount exp">${fmt(g.monto)}</div>
           </div>
           <div class="nf-item-tags">
-            <span class="tag ${g.tipo==='fijo'?'tag-fijo':'tag-var'}">${g.tipo==='fijo'?'Fijo':'Variable'}</span>
-            <span class="tag ${g.medio==='tarjeta'?'tag-card':'tag-cash'}">${g.medio==='tarjeta'?('💳 '+tarjetaNombre):'💵 Efectivo'}</span>
+            <span class="tag ${g.tipo==='fijo'?'tag-fijo':'tag-var'}">${g.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
+            <span class="tag ${g.medio==='tarjeta'?'tag-card':'tag-cash'}">${g.medio==='tarjeta'?('💳 '+tarjetaNombre):L('tagEfectivo')}</span>
             ${isCuota?`<span class="tag tag-cuota">📅 Cuotas</span>`:''}
             <span class="tag tag-quien">👤 ${g.quien}</span>
             ${g.dia?`<span class="tag tag-dia">día ${g.dia}</span>`:''}
@@ -1864,7 +2108,7 @@ renderAll = function() {
   // TARJETAS
   const tEl = document.getElementById('tarjetasList');
   if (!tarjetas.length) {
-    tEl.innerHTML = `<div class="empty"><div class="empty-icon">💳</div><div class="empty-text">Agregá tus tarjetas</div></div>`;
+    tEl.innerHTML = `<div class="empty"><div class="empty-icon">💳</div><div class="empty-text">${L('emptyTarjetas')}</div></div>`;
   } else {
     const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     tEl.innerHTML = tarjetas.map(t=>{
@@ -1901,7 +2145,7 @@ renderAll = function() {
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const catMax=catSorted[0]?.[1]||1;
   document.getElementById('catList').innerHTML = catSorted.length===0
-    ?`<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Sin datos aún</div></div>`
+    ?`<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">${L('emptyCat')}</div></div>`
     :catSorted.map(([cat,tot])=>`
       <div class="cat-row">
         <div class="cat-name">${cat}</div>
@@ -2767,7 +3011,7 @@ function renderCatList() {
   var sorted = Object.entries(totals).sort(function(a,b){return b[1]-a[1];});
   var max = sorted[0] ? sorted[0][1] : 1;
   if (!sorted.length) {
-    el.innerHTML = '<div style="text-align:center;padding:32px;color:#95a6c7"><div style="font-size:2rem;margin-bottom:8px">📊</div><div>Sin datos aún</div></div>';
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:#95a6c7"><div style="font-size:2rem;margin-bottom:8px">📊</div><div>'+L('emptyCat')+'</div></div>';
     return;
   }
   el.innerHTML = sorted.map(function(entry) {
