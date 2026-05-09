@@ -804,9 +804,14 @@ async function loadAll() {
       dbGet('gastos', `grupo_id=eq.${gid}&mes=eq.${state.mes}&anio=eq.${state.anio}`)
     ]);
     state.tarjetas=tarjetas; state.ingresos=ingresos; state.gastos=gastos;
-    setSyncing('ok'); renderAll();
+    setSyncing('ok');
   } catch(e) {
-    setSyncing('error'); toast('❌ Error de conexión');
+    setSyncing('error'); toast('❌ Error de conexión'); return;
+  }
+  try {
+    renderAll();
+  } catch(e) {
+    console.error('renderAll error:', e);
   }
 }
 
