@@ -1194,14 +1194,13 @@ function renderAll() {
       </div>`).join('');
 
   // FLUJO
-  const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
-  const personaIngresos = personas.map(p => ({
+  const personaIngresosF = personas.map(p => ({
     nombre: p,
     total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
   }));
-  const nachoInc = personaIngresos[0]?.total || 0;
-  const celiInc = personaIngresos[1]?.total || 0;
-  const compInc = 0;
+  const nachoIncF = personaIngresosF[0]?.total || 0;
+  const celiIncF  = personaIngresosF[1]?.total || 0;
+  const compIncF  = 0;
   document.getElementById('flujoContent').innerHTML = ''; renderFlujo();
 }
 
@@ -1524,6 +1523,7 @@ renderAll = function() {
   if(bsFP)   bsFP.textContent  = (totalGas>0?Math.round(fijos/totalGas*100):0)+'% de gastos';
 
   // SUMMARY — 3 cards: Ingresos / Gastos / Fijos
+  const personas = state.personas||[state.persona1||'Nacho',state.persona2||'Celi'];
   document.getElementById('summary').innerHTML = `
     <div class="sum-card">
       <span class="sum-label">💰 Ingresos</span>
@@ -1662,21 +1662,21 @@ renderAll = function() {
       </div>`).join('');
 
   // FLUJO
-  const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
-  const personaIngresos = personas.map(p => ({
+  personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
+  const personaIngresosF = personas.map(p => ({
     nombre: p,
     total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
   }));
-  const nachoInc = personaIngresos[0]?.total || 0;
-  const celiInc = personaIngresos[1]?.total || 0;
-  const compInc = 0;
+  const nachoIncF = personaIngresosF[0]?.total || 0;
+  const celiIncF = personaIngresosF[1]?.total || 0;
+  const compIncF = 0;
   document.getElementById('flujoContent').innerHTML = `
     <div style="height:12px"></div>
     <div class="fcard">
       <div class="fcard-title">🏦 Flujo mensual</div>
-      ${nachoInc>0?`<div class="frow"><span class="frow-label">${state.persona1||'Nacho'}</span><span class="frow-val" style="color:var(--green)">${fmt(nachoInc)}</span></div>`:''}
-      ${celiInc>0?`<div class="frow"><span class="frow-label">${state.persona2||'Celi'}</span><span class="frow-val" style="color:var(--green)">${fmt(celiInc)}</span></div>`:''}
-      ${compInc>0?`<div class="frow"><span class="frow-label">Compartido</span><span class="frow-val" style="color:var(--green)">${fmt(compInc)}</span></div>`:''}
+      ${nachoIncF>0?`<div class="frow"><span class="frow-label">${state.persona1||'Nacho'}</span><span class="frow-val" style="color:var(--green)">${fmt(nachoIncF)}</span></div>`:''}
+      ${celiIncF>0?`<div class="frow"><span class="frow-label">${state.persona2||'Celi'}</span><span class="frow-val" style="color:var(--green)">${fmt(celiIncF)}</span></div>`:''}
+      ${compIncF>0?`<div class="frow"><span class="frow-label">Compartido</span><span class="frow-val" style="color:var(--green)">${fmt(compIncF)}</span></div>`:''}
       <div class="frow"><span class="frow-label" style="font-weight:700;color:var(--text)">Total ingresos</span><span class="frow-val" style="color:var(--green)">${fmt(totalInc)}</span></div>
       <div class="frow"><span class="frow-label">Gastos fijos</span><span class="frow-val" style="color:var(--lavender)">${fmt(fijos)}</span></div>
       <div class="frow"><span class="frow-label">Flujo tras fijos</span><span class="frow-val">${fmt(totalInc-fijos)}</span></div>
