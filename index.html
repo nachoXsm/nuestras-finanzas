@@ -86,6 +86,41 @@
     .sync-dot.error{background:var(--danger)}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
+    /* AVATAR BTN */
+    .avatar-btn{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:800;color:white;overflow:hidden;flex-shrink:0;transition:transform .2s,box-shadow .2s}
+    .avatar-btn:hover{transform:scale(1.08);box-shadow:0 0 0 3px rgba(18,199,183,.3)}
+    .avatar-btn img{width:100%;height:100%;object-fit:cover}
+
+    /* PERFIL PANEL */
+    .perfil-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:none;backdrop-filter:blur(6px)}
+    .perfil-overlay.open{display:block}
+    .perfil-panel{position:fixed;top:0;right:-100%;width:min(320px,92%);height:100%;background:var(--card);z-index:801;transition:right .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,.4)}
+    .perfil-panel.open{right:0}
+    .perfil-panel-head{padding:52px 20px 20px;background:linear-gradient(160deg,#1a3a6e,var(--secondary));position:relative;flex-shrink:0}
+    .perfil-close{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:white;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .perfil-avatar-big{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));border:3px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:white;margin-bottom:12px;overflow:hidden;cursor:pointer;position:relative}
+    .perfil-avatar-big img{width:100%;height:100%;object-fit:cover}
+    .perfil-avatar-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;border-radius:50%;font-size:18px}
+    .perfil-avatar-big:hover .perfil-avatar-overlay{opacity:1}
+    .perfil-name{font-size:18px;font-weight:800;color:white}
+    .perfil-group{font-size:12px;color:rgba(255,255,255,.6);margin-top:3px}
+    .perfil-body{flex:1;overflow-y:auto;padding:8px 0}
+    .perfil-section{padding:8px 20px 4px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+    .perfil-row{display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;transition:background .15s}
+    .perfil-row:hover{background:rgba(255,255,255,.05)}
+    .perfil-row-icon{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+    .perfil-row-info{flex:1}
+    .perfil-row-title{font-size:14px;font-weight:600}
+    .perfil-row-sub{font-size:11px;color:var(--muted);margin-top:1px}
+    .perfil-row-right{color:var(--muted);font-size:13px}
+    .perfil-divider{height:1px;background:rgba(255,255,255,.06);margin:8px 20px}
+    .perfil-lang-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px 20px 12px}
+    .perfil-lang-opt{text-align:center;padding:10px 4px;border-radius:14px;background:rgba(255,255,255,.05);border:1.5px solid transparent;cursor:pointer;transition:all .2s}
+    .perfil-lang-opt.active{border-color:var(--primary);background:rgba(18,199,183,.12)}
+    .perfil-lang-opt .flag{font-size:1.3rem}
+    .perfil-lang-opt .lname{font-size:.7rem;font-weight:700;margin-top:4px;color:var(--muted)}
+    .perfil-lang-opt.active .lname{color:var(--primary)}
+
     /* GREETING */
     .greeting{padding:4px 18px 16px}
     .greeting h2{font-size:24px;font-weight:800;letter-spacing:-.5px}
@@ -403,6 +438,7 @@
     <div class="hdr-right">
       <div class="hdr-btn" onclick="toggleTheme()" id="themeBtn">🌙</div>
       <div class="sync-dot" id="syncDot"></div>
+      <div class="avatar-btn" id="avatarBtn" onclick="openPerfil()">NF</div>
     </div>
   </div>
 
@@ -611,6 +647,79 @@
     </div>
   </div>
 
+</div>
+
+<!-- PERFIL PANEL -->
+<div class="perfil-overlay" id="perfilOverlay" onclick="closePerfil()"></div>
+<div class="perfil-panel" id="perfilPanel">
+  <div class="perfil-panel-head">
+    <button class="perfil-close" onclick="closePerfil()">✕</button>
+    <div class="perfil-avatar-big" id="perfilAvatarBig" onclick="triggerAvatarUpload()">
+      <span id="perfilAvatarText">NF</span>
+      <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+      <div class="perfil-avatar-overlay">📷</div>
+    </div>
+    <div class="perfil-name" id="perfilName">Mi grupo</div>
+    <div class="perfil-group" id="perfilGroupCode">Código: —</div>
+  </div>
+  <div class="perfil-body">
+
+    <div class="perfil-section">Apariencia</div>
+    <div class="perfil-row" onclick="toggleTheme()">
+      <div class="perfil-row-icon" style="background:rgba(247,201,72,.12)">🌙</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">Modo oscuro / claro</div>
+        <div class="perfil-row-sub" id="perfilThemeSub">Activo: Oscuro</div>
+      </div>
+      <div class="perfil-row-right" id="perfilThemeIcon">☀️</div>
+    </div>
+
+    <div class="perfil-divider"></div>
+    <div class="perfil-section">Idioma</div>
+    <div class="perfil-lang-grid">
+      <div class="perfil-lang-opt" data-lang="es" onclick="perfilSetLang('es')">
+        <div class="flag">🇦🇷</div><div class="lname">Español</div>
+      </div>
+      <div class="perfil-lang-opt" data-lang="en" onclick="perfilSetLang('en')">
+        <div class="flag">🇺🇸</div><div class="lname">English</div>
+      </div>
+      <div class="perfil-lang-opt" data-lang="pt" onclick="perfilSetLang('pt')">
+        <div class="flag">🇧🇷</div><div class="lname">Português</div>
+      </div>
+    </div>
+
+    <div class="perfil-divider"></div>
+    <div class="perfil-section">Grupo</div>
+    <div class="perfil-row" onclick="copyGroupCode()">
+      <div class="perfil-row-icon" style="background:rgba(18,199,183,.12)">🔑</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">Copiar código del grupo</div>
+        <div class="perfil-row-sub">Para invitar a otra persona</div>
+      </div>
+      <div class="perfil-row-right">📋</div>
+    </div>
+    <div class="perfil-row" onclick="switchGroup()">
+      <div class="perfil-row-icon" style="background:rgba(108,99,255,.12)">🔄</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">Cambiar de grupo</div>
+        <div class="perfil-row-sub">Unirse a otro grupo</div>
+      </div>
+      <div class="perfil-row-right">›</div>
+    </div>
+
+    <div class="perfil-divider"></div>
+    <div class="perfil-section">Sesión</div>
+    <div class="perfil-row" onclick="cerrarSesion()">
+      <div class="perfil-row-icon" style="background:rgba(255,122,89,.12)">🚪</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title" style="color:var(--danger)">Cerrar sesión</div>
+        <div class="perfil-row-sub">Volvé a la pantalla de inicio</div>
+      </div>
+      <div class="perfil-row-right" style="color:var(--danger)">›</div>
+    </div>
+
+    <div style="height:32px"></div>
+  </div>
 </div>
 
 <!-- BOTTOM NAV -->
@@ -1487,6 +1596,99 @@ async function init() {
   } catch(e) {
     document.querySelector('.loader-sub').textContent='❌ Error de conexión';
   }
+}
+
+// ============================================
+// PERFIL PANEL
+// ============================================
+function openPerfil() {
+  // Poblar datos
+  const grupo = loadGroup();
+  if (grupo) {
+    const ps = grupo.personasArray || [grupo.persona1, grupo.persona2].filter(Boolean);
+    const initials = ps.map(n => n[0]||'').join('').toUpperCase().slice(0,2) || 'NF';
+    document.getElementById('perfilName').textContent = grupo.nombre || ps.join(' & ');
+    document.getElementById('perfilGroupCode').textContent = 'Código: ' + (grupo.codigo||'—');
+    // Avatar
+    const savedAvatar = localStorage.getItem('nf_avatar');
+    if (savedAvatar) {
+      document.getElementById('perfilAvatarBig').innerHTML =
+        `<img src="${savedAvatar}"><div class="perfil-avatar-overlay">📷</div>`;
+    } else {
+      document.getElementById('perfilAvatarText').textContent = initials;
+    }
+    // Sync avatar btn header
+    updateAvatarBtn();
+  }
+  // Tema
+  const isDark = document.body.classList.contains('dark');
+  document.getElementById('perfilThemeSub').textContent = isDark ? 'Activo: Oscuro' : 'Activo: Claro';
+  document.getElementById('perfilThemeIcon').textContent = isDark ? '☀️' : '🌙';
+  // Idioma
+  document.querySelectorAll('.perfil-lang-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === nfLang);
+  });
+  // Abrir
+  document.getElementById('perfilOverlay').classList.add('open');
+  document.getElementById('perfilPanel').classList.add('open');
+}
+
+function closePerfil() {
+  document.getElementById('perfilOverlay').classList.remove('open');
+  document.getElementById('perfilPanel').classList.remove('open');
+}
+
+function perfilSetLang(c) {
+  nfSetLang(c);
+  document.querySelectorAll('.perfil-lang-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === c);
+  });
+}
+
+function triggerAvatarUpload() {
+  document.getElementById('avatarInput').click();
+}
+
+function handleAvatarUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    localStorage.setItem('nf_avatar', dataUrl);
+    document.getElementById('perfilAvatarBig').innerHTML =
+      `<img src="${dataUrl}"><input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)"><div class="perfil-avatar-overlay">📷</div>`;
+    updateAvatarBtn();
+    toast('✅ Foto actualizada');
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function updateAvatarBtn() {
+  const btn = document.getElementById('avatarBtn');
+  if (!btn) return;
+  const savedAvatar = localStorage.getItem('nf_avatar');
+  if (savedAvatar) {
+    btn.innerHTML = `<img src="${savedAvatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    const grupo = loadGroup();
+    if (grupo) {
+      const ps = grupo.personasArray || [grupo.persona1, grupo.persona2].filter(Boolean);
+      btn.textContent = ps.map(n => n[0]||'').join('').toUpperCase().slice(0,2) || 'NF';
+    }
+  }
+}
+
+function copyGroupCode() {
+  const grupo = loadGroup();
+  if (!grupo) return;
+  navigator.clipboard.writeText(grupo.codigo).then(() => toast('✅ Código copiado'));
+}
+
+function cerrarSesion() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  sessionStorage.removeItem('nf_sess');
+  closePerfil();
+  location.reload();
 }
 
 function buildManifest(){
@@ -2400,6 +2602,7 @@ async function startApp() {
   await loadAll();
   document.getElementById('loader').style.display = 'none';
   document.getElementById('appMain').style.display = 'block';
+  updateAvatarBtn();
 }
 
 function showGroupScreen() {
