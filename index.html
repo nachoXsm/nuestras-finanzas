@@ -1876,17 +1876,19 @@ async function init() {
   try { buildManifest(); } catch(e){}
   try { updateMonthLabel(); } catch(e){}
 
-  // Check auth session
-  if(isSession()){
-    document.getElementById('lockScreen').style.display='none';
-  } else {
-    document.getElementById('lockScreen').style.display='flex';
-    // Esperar un tick para que el DOM esté listo antes del biométrico
-    setTimeout(tryBiometric, 600);
-    return; // unlock() continuará el flujo
-  }
+  const tienePin = !!localStorage.getItem('nf_pin');
+  const sesionActiva = isSession();
 
-  await initApp();
+  if(!tienePin || sesionActiva) {
+    // Sin PIN configurado o sesión activa → entrar directo
+    document.getElementById('lockScreen').style.display='none';
+    await initApp();
+  } else {
+    // Tiene PIN → mostrar lock screen
+    document.getElementById('lockScreen').style.display='flex';
+    setTimeout(tryBiometric, 600);
+    // unlock() llamará a initApp()
+  }
 }
 
 async function initApp() {
