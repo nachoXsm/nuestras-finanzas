@@ -273,9 +273,44 @@
     .ars-rate{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.04);border-radius:14px;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 
     /* INFORME */
-    .chart-card{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.04);border-radius:20px;padding:16px;margin-bottom:12px}
+    /* INFORME */
+    .inf-hero{background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:24px;padding:20px;margin-bottom:14px;box-shadow:var(--shadow)}
+    .inf-hero-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+    .inf-hero-stat{flex:1;text-align:center}
+    .inf-hero-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65;margin-bottom:4px}
+    .inf-hero-val{font-size:18px;font-weight:800;letter-spacing:-.5px}
+    .inf-hero-val.pos{color:#7effd4}.inf-hero-val.neg{color:#ffb3a0}.inf-hero-val.neu{color:#fff}
+    .inf-hero-divider{width:1px;background:rgba(255,255,255,.15);margin:0 4px}
+    .inf-hero-sub{font-size:10px;opacity:.55;margin-top:2px}
+    .inf-section-title{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:18px 0 10px;padding-left:2px}
+    .inf-chart-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:18px;margin-bottom:12px}
+    .inf-chart-title{font-size:14px;font-weight:800;letter-spacing:-.2px;margin-bottom:14px}
+    .inf-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+    .inf-legend{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+    .inf-legend-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .inf-legend-left{display:flex;align-items:center;gap:7px}
+    .inf-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .inf-legend-name{font-size:12px;font-weight:600;color:var(--text)}
+    .inf-legend-val{font-size:12px;font-weight:800;color:var(--primary)}
+    .inf-legend-pct{font-size:10px;color:var(--muted);margin-left:4px}
+    .inf-cat-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .inf-cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .inf-cat-name{font-size:12px;font-weight:600;width:100px;flex-shrink:0}
+    .inf-cat-bar-bg{flex:1;background:rgba(255,255,255,.07);border-radius:999px;height:6px;overflow:hidden}
+    .inf-cat-fill{height:100%;border-radius:999px}
+    .inf-cat-val{font-size:11px;font-weight:700;color:var(--primary);width:80px;text-align:right;flex-shrink:0}
+    .inf-persona-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+    .inf-persona-avatar{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:white;flex-shrink:0}
+    .inf-persona-info{flex:1;min-width:0}
+    .inf-persona-name{font-size:13px;font-weight:700}
+    .inf-persona-bar-bg{background:rgba(255,255,255,.08);border-radius:999px;height:5px;margin-top:6px;overflow:hidden}
+    .inf-persona-fill{height:100%;border-radius:999px}
+    .inf-persona-right{text-align:right;flex-shrink:0}
+    .inf-persona-inc{font-size:13px;font-weight:800;color:var(--success)}
+    .inf-persona-gas{font-size:11px;color:var(--muted);margin-top:2px}
+    .chart-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:16px;margin-bottom:12px}
     .inf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
-    .inf-card{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.04);border-radius:14px;padding:14px;text-align:center}
+    .inf-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px;text-align:center}
 
     /* OCR */
     #ocrProgress{display:none;background:rgba(18,199,183,.06);border:1.5px solid rgba(18,199,183,.2);border-radius:14px;padding:14px;margin-top:10px;text-align:center}
@@ -2224,60 +2259,152 @@ renderInforme = function() {
   const fijos=gastos.filter(g=>g.tipo==='fijo').reduce((a,g)=>a+parseFloat(g.monto),0);
   const variables=gastos.filter(g=>g.tipo==='variable').reduce((a,g)=>a+parseFloat(g.monto),0);
   const saldo=totalInc-totalGas;
+  const pctGas=totalInc>0?Math.round(totalGas/totalInc*100):0;
+  const pctFij=totalGas>0?Math.round(fijos/totalGas*100):0;
+
   const catTotals={};
   gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+parseFloat(g.monto);});
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
-  const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
-  const personaIngresos = personas.map(p => ({
-    nombre: p,
-    total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
+
+  const personas=state.personas||[state.persona1||'Nacho',state.persona2||'Celi'];
+  const colors=['#12c7b7','#6c63ff','#f7c948','#ff7a59','#1ec98f'];
+  const pInc=personas.map((p,i)=>({
+    nombre:p, color:colors[i]||'#888',
+    inc:ingresos.filter(x=>x.quien===p).reduce((a,x)=>a+parseFloat(x.monto),0),
+    gas:gastos.filter(x=>x.quien===p).reduce((a,x)=>a+parseFloat(x.monto),0)
   }));
-  const nachoInc = personaIngresos[0]?.total || 0;
-  const celiInc = personaIngresos[1]?.total || 0;
-  const compInc = 0;
-  const nachoG=gastos.filter(g=>g.quien==='Nacho').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const celiG=gastos.filter(g=>g.quien==='Celi').reduce((a,g)=>a+parseFloat(g.monto),0);
   const ambosG=gastos.filter(g=>g.quien==='Ambos').reduce((a,g)=>a+parseFloat(g.monto),0);
 
-  document.getElementById('informeContent').innerHTML=`
-    <div class="inf-grid">
-      <div class="inf-c"><div class="sc-label">Ingresos</div><div class="sc-value teal" style="font-size:1rem">${fmt(totalInc)}</div></div>
-      <div class="inf-c"><div class="sc-label">Gastos</div><div class="sc-value red" style="font-size:1rem">${fmt(totalGas)}</div></div>
-      <div class="inf-c"><div class="sc-label">Saldo</div><div class="sc-value ${saldo>=0?'teal':'red'}" style="font-size:1rem">${fmt(saldo)}</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div class="chart-card">
-        <div class="chart-title">Por persona</div>
-        <canvas id="cIngresos" height="110"></canvas>
-        <div style="margin-top:8px">
-          ${nachoInc>0?`<div class="legend-item"><span><span class="legend-dot" style="background:#1a2b5e"></span>Nacho</span><span style="font-family:var(--font-display);font-weight:700;font-size:0.75rem">${fmt(nachoInc)}</span></div>`:''}
-          ${celiInc>0?`<div class="legend-item"><span><span class="legend-dot" style="background:#00b4a6"></span>Celi</span><span style="font-family:var(--font-display);font-weight:700;font-size:0.75rem">${fmt(celiInc)}</span></div>`:''}
-          ${compInc>0?`<div class="legend-item"><span><span class="legend-dot" style="background:#f5c842"></span>Comp.</span><span style="font-family:var(--font-display);font-weight:700;font-size:0.75rem">${fmt(compInc)}</span></div>`:''}
+  const el=document.getElementById('informeContent');
+  el.innerHTML=`
+    <!-- HERO RESUMEN -->
+    <div class="inf-hero">
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">RESUMEN DEL MES</div>
+      <div class="inf-hero-row">
+        <div class="inf-hero-stat">
+          <div class="inf-hero-label">Ingresos</div>
+          <div class="inf-hero-val neu">${fmt(totalInc)}</div>
+        </div>
+        <div class="inf-hero-divider"></div>
+        <div class="inf-hero-stat">
+          <div class="inf-hero-label">Gastos</div>
+          <div class="inf-hero-val neg">${fmt(totalGas)}</div>
+          <div class="inf-hero-sub">${pctGas}% del ingreso</div>
+        </div>
+        <div class="inf-hero-divider"></div>
+        <div class="inf-hero-stat">
+          <div class="inf-hero-label">Saldo</div>
+          <div class="inf-hero-val ${saldo>=0?'pos':'neg'}">${fmt(saldo)}</div>
+          <div class="inf-hero-sub">${saldo>=0?'disponible':'déficit'}</div>
         </div>
       </div>
-      <div class="chart-card">
-        <div class="chart-title">Fijos vs Var.</div>
-        <canvas id="cTipos" height="110"></canvas>
-        <div style="margin-top:8px">
-          ${fijos>0?`<div class="legend-item"><span><span class="legend-dot" style="background:#1a2b5e"></span>Fijos</span><span style="font-family:var(--font-display);font-weight:700;font-size:0.75rem">${fmt(fijos)}</span></div>`:''}
-          ${variables>0?`<div class="legend-item"><span><span class="legend-dot" style="background:#ef4444"></span>Var.</span><span style="font-family:var(--font-display);font-weight:700;font-size:0.75rem">${fmt(variables)}</span></div>`:''}
+    </div>
+
+    <!-- FIJOS VS VARIABLES -->
+    <div class="inf-section-title">Composición de gastos</div>
+    <div class="inf-chart-card">
+      <div class="inf-chart-grid">
+        <div>
+          <div class="inf-chart-title">Fijos vs Variables</div>
+          <canvas id="cTipos" height="120"></canvas>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;gap:12px;padding-top:8px">
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Fijos</div>
+            <div style="font-size:20px;font-weight:800;color:#6c63ff">${fmt(fijos)}</div>
+            <div style="font-size:11px;color:var(--muted)">${pctFij}% del total</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Variables</div>
+            <div style="font-size:20px;font-weight:800;color:#ff7a59">${fmt(variables)}</div>
+            <div style="font-size:11px;color:var(--muted)">${100-pctFij}% del total</div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="chart-card" style="margin-bottom:10px">
-      <div class="chart-title">Gastos por categoría</div>
-      <canvas id="cCat" height="140"></canvas>
+
+    <!-- POR INTEGRANTE -->
+    <div class="inf-section-title">Por integrante</div>
+    <div class="inf-chart-card">
+      ${pInc.map(p=>{
+        const pctI=totalInc>0?Math.round(p.inc/totalInc*100):0;
+        return `<div class="inf-persona-card">
+          <div class="inf-persona-avatar" style="background:${p.color}20;color:${p.color}">${p.nombre[0]}</div>
+          <div class="inf-persona-info">
+            <div class="inf-persona-name">${p.nombre}</div>
+            <div class="inf-persona-bar-bg">
+              <div class="inf-persona-fill" style="width:${pctI}%;background:${p.color}"></div>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">
+              ${p.gas>0?`Gastos: ${fmt(p.gas)}`:'Sin gastos registrados'}
+            </div>
+          </div>
+          <div class="inf-persona-right">
+            <div class="inf-persona-inc">${fmt(p.inc)}</div>
+            <div class="inf-persona-gas">${pctI}% del total</div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${ambosG>0?`<div class="inf-persona-card">
+        <div class="inf-persona-avatar" style="background:rgba(247,201,72,.15);color:#f7c948">A</div>
+        <div class="inf-persona-info">
+          <div class="inf-persona-name">Ambos</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Gastos compartidos</div>
+        </div>
+        <div class="inf-persona-right">
+          <div class="inf-persona-inc" style="color:#f7c948">${fmt(ambosG)}</div>
+        </div>
+      </div>`:''}
     </div>
-    <div class="chart-card">
-      <div class="chart-title">Por integrante</div>
-      <canvas id="cPersonas" height="85"></canvas>
+
+    <!-- CATEGORÍAS -->
+    <div class="inf-section-title">Gastos por categoría</div>
+    <div class="inf-chart-card">
+      ${catSorted.length===0
+        ? `<div style="text-align:center;padding:20px;color:var(--muted)">Sin datos este mes</div>`
+        : catSorted.map(([cat,tot])=>{
+            const pct=totalGas>0?Math.round(tot/totalGas*100):0;
+            const max=catSorted[0][1];
+            const barW=Math.round(tot/max*100);
+            const col=CAT_COLORS[cat]||'#888';
+            return `<div class="inf-cat-row">
+              <div class="inf-cat-dot" style="background:${col}"></div>
+              <div class="inf-cat-name">${cat}</div>
+              <div class="inf-cat-bar-bg">
+                <div class="inf-cat-fill" style="width:${barW}%;background:${col}"></div>
+              </div>
+              <div class="inf-cat-val">${fmt(tot)}</div>
+            </div>`;
+          }).join('')
+      }
+    </div>
+
+    <!-- DONUT INGRESOS -->
+    <div class="inf-section-title">Ingresos por persona</div>
+    <div class="inf-chart-card">
+      <canvas id="cIngresos" height="140"></canvas>
+      <div class="inf-legend">
+        ${pInc.map(p=>p.inc>0?`
+          <div class="inf-legend-row">
+            <div class="inf-legend-left">
+              <div class="inf-legend-dot" style="background:${p.color}"></div>
+              <div class="inf-legend-name">${p.nombre}</div>
+            </div>
+            <div>
+              <span class="inf-legend-val">${fmt(p.inc)}</span>
+              <span class="inf-legend-pct">${totalInc>0?Math.round(p.inc/totalInc*100):0}%</span>
+            </div>
+          </div>`:''
+        ).join('')}
+      </div>
     </div>`;
 
   setTimeout(()=>{
-    drawDonut('cIngresos',['Nacho','Celi','Comp.'],[nachoInc,celiInc,compInc],['#1a2b5e','#00b4a6','#f5c842']);
-    drawDonut('cTipos',['Fijos','Variables'],[fijos,variables],['#1a2b5e','#ef4444']);
-    drawBars('cCat',catSorted.map(([k])=>k),catSorted.map(([,v])=>v),catSorted.map(([k])=>CAT_COLORS[k]||'#888'));
-    drawBarsH('cPersonas',['Nacho','Celi','Ambos'],[nachoG,celiG,ambosG],['#1a2b5e','#00b4a6','#f5c842']);
+    const incData=pInc.map(p=>p.inc);
+    const incColors=pInc.map(p=>p.color);
+    const incLabels=pInc.map(p=>p.nombre);
+    drawDonut('cIngresos',incLabels,incData,incColors);
+    drawDonut('cTipos',['Fijos','Variables'],[fijos,variables],['#6c63ff','#ff7a59']);
   },60);
 };
 
