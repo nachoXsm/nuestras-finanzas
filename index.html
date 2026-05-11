@@ -1107,6 +1107,15 @@ var NF_LANGS={
 var nfLang=localStorage.getItem('nf_lang')||'es';
 function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; return (lang&&lang[key])||(NF_LANGS['es']&&NF_LANGS['es'][key])||key||''; }
 
+function esHogar() {
+  var g = loadGroup();
+  return g && (g.esHogar === true || (!g.esGrupo));
+}
+function esModoGrupo() {
+  var g = loadGroup();
+  return g && g.esGrupo === true && !g.esHogar;
+}
+
 function nfSetLang(c){
   nfLang=c; localStorage.setItem('nf_lang',c);
   var LD = NF_LANGS[c];
@@ -1803,6 +1812,10 @@ function renderAll() {
   const celiIncF  = personaIngresosF[1]?.total || 0;
   const compIncF  = 0;
   document.getElementById('flujoContent').innerHTML = ''; renderFlujo();
+  // Si es modo grupo, ocultar secciones de hogar y mostrar balance
+  if (typeof esModoGrupo === 'function' && esModoGrupo()) {
+    setTimeout(function() { ocultarSeccionesHogar(); mostrarBalanceGrupo(); }, 50);
+  }
 }
 
 // ============================================
@@ -3273,8 +3286,8 @@ async function createGroup() {
       personas: JSON.stringify(personas)
     });
     const grupo = res[0];
-    // Store personas array locally
     grupo.personasArray = personas;
+    grupo.esGrupo = true;  // Marca como grupo de gastos (no hogar)
     saveGroupLocal(grupo);
 
     document.getElementById('gsCreate').style.display = 'none';
@@ -3384,8 +3397,14 @@ async function startApp() {
   document.getElementById('loader').style.display = 'none';
   document.getElementById('appMain').style.display = 'block';
   updateAvatarBtn();
-  nfSetLang(nfLang); // aplicar idioma guardado
+  nfSetLang(nfLang);
   initTabsScrollHint();
+  // Configurar UI según modo
+  if (esModoGrupo()) {
+    activarModoGrupo();
+  } else {
+    activarModoHogar();
+  }
 }
 
 function showGroupScreen() {
@@ -3495,6 +3514,182 @@ if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('/sw.js').catch(function(){});
   });
+}
+
+// ============================================
+// MODO HOGAR vs MODO GRUPO
+// ============================================
+function activarModoHogar() {
+  // Mostrar todas las secciones normales
+  document.getElementById('appMain').setAttribute('data-modo', 'hogar');
+  // Tabs completos
+  var tabsWrap = document.getElementById('tabsWrap');
+  if (tabsWrap) {
+    tabsWrap.querySelectorAll('.tab').forEach(function(t){ t.style.display=''; });
+  }
+  // Nav completo
+  var navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(function(n){ n.style.display=''; });
+  // Ocultar banner de modo grupo si existe
+  var banner = document.getElementById('modoGrupoBanner');
+  if (banner) banner.remove();
+  // Mostrar sección de ingresos
+  var secI = document.querySelector('.sec-head');
+  if (secI) secI.style.display='';
+}
+
+function activarModoGrupo() {
+  document.getElementById('appMain').setAttribute('data-modo', 'grupo');
+  var grupo = loadGroup();
+  var nombreGrupo = grupo ? grupo.nombre : 'Grupo';
+
+  // Banner de modo grupo en el header
+  if (!document.getElementById('modoGrupoBanner')) {
+    var banner = document.createElement('div');
+    banner.id = 'modoGrupoBanner';
+    banner.style.cssText = 'background:linear-gradient(135deg,#1a2b5e,var(--secondary));padding:8px 18px;display:flex;justify-content:space-between;align-items:center';
+    banner.innerHTML = '<span style="font-size:12px;font-weight:700;color:white">👥 ' + nombreGrupo + '</span>' +
+      '<span style="font-size:11px;color:rgba(255,255,255,.65)">Modo grupo de gastos</span>';
+    var hdr = document.querySelector('.hdr');
+    if (hdr) hdr.insertAdjacentElement('afterend', banner);
+  }
+
+  // Ocultar tabs que no aplican
+  var tabsWrap = document.getElementById('tabsWrap');
+  if (tabsWrap) {
+    var tabs = tabsWrap.querySelectorAll('.tab');
+    var visibles = ['gastos', 'categorias'];
+    tabs.forEach(function(t) {
+      var onclick = t.getAttribute('onclick') || '';
+      var visible = visibles.some(function(v){ return onclick.includes(v); });
+      t.style.display = visible ? '' : 'none';
+    });
+  }
+
+  // Ocultar sección de ingresos al renderizar
+  setTimeout(function() {
+    ocultarSeccionesHogar();
+    mostrarBalanceGrupo();
+  }, 300);
+}
+
+function ocultarSeccionesHogar() {
+  // Ocultar ingresos y sus botones
+  var ingresoList = document.getElementById('ingresoList');
+  if (ingresoList) {
+    var parent = ingresoList.parentElement;
+    if (parent) {
+      var secHeads = parent.querySelectorAll('.sec-head');
+      secHeads.forEach(function(sh, i) {
+        if (i === 0) sh.style.display = 'none'; // Primer sec-head = ingresos
+      });
+      ingresoList.style.display = 'none';
+      var fIngreso = document.getElementById('fIngreso');
+      if (fIngreso) fIngreso.style.display = 'none';
+    }
+  }
+  // Ocultar summary cards (son de hogar)
+  var summary = document.getElementById('summary');
+  if (summary) summary.style.display = 'none';
+  // Ocultar balance card
+  var balCard = document.querySelector('.balance-card');
+  if (balCard) balCard.style.display = 'none';
+}
+
+function mostrarBalanceGrupo() {
+  var gs = state.gastos || [];
+  var personas = state.personas || [];
+  if (!gs.length && !personas.length) return;
+
+  // Calcular quién gastó cuánto
+  var gastosPorPersona = {};
+  var totalGrupo = 0;
+  gs.forEach(function(g) {
+    var quien = g.quien || 'Ambos';
+    gastosPorPersona[quien] = (gastosPorPersona[quien] || 0) + parseFloat(g.monto || 0);
+    totalGrupo += parseFloat(g.monto || 0);
+  });
+
+  // Calcular parte equitativa
+  var participantes = Object.keys(gastosPorPersona);
+  var parteIgual = participantes.length > 0 ? totalGrupo / participantes.length : 0;
+
+  // Balance: positivo = le deben, negativo = debe
+  var balances = {};
+  participantes.forEach(function(p) {
+    balances[p] = (gastosPorPersona[p] || 0) - parteIgual;
+  });
+
+  // Crear deudas
+  var deudas = [];
+  var acreedores = participantes.filter(function(p){ return balances[p] > 0.5; });
+  var deudores   = participantes.filter(function(p){ return balances[p] < -0.5; });
+  acreedores.forEach(function(ac) {
+    deudores.forEach(function(de) {
+      var monto = Math.min(balances[ac], Math.abs(balances[de]));
+      if (monto > 0.5) {
+        deudas.push({ de: de, a: ac, monto: monto });
+        balances[ac] -= monto;
+        balances[de] += monto;
+      }
+    });
+  });
+
+  // Insertar el panel de balance ANTES de la lista de gastos
+  var existing = document.getElementById('grupoBalancePanel');
+  if (existing) existing.remove();
+
+  var panel = document.createElement('div');
+  panel.id = 'grupoBalancePanel';
+  panel.style.cssText = 'margin-bottom:16px';
+
+  var html = '';
+
+  // Resumen del grupo
+  html += '<div style="background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow)">';
+  html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">TOTAL DEL GRUPO</div>';
+  html += '<div style="font-size:32px;font-weight:800;letter-spacing:-1px;color:#fff">' + fmt(totalGrupo) + '</div>';
+  html += '<div style="font-size:12px;opacity:.6;margin-top:2px">' + participantes.length + ' participantes · ' + fmt(parteIgual) + ' c/u</div>';
+  html += '<div style="height:1px;background:rgba(255,255,255,.15);margin:12px 0"></div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  participantes.forEach(function(p) {
+    var gasto = gastosPorPersona[p] || 0;
+    html += '<div style="background:rgba(255,255,255,.12);border-radius:10px;padding:8px 12px">';
+    html += '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.7)">' + p + '</div>';
+    html += '<div style="font-size:14px;font-weight:800;color:#fff">' + fmt(gasto) + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // Panel de balance "quién le debe a quién"
+  if (deudas.length > 0) {
+    html += '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:12px">💸 Balance</div>';
+    deudas.forEach(function(d) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+      html += '<div style="display:flex;align-items:center;gap:8px">';
+      html += '<span style="font-size:13px;font-weight:600;color:var(--danger)">' + d.de + '</span>';
+      html += '<span style="font-size:11px;color:var(--muted)">le debe a</span>';
+      html += '<span style="font-size:13px;font-weight:600;color:var(--success)">' + d.a + '</span>';
+      html += '</div>';
+      html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else if (participantes.length > 1) {
+    html += '<div style="background:rgba(30,201,143,.08);border:1px solid rgba(30,201,143,.2);border-radius:14px;padding:14px;text-align:center;margin-bottom:14px">';
+    html += '<div style="font-size:1.4rem">✅</div>';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--success);margin-top:6px">¡Todos están al día!</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">No hay deudas pendientes</div>';
+    html += '</div>';
+  }
+
+  panel.innerHTML = html;
+
+  var gastoList = document.getElementById('gastoList');
+  if (gastoList && gastoList.parentElement) {
+    gastoList.parentElement.insertBefore(panel, gastoList);
+  }
 }
 
 // ============================================
