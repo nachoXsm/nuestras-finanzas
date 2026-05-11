@@ -91,6 +91,35 @@
     .avatar-btn:hover{transform:scale(1.08);box-shadow:0 0 0 3px rgba(18,199,183,.3)}
     .avatar-btn img{width:100%;height:100%;object-fit:cover}
 
+    /* GRUPOS BTN */
+    .grupos-btn{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;position:relative}
+    .grupos-btn:hover{background:rgba(108,99,255,.2);border-color:rgba(108,99,255,.4)}
+    .grupos-btn svg{width:18px;height:18px;fill:var(--muted)}
+    .grupos-btn:hover svg{fill:var(--secondary)}
+    .grupos-badge{position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:var(--secondary);font-size:8px;font-weight:800;color:white;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+
+    /* PANEL DE GRUPOS */
+    .grupos-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:none;backdrop-filter:blur(4px)}
+    .grupos-overlay.open{display:block}
+    .grupos-panel{position:fixed;top:0;right:-100%;width:min(300px,88%);height:100%;background:var(--card);z-index:801;transition:right .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,.4)}
+    .grupos-panel.open{right:0}
+    .grupos-panel-head{padding:52px 18px 16px;background:linear-gradient(160deg,#1a2b5e,var(--secondary));position:relative;flex-shrink:0}
+    .grupos-panel-close{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:white;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .grupos-panel-title{font-size:17px;font-weight:800;color:white;margin-bottom:4px}
+    .grupos-panel-sub{font-size:12px;color:rgba(255,255,255,.6)}
+    .grupos-body{flex:1;overflow-y:auto;padding:12px 0}
+    .grupo-item{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;transition:background .15s}
+    .grupo-item:hover{background:rgba(255,255,255,.05)}
+    .grupo-item.active{background:rgba(108,99,255,.1);border-left:3px solid var(--secondary)}
+    .grupo-item-icon{width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .grupo-item-info{flex:1;min-width:0}
+    .grupo-item-name{font-size:14px;font-weight:700}
+    .grupo-item-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .grupo-item-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(108,99,255,.2);color:#a89bff}
+    .grupo-divider{height:1px;background:rgba(255,255,255,.06);margin:8px 18px}
+    .grupo-add-btn{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;color:var(--primary);font-weight:600;font-size:14px}
+    .grupo-add-btn:hover{background:rgba(18,199,183,.06)}
+
     /* PERFIL PANEL */
     .perfil-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:none;backdrop-filter:blur(6px)}
     .perfil-overlay.open{display:block}
@@ -522,6 +551,12 @@
     <div class="hdr-right">
       <div class="hdr-btn" onclick="toggleTheme()" id="themeBtn">🌙</div>
       <div class="sync-dot" id="syncDot" style="display:none"></div>
+      <div class="grupos-btn" id="gruposBtn" onclick="openGrupos()" title="Mis grupos">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+        <div class="grupos-badge" id="gruposBadge" style="display:none">0</div>
+      </div>
       <div class="avatar-btn" id="avatarBtn" onclick="openPerfil()">NF</div>
     </div>
   </div>
@@ -807,6 +842,19 @@
     </div>
 
     <div style="height:32px"></div>
+  </div>
+</div>
+
+<!-- GRUPOS PANEL -->
+<div class="grupos-overlay" id="gruposOverlay" onclick="closeGrupos()"></div>
+<div class="grupos-panel" id="gruposPanel">
+  <div class="grupos-panel-head">
+    <button class="grupos-panel-close" onclick="closeGrupos()">✕</button>
+    <div class="grupos-panel-title">👥 Mis espacios</div>
+    <div class="grupos-panel-sub">Hogar y grupos de gastos</div>
+  </div>
+  <div class="grupos-body" id="gruposPanelBody">
+    <!-- Se rellena dinámicamente -->
   </div>
 </div>
 
@@ -3141,6 +3189,15 @@ function copyCode() {
 function enterApp() {
   document.getElementById('groupScreen').style.display = 'none';
   startApp();
+  // Actualizar badge de grupos
+  setTimeout(function() {
+    const gruposExtra = getGruposGuardados();
+    const badge = document.getElementById('gruposBadge');
+    if (badge) {
+      badge.style.display = gruposExtra.length > 0 ? 'flex' : 'none';
+      badge.textContent = gruposExtra.length + 1;
+    }
+  }, 1000);
 }
 
 function updatePersonaNames() {
@@ -3307,6 +3364,138 @@ if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('/sw.js').catch(function(){});
   });
+}
+
+// ============================================
+// PANEL DE GRUPOS
+// ============================================
+
+function openGrupos() {
+  renderGruposPanel();
+  document.getElementById('gruposOverlay').classList.add('open');
+  document.getElementById('gruposPanel').classList.add('open');
+}
+
+function closeGrupos() {
+  document.getElementById('gruposOverlay').classList.remove('open');
+  document.getElementById('gruposPanel').classList.remove('open');
+}
+
+function getGruposGuardados() {
+  try { return JSON.parse(localStorage.getItem('nf_grupos_extra') || '[]'); } catch(e) { return []; }
+}
+
+function saveGruposExtra(grupos) {
+  localStorage.setItem('nf_grupos_extra', JSON.stringify(grupos));
+}
+
+function renderGruposPanel() {
+  const body = document.getElementById('gruposPanelBody');
+  const grupoActual = loadGroup();
+  const gruposExtra = getGruposGuardados();
+  const badge = document.getElementById('gruposBadge');
+  const totalGrupos = gruposExtra.length;
+  
+  if (badge) {
+    badge.style.display = totalGrupos > 0 ? 'flex' : 'none';
+    badge.textContent = totalGrupos + 1;
+  }
+
+  let html = '';
+
+  // Espacio actual (hogar)
+  if (grupoActual) {
+    const ps = grupoActual.personasArray || [grupoActual.persona1, grupoActual.persona2].filter(Boolean);
+    const isHogar = ps.length <= 2;
+    const icon = isHogar ? '🏠' : '👥';
+    html += `<div style="padding:8px 18px 4px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Mi hogar</div>`;
+    html += `<div class="grupo-item active" onclick="switchToGrupo('${grupoActual.id}');closeGrupos()">
+      <div class="grupo-item-icon" style="background:rgba(18,199,183,.15);color:var(--primary)">${icon}</div>
+      <div class="grupo-item-info">
+        <div class="grupo-item-name">${grupoActual.nombre || 'Mi hogar'}</div>
+        <div class="grupo-item-sub">${ps.join(' · ')} · Activo ahora</div>
+      </div>
+      <span class="grupo-item-badge">Activo</span>
+    </div>`;
+  }
+
+  // Grupos extra
+  if (gruposExtra.length > 0) {
+    html += `<div class="grupo-divider"></div>`;
+    html += `<div style="padding:8px 18px 4px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Grupos de gastos</div>`;
+    gruposExtra.forEach(function(g) {
+      const ps = g.personasArray || [];
+      html += `<div class="grupo-item" onclick="switchToGrupo('${g.id}');closeGrupos()">
+        <div class="grupo-item-icon" style="background:rgba(108,99,255,.15);color:#a89bff">👥</div>
+        <div class="grupo-item-info">
+          <div class="grupo-item-name">${g.nombre}</div>
+          <div class="grupo-item-sub">${ps.length} personas · ${g.codigo}</div>
+        </div>
+        <span style="font-size:18px;color:var(--muted)">›</span>
+      </div>`;
+    });
+  }
+
+  // Botones de acción
+  html += `<div class="grupo-divider"></div>`;
+  html += `<div class="grupo-add-btn" onclick="crearGrupoDesdeApp()">
+    <div style="width:40px;height:40px;border-radius:13px;background:rgba(108,99,255,.12);display:flex;align-items:center;justify-content:center;font-size:16px">＋</div>
+    <div>
+      <div style="font-size:14px;font-weight:700;color:var(--primary)">Crear grupo de gastos</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:1px">Amigos, viajes, casa compartida</div>
+    </div>
+  </div>`;
+  html += `<div class="grupo-add-btn" onclick="unirseGrupoDesdeApp()">
+    <div style="width:40px;height:40px;border-radius:13px;background:rgba(247,201,72,.1);display:flex;align-items:center;justify-content:center;font-size:16px">🔑</div>
+    <div>
+      <div style="font-size:14px;font-weight:700;color:#f7c948">Unirse con código</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:1px">Tengo un código de invitación</div>
+    </div>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+async function switchToGrupo(id) {
+  const grupoActual = loadGroup();
+  if (grupoActual && grupoActual.id === id) return; // Ya estoy en ese grupo
+
+  // Guardar el grupo actual en la lista de extras si no está
+  const gruposExtra = getGruposGuardados();
+  const existe = gruposExtra.find(function(g){ return g.id === grupoActual.id; });
+  
+  // Buscar el grupo destino
+  const todos = [grupoActual, ...gruposExtra];
+  const destino = todos.find(function(g){ return g.id === id; });
+  if (!destino) return;
+
+  // Guardar el hogar actual si cambia a un grupo extra
+  if (destino.id !== grupoActual.id) {
+    // Guardar el actual como "hogar" en los extras si aún no está
+    if (!existe && grupoActual) {
+      const extras = getGruposGuardados();
+      extras.push(grupoActual);
+      saveGruposExtra(extras);
+    }
+  }
+
+  saveGroupLocal(destino);
+  state.grupoId = destino.id;
+  updatePersonaNames();
+  await loadAll();
+  toast('✅ Cambiado a ' + (destino.nombre || 'grupo'));
+}
+
+function crearGrupoDesdeApp() {
+  closeGrupos();
+  document.getElementById('groupScreen').style.display = 'flex';
+  showCreateGroup();
+}
+
+function unirseGrupoDesdeApp() {
+  closeGrupos();
+  document.getElementById('groupScreen').style.display = 'flex';
+  showJoinGroup();
 }
 
 // ============================================
