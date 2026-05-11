@@ -279,10 +279,10 @@
     /* INFORME */
     /* INFORME */
     .inf-hero{background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:24px;padding:20px 16px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden}
-    .inf-hero-row{display:flex;justify-content:space-between;align-items:flex-start;gap:4px}
+    .inf-hero-row{display:flex;justify-content:space-between;align-items:flex-start;gap:2px}
     .inf-hero-stat{flex:1;text-align:center}
-    .inf-hero-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65;margin-bottom:4px}
-    .inf-hero-val{font-size:15px;font-weight:800;letter-spacing:-.3px;word-break:break-all}
+    .inf-hero-label{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.65;margin-bottom:3px}
+    .inf-hero-val{font-size:13px;font-weight:800;letter-spacing:-.2px;word-break:break-word;line-height:1.2}
     .inf-hero-val.pos{color:#7effd4}.inf-hero-val.neg{color:#ffb3a0}.inf-hero-val.neu{color:#fff}
     .inf-hero-divider{width:1px;background:rgba(255,255,255,.15);margin:0 4px}
     .inf-hero-sub{font-size:10px;opacity:.55;margin-top:2px}
@@ -1414,8 +1414,9 @@ async function saveGasto() {
     document.getElementById('g_desc').value=''; document.getElementById('g_monto').value='';
     document.getElementById('fGasto').classList.remove('open');
     document.getElementById('btnSaveGasto').textContent='Guardar';
-    setSyncing('ok'); renderAll();
-  } catch(e) { setSyncing('error'); toast('❌ Error al guardar'); console.error(e); }
+    setSyncing('ok');
+  } catch(e) { setSyncing('error'); toast('❌ Error al guardar'); console.error(e); return; }
+  try { renderAll(); } catch(e) { console.error('renderAll:', e); }
 }
 function editGasto(id) {
   const g = state.gastos.find(x=>x.id===id); if(!g) return;
@@ -2291,7 +2292,7 @@ renderInforme = function() {
       <div class="inf-hero-row">
         <div class="inf-hero-stat">
           <div class="inf-hero-label">Ingresos</div>
-          <div class="inf-hero-val neu">${fmt(totalInc)}</div>
+          <div class="inf-hero-val neu" style="font-size:clamp(11px,3.2vw,15px)">${fmt(totalInc)}</div>
         </div>
         <div class="inf-hero-divider"></div>
         <div class="inf-hero-stat">
@@ -2658,7 +2659,7 @@ function initConversor() {
     const sel = document.getElementById(id);
     if (!sel) return;
     sel.innerHTML = CURRENCIES.map(c =>
-      `<option value="${c.code}">${c.flag} ${c.code} — ${c.name}</option>`
+      `<option value="${c.code}">${c.flag} ${c.code}</option>`
     ).join('');
   });
   // Default from USD to ARS
