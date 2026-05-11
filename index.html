@@ -161,8 +161,10 @@
     /* TABS */
     .tabs-wrap{display:flex;gap:8px;overflow-x:auto;padding:0 18px 20px;scrollbar-width:none;position:relative}
     .tabs-wrap::-webkit-scrollbar{display:none}
-    .tabs-wrap::after{content:'›';position:absolute;right:14px;top:50%;transform:translateY(-60%);font-size:18px;color:var(--primary);opacity:.7;pointer-events:none;animation:fadeInOut 2s ease-in-out infinite}
-    @keyframes fadeInOut{0%,100%{opacity:.3}50%{opacity:.9}}
+    .tabs-scroll-hint{position:absolute;right:0;top:0;bottom:16px;width:36px;display:flex;align-items:center;justify-content:center;pointer-events:none;background:linear-gradient(to right,transparent,rgba(8,17,31,.9));border-radius:0 999px 999px 0}
+    .tabs-scroll-hint span{font-size:16px;color:var(--primary);animation:fadeInOut 1.8s ease-in-out infinite}
+    .tabs-scroll-hint.left{left:0;right:auto;background:linear-gradient(to left,transparent,rgba(8,17,31,.9));border-radius:999px 0 0 999px}
+    @keyframes fadeInOut{0%,100%{opacity:.2}50%{opacity:1}}
     .tab{white-space:nowrap;padding:10px 18px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .2s}
     .tab.active{background:rgba(18,199,183,.15);color:var(--primary);border-color:rgba(18,199,183,.3)}
 
@@ -515,13 +517,17 @@
 
   <div id="summary"></div>
 
-  <div class="tabs-wrap">
-    <button class="tab active" onclick="switchTab('gastos')">Gastos</button>
-    <button class="tab" onclick="switchTab('tarjetas')">Tarjetas</button>
-    <button class="tab" onclick="switchTab('categorias')">Categ.</button>
-    <button class="tab" onclick="switchTab('flujo')">Flujo</button>
-    <button class="tab" onclick="switchTab('informe')">Informe</button>
-    <button class="tab" onclick="switchTab('conversor')">💱 Conversor</button>
+  <div style="position:relative">
+    <div class="tabs-wrap" id="tabsWrap">
+      <button class="tab active" onclick="switchTab('gastos')">Gastos</button>
+      <button class="tab" onclick="switchTab('tarjetas')">Tarjetas</button>
+      <button class="tab" onclick="switchTab('categorias')">Categ.</button>
+      <button class="tab" onclick="switchTab('flujo')">Flujo</button>
+      <button class="tab" onclick="switchTab('informe')">Informe</button>
+      <button class="tab" onclick="switchTab('conversor')">💱 Conversor</button>
+    </div>
+    <div class="tabs-scroll-hint" id="tabsHintRight"><span>›</span></div>
+    <div class="tabs-scroll-hint left" id="tabsHintLeft" style="display:none"><span>‹</span></div>
   </div>
 
   <!-- GASTOS TAB -->
@@ -2630,6 +2636,21 @@ let convRates = {};      // { USD: 1, ARS: 1200, BRL: 5.1, ... } base USD
 let arsSpecial = {};     // { oficial: 1200, blue: 1450, mep: 1430, ccl: 1440 }
 let convApiKey = localStorage.getItem('nf_conv_key') || '';
 
+function initTabsScrollHint() {
+  const wrap = document.getElementById('tabsWrap');
+  const right = document.getElementById('tabsHintRight');
+  const left  = document.getElementById('tabsHintLeft');
+  if (!wrap) return;
+  const update = () => {
+    const atStart = wrap.scrollLeft <= 10;
+    const atEnd   = wrap.scrollLeft >= wrap.scrollWidth - wrap.clientWidth - 10;
+    if (right) right.style.display = atEnd  ? 'none' : 'flex';
+    if (left)  left.style.display  = atStart? 'none' : 'flex';
+  };
+  wrap.addEventListener('scroll', update, {passive:true});
+  setTimeout(update, 300);
+}
+
 function initConversor() {
   // Populate selects
   const selects = ['conv_from', 'conv_to'];
@@ -2739,20 +2760,37 @@ function convertCurrency() {
     return;
   }
 
-  // Convert: amount (from) → USD → to
-  const inUSD  = amount / convRates[from];
-  const result = inUSD * convRates[to];
-
-  const fromCur = CURRENCIES.find(c => c.code === from);
+  // Para USD→ARS usar tipo oficial de dolarapi (más confiable para Argentina)
+  let result, rate;
   const toCur   = CURRENCIES.find(c => c.code === to);
+  const fromCur = CURRENCIES.find(c => c.code === from);
+
+  // Si es conversión con ARS, usar dolarapi cuando esté disponible
+  const arsOficial = arsSpecial?.oficial?.venta;
+  if (to === 'ARS' && from === 'USD' && arsOficial) {
+    rate   = arsOficial;
+    result = amount * arsOficial;
+    document.getElementById('conv_rate').textContent = `1 USD = ${formatConv(arsOficial)} ARS (Oficial)`;
+  } else if (from === 'ARS' && to === 'USD' && arsOficial) {
+    rate   = 1 / arsOficial;
+    result = amount / arsOficial;
+    document.getElementById('conv_rate').textContent = `1 USD = ${formatConv(arsOficial)} ARS (Oficial)`;
+  } else if (to === 'ARS' && arsOficial && convRates[from]) {
+    // Otra moneda → ARS: pasamos por USD primero usando tipo oficial
+    const inUSD = amount / convRates[from];
+    result = inUSD * arsOficial;
+    rate   = arsOficial / convRates[from];
+    document.getElementById('conv_rate').textContent = `1 ${from} = ${formatConv(rate)} ARS (vía USD Oficial)`;
+  } else {
+    // Resto de conversiones: usar exchangerate-api
+    const inUSD = amount / convRates[from];
+    result = inUSD * convRates[to];
+    rate   = convRates[to] / convRates[from];
+    document.getElementById('conv_rate').textContent = `1 ${from} = ${formatConv(rate)} ${to}`;
+  }
 
   document.getElementById('conv_result').textContent =
     `${toCur?.flag || ''} ${formatConv(result)} ${to}`;
-
-  const rate = convRates[to] / convRates[from];
-  document.getElementById('conv_rate').textContent =
-    `1 ${from} = ${formatConv(rate)} ${to}`;
-
   document.getElementById('conv_result_label').textContent =
     `${amount ? formatConv(amount) : '0'} ${from} =`;
 }
@@ -2787,16 +2825,16 @@ function renderRatesGrid() {
   grid.innerHTML = all.map(c => {
     if (!convRates[c.code]) return '';
     const rateToARS = convRates['ARS'] / convRates[c.code];
-    return `<div style="background:var(--surf);border:1px solid var(--border);
-      border-radius:var(--r-sm);padding:12px;cursor:pointer;transition:all 0.2s"
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+      border-radius:16px;padding:12px 10px;cursor:pointer;transition:all 0.2s"
       onclick="quickConvert('${c.code}','ARS')"
-      onmouseover="this.style.borderColor='var(--teal)'"
-      onmouseout="this.style.borderColor='var(--border)'">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div style="font-size:1rem">${c.flag}</div>
-          <div style="font-family:var(--font-display);font-weight:700;font-size:0.8rem;margin-top:2px">${c.code}</div>
-          <div style="font-size:0.65rem;color:var(--text3)">${c.name}</div>
+      onmouseover="this.style.borderColor='var(--primary)'"
+      onmouseout="this.style.borderColor='rgba(255,255,255,.07)'">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+        <div style="min-width:0">
+          <div style="font-size:1.1rem;margin-bottom:2px">${c.flag}</div>
+          <div style="font-weight:800;font-size:0.82rem">${c.code}</div>
+          <div style="font-size:0.62rem;color:var(--muted);white-space:normal;word-break:break-word;line-height:1.3;margin-top:2px">${c.name}</div>
         </div>
         <div style="text-align:right">
           <div style="font-family:var(--font-display);font-weight:800;font-size:0.88rem;color:var(--teal)">
@@ -3049,6 +3087,7 @@ async function startApp() {
   document.getElementById('appMain').style.display = 'block';
   updateAvatarBtn();
   nfSetLang(nfLang); // aplicar idioma guardado
+  initTabsScrollHint();
 }
 
 function showGroupScreen() {
@@ -3211,7 +3250,7 @@ function _gc(lbl, val) {
 function renderFlujo() {
   var el = document.getElementById('flujoContent');
   if (!el || !state) return;
-  var p1 = state.persona1||'P1', p2 = state.persona2||'P2';
+  var personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
   var gs = state.gastos||[], inc = state.ingresos||[];
   var tI = inc.reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
   var tG = gs.reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
@@ -3219,29 +3258,76 @@ function renderFlujo() {
   var vr = gs.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
   var eT = gs.filter(function(g){return g.medio==='tarjeta';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
   var sl = tI - tG;
-  var p1I = inc.filter(function(i){return i.quien===p1;}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
-  var p2I = inc.filter(function(i){return i.quien===p2;}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
-  var cpI = inc.filter(function(i){return i.quien==='Compartido';}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
-  el.innerHTML =
-    '<div style="background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:20px;margin-bottom:16px">' +
-    '<div style="font-size:17px;font-weight:800;margin-bottom:16px">🏦 Flujo mensual</div>' +
-    (p1I>0?_r(p1,fmt(p1I),'#12c7b7'):'') +
-    (p2I>0?_r(p2,fmt(p2I),'#12c7b7'):'') +
-    (cpI>0?_r('Compartido',fmt(cpI),'#12c7b7'):'') +
-    _dv() +
-    _r('Total ingresos',fmt(tI),'#1ec98f',true) +
-    _r('Gastos fijos',fmt(fj),'#6c63ff') +
-    _r('Flujo tras fijos',fmt(tI-fj),'#ffffff') +
-    _r('Gastos variables',fmt(vr),'#ff7a59') +
-    _r('En tarjeta',fmt(eT),'#f7c948') +
-    _dv() +
-    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 0">' +
-    '<span style="font-size:16px;font-weight:800">💰 Flujo libre</span>' +
-    '<span style="font-size:22px;font-weight:800;color:' + (sl>=0?'#1ec98f':'#ff7a59') + '">' + fmt(sl) + '</span></div></div>' +
-    '<div style="font-size:17px;font-weight:800;margin:4px 0 14px">🎯 Metas de ahorro</div>' +
-    (tI===0?'<div style="text-align:center;padding:20px;color:#95a6c7">Agregá ingresos para ver metas</div>':
-    '<div style="display:flex;gap:12px">'+_gc('10%',tI*.1)+_gc('20%',tI*.2)+_gc('Real',Math.max(0,sl))+'</div>');
+  var pctG = tI>0?Math.round(tG/tI*100):0;
+  var pctF = tG>0?Math.round(fj/tG*100):0;
+  var colors = ['#12c7b7','#6c63ff','#f7c948','#ff7a59','#1ec98f'];
+  var pInc = personas.map(function(p,i){
+    return {nombre:p,color:colors[i]||'#888',inc:inc.filter(function(x){return x.quien===p;}).reduce(function(a,x){return a+parseFloat(x.monto||0);},0)};
+  });
+  function fRow(label,value,color,bold,sub){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
+      '<div><div style="font-size:13px;font-weight:'+(bold?700:500)+';color:'+(bold?'var(--text)':'var(--muted)')+'">'+label+'</div>'+
+      (sub?'<div style="font-size:10px;color:var(--muted);margin-top:1px">'+sub+'</div>':'')+'</div>'+
+      '<div style="font-size:'+(bold?16:14)+'px;font-weight:800;color:'+(color||'var(--text)')+'">'+value+'</div></div>';
+  }
+  var html = '';
+  // HERO
+  html += '<div style="background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:20px 18px;margin-bottom:14px;box-shadow:var(--shadow)">';
+  html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:8px">FLUJO DEL MES</div>';
+  html += '<div style="font-size:36px;font-weight:800;letter-spacing:-1.5px;color:'+(sl>=0?'#7effd4':'#ffb3a0')+'">'+fmt(sl)+'</div>';
+  html += '<div style="font-size:12px;opacity:.65;margin-top:2px">'+(sl>=0?'disponible':'déficit')+' este mes</div>';
+  html += '<div style="height:1px;background:rgba(255,255,255,.15);margin:14px 0"></div>';
+  html += '<div style="display:flex;justify-content:space-between">';
+  html += '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Ingresos</div><div style="font-size:15px;font-weight:800;color:#fff">'+fmt(tI)+'</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Gastos</div><div style="font-size:15px;font-weight:800;color:#ffb3a0">'+fmt(tG)+'</div><div style="font-size:10px;opacity:.55">'+pctG+'% del ingreso</div></div>';
+  html += '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Fijos</div><div style="font-size:15px;font-weight:800;color:#c4b5fd">'+fmt(fj)+'</div><div style="font-size:10px;opacity:.55">'+pctF+'% de gastos</div></div>';
+  html += '</div></div>';
+  // DESGLOSE
+  html += '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Desglose</div>';
+  html += '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
+  pInc.forEach(function(p){if(p.inc>0)html+=fRow(p.nombre,fmt(p.inc),p.color,false);});
+  var ambosI=inc.filter(function(i){return i.quien==='Ambos';}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
+  if(ambosI>0)html+=fRow('Compartido',fmt(ambosI),'#f7c948',false);
+  html+=fRow('Total ingresos',fmt(tI),'#1ec98f',true);
+  html+='<div style="height:6px"></div>';
+  html+=fRow('Gastos fijos',fmt(fj),'#6c63ff',false,pctF+'% del total');
+  html+=fRow('Flujo tras fijos',fmt(tI-fj),(tI-fj>=0?'var(--text)':'#ff7a59'),false);
+  html+=fRow('Gastos variables',fmt(vr),'#ff7a59',false,(tG>0?(100-pctF):'0')+'% del total');
+  if(eT>0)html+=fRow('En tarjeta',fmt(eT),'#f7c948',false);
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px"><div style="font-size:15px;font-weight:800">💰 Flujo libre</div><div style="font-size:22px;font-weight:800;color:'+(sl>=0?'#1ec98f':'#ff7a59')+'">'+fmt(sl)+'</div></div>';
+  html+='</div>';
+  // BARRA DE PROGRESO
+  if(tI>0){
+    var pctFjBar=Math.min(100,Math.round(fj/tI*100));
+    var pctVrBar=Math.min(100-pctFjBar,Math.round(vr/tI*100));
+    var pctSlBar=Math.max(0,100-pctFjBar-pctVrBar);
+    html+='<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
+    html+='<div style="font-size:13px;font-weight:700;margin-bottom:12px">📊 Uso del ingreso</div>';
+    html+='<div style="display:flex;height:12px;border-radius:999px;overflow:hidden;gap:2px;margin-bottom:10px">';
+    html+='<div style="width:'+pctFjBar+'%;background:#6c63ff;border-radius:999px 0 0 999px"></div>';
+    html+='<div style="width:'+pctVrBar+'%;background:#ff7a59"></div>';
+    html+='<div style="width:'+pctSlBar+'%;background:#1ec98f;border-radius:0 999px 999px 0"></div>';
+    html+='</div><div style="display:flex;gap:14px;flex-wrap:wrap">';
+    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#6c63ff"></div><span style="font-size:11px;color:var(--muted)">Fijos '+pctFjBar+'%</span></div>';
+    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#ff7a59"></div><span style="font-size:11px;color:var(--muted)">Variables '+pctVrBar+'%</span></div>';
+    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#1ec98f"></div><span style="font-size:11px;color:var(--muted)">Libre '+pctSlBar+'%</span></div>';
+    html+='</div></div>';
+  }
+  // METAS
+  html+='<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🎯 Metas de ahorro</div>';
+  if(tI===0){
+    html+='<div style="text-align:center;padding:20px;color:var(--muted)">Agregá ingresos para ver las metas</div>';
+  } else {
+    html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
+    function gc2(lbl,val,color){var p=tI>0?Math.round(val/tI*100):0;return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px">'+lbl+'</div><div style="font-size:15px;font-weight:800;color:'+color+';letter-spacing:-.5px">'+fmt(val)+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+p+'% del ingreso</div></div>';}
+    html+=gc2('Ahorro 10%',tI*.1,'#12c7b7');
+    html+=gc2('Ahorro 20%',tI*.2,'#6c63ff');
+    html+=gc2('Real',Math.max(0,sl),sl>=0?'#1ec98f':'#ff7a59');
+    html+='</div>';
+  }
+  el.innerHTML = html;
 }
+
 
 </script>
 </body>
