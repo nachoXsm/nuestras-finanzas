@@ -457,12 +457,12 @@
       <div style="font-size:.85rem;color:var(--muted);line-height:1.5">¿Cómo querés usar la app?</div>
     </div>
     <!-- OPCIÓN 1: INDIVIDUAL -->
-    <div onclick="usarIndividual()" style="width:100%;background:rgba(18,199,183,.08);border:1.5px solid rgba(18,199,183,.3);border-radius:18px;padding:16px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(18,199,183,.15)'" onmouseout="this.style.background='rgba(18,199,183,.08)'">
+    <div onclick="configurarHogar()" style="width:100%;background:rgba(18,199,183,.08);border:1.5px solid rgba(18,199,183,.3);border-radius:18px;padding:16px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(18,199,183,.15)'" onmouseout="this.style.background='rgba(18,199,183,.08)'">
       <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:44px;height:44px;border-radius:14px;background:rgba(18,199,183,.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">👤</div>
+        <div style="width:44px;height:44px;border-radius:14px;background:rgba(18,199,183,.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🏠</div>
         <div>
-          <div style="font-weight:800;font-size:.95rem">Uso personal</div>
-          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Solo yo — mis gastos e ingresos</div>
+          <div style="font-weight:800;font-size:.95rem">Mi hogar</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Yo solo o con mi pareja — finanzas completas</div>
         </div>
         <div style="margin-left:auto;color:var(--primary);font-size:1.1rem">›</div>
       </div>
@@ -490,6 +490,70 @@
       </div>
     </div>
   </div>
+  <!-- FORMULARIO HOGAR -->
+  <div id="gsHogar" style="display:none;flex-direction:column;gap:14px;width:100%;max-width:340px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="gs-back" onclick="showWelcome()">‹</button>
+      <div class="gs-title">🏠 Mi hogar</div>
+    </div>
+
+    <!-- Opción A: Ya tengo cuenta -->
+    <div onclick="showHogarCodigo()" style="width:100%;background:rgba(18,199,183,.07);border:1.5px solid rgba(18,199,183,.25);border-radius:16px;padding:14px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(18,199,183,.14)'" onmouseout="this.style.background='rgba(18,199,183,.07)'">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:38px;height:38px;border-radius:12px;background:rgba(18,199,183,.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🔑</div>
+        <div>
+          <div style="font-weight:800;font-size:.9rem">Ya tengo una cuenta</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:1px">Ingresá tu código para acceder</div>
+        </div>
+        <div style="margin-left:auto;color:var(--primary)">›</div>
+      </div>
+    </div>
+
+    <!-- Opción B: Primera vez -->
+    <div onclick="showHogarNuevo()" style="width:100%;background:rgba(108,99,255,.07);border:1.5px solid rgba(108,99,255,.2);border-radius:16px;padding:14px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(108,99,255,.14)'" onmouseout="this.style.background='rgba(108,99,255,.07)'">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:38px;height:38px;border-radius:12px;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">✨</div>
+        <div>
+          <div style="font-weight:800;font-size:.9rem">Primera vez</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:1px">Crear mi espacio de finanzas</div>
+        </div>
+        <div style="margin-left:auto;color:#a89bff">›</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INGRESAR CON CÓDIGO -->
+  <div id="gsHogarCodigo" style="display:none;flex-direction:column;gap:14px;width:100%;max-width:340px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="gs-back" onclick="showHogarMenu()">‹</button>
+      <div class="gs-title">Ingresar con código</div>
+    </div>
+    <div style="font-size:.85rem;color:var(--muted);line-height:1.5">Ingresá el código de tu hogar para acceder a tus datos.</div>
+    <input class="gs-input" id="gh_codigo" type="text" placeholder="ABC-123" maxlength="7"
+      oninput="this.value=this.value.toUpperCase()"
+      style="font-size:1.6rem;font-weight:800;text-align:center;letter-spacing:5px">
+    <div class="gs-error" id="ghCodigoError"></div>
+    <button class="gs-btn gs-btn-primary" onclick="ingresarConCodigo()" id="btnIngresarCodigo">Entrar →</button>
+  </div>
+
+  <!-- CREAR HOGAR NUEVO -->
+  <div id="gsHogarNuevo" style="display:none;flex-direction:column;gap:14px;width:100%;max-width:340px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="gs-back" onclick="showHogarMenu()">‹</button>
+      <div class="gs-title">Crear mi hogar</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600">Tu nombre</label>
+      <input class="gs-input" id="gh_nombre1" type="text" placeholder="Ej: Nacho">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600">Pareja / conviviente <span style="opacity:.5;font-weight:400;text-transform:none">(opcional)</span></label>
+      <input class="gs-input" id="gh_nombre2" type="text" placeholder="Ej: Celi">
+    </div>
+    <div class="gs-error" id="ghError"></div>
+    <button class="gs-btn gs-btn-primary" onclick="crearHogar()" id="btnCrearHogar">Crear →</button>
+  </div>
+
   <div id="gsCreate" style="display:none;flex-direction:column;gap:16px;width:100%;max-width:340px">
     <div style="display:flex;align-items:center;gap:10px">
       <button class="gs-back" onclick="showWelcome()">‹</button>
@@ -3009,38 +3073,92 @@ function saveGroupLocal(grupo) {
 }
 
 function showWelcome() {
+  ['gsHogar','gsHogarCodigo','gsHogarNuevo','gsCreate','gsJoin','gsSuccess'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
   document.getElementById('gsWelcome').style.display = 'flex';
-  document.getElementById('gsCreate').style.display = 'none';
-  document.getElementById('gsJoin').style.display = 'none';
-  document.getElementById('gsSuccess').style.display = 'none';
 }
 
-async function usarIndividual() {
-  // Crear grupo personal con solo 1 integrante
-  const nombre = 'Mi cuenta personal';
+function configurarHogar() {
+  hideAllGsScreens();
+  document.getElementById('gsHogar').style.display = 'flex';
+}
+
+function hideAllGsScreens() {
+  ['gsWelcome','gsHogar','gsHogarCodigo','gsHogarNuevo','gsCreate','gsJoin','gsSuccess'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+
+function showHogarMenu() {
+  hideAllGsScreens();
+  document.getElementById('gsHogar').style.display = 'flex';
+}
+
+function showHogarCodigo() {
+  hideAllGsScreens();
+  document.getElementById('gsHogarCodigo').style.display = 'flex';
+  setTimeout(function(){ var el=document.getElementById('gh_codigo'); if(el) el.focus(); }, 200);
+}
+
+function showHogarNuevo() {
+  hideAllGsScreens();
+  document.getElementById('gsHogarNuevo').style.display = 'flex';
+}
+
+async function ingresarConCodigo() {
+  const codigo = (document.getElementById('gh_codigo').value || '').trim().toUpperCase();
+  const err = document.getElementById('ghCodigoError');
+  const btn = document.getElementById('btnIngresarCodigo');
+  if (codigo.length < 6) { err.textContent = 'El código debe tener 6 caracteres'; return; }
+  btn.textContent = 'Buscando…';
+  try {
+    const res = await dbGet('grupos', 'codigo=eq.' + codigo);
+    if (!res || res.length === 0) {
+      err.textContent = 'Código no encontrado. Verificá e intentá de nuevo.';
+      btn.textContent = 'Entrar →';
+      return;
+    }
+    const grupo = res[0];
+    grupo.personasArray = JSON.parse(grupo.personas || '[]') || [grupo.persona1, grupo.persona2].filter(Boolean);
+    grupo.esHogar = true;
+    saveGroupLocal(grupo);
+    toast('✅ ¡Bienvenido/a de vuelta!');
+    enterApp();
+  } catch(e) {
+    err.textContent = 'Error de conexión. Verificá tu internet.';
+    btn.textContent = 'Entrar →';
+  }
+}
+
+async function crearHogar() {
+  const nombre1 = document.getElementById('gh_nombre1').value.trim();
+  const nombre2 = document.getElementById('gh_nombre2').value.trim();
+  const err = document.getElementById('ghError');
+  const btn = document.getElementById('btnCrearHogar');
+  if (!nombre1) { err.textContent = 'Ingresá tu nombre'; return; }
+  const personas = nombre2 ? [nombre1, nombre2] : [nombre1];
+  const nombre = nombre2 ? (nombre1 + ' & ' + nombre2) : ('Hogar de ' + nombre1);
   const codigo = generateCode();
+  btn.textContent = 'Creando…';
   try {
     const res = await dbPost('grupos', {
       codigo, nombre,
-      persona1: 'Yo', persona2: '',
-      personas: JSON.stringify(['Yo'])
+      persona1: personas[0], persona2: personas[1] || '',
+      personas: JSON.stringify(personas)
     });
     const grupo = res[0];
-    grupo.personasArray = ['Yo'];
-    grupo.esIndividual = true;
+    grupo.personasArray = personas;
+    grupo.esHogar = true;
     saveGroupLocal(grupo);
-    enterApp();
+    // Mostrar el código antes de entrar
+    hideAllGsScreens();
+    document.getElementById('gsSuccess').style.display = 'flex';
+    document.getElementById('gsCode').textContent = codigo;
   } catch(e) {
-    // Si falla la red, crear localmente igual
-    const grupo = {
-      id: 'local_' + Date.now(),
-      codigo, nombre,
-      persona1: 'Yo', persona2: '',
-      personasArray: ['Yo'],
-      esIndividual: true
-    };
-    saveGroupLocal(grupo);
-    enterApp();
+    err.textContent = 'Error de conexión. Verificá tu internet.';
+    btn.textContent = 'Crear →';
   }
 }
 
