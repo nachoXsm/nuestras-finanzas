@@ -3108,25 +3108,38 @@ function showHogarNuevo() {
 }
 
 async function ingresarConCodigo() {
-  const codigo = (document.getElementById('gh_codigo').value || '').trim().toUpperCase();
+  var raw = (document.getElementById('gh_codigo').value || '').trim().toUpperCase();
+  // Normalizar: aceptar con o sin guión
+  var codigo = raw.replace('-', '');
+  // Intentar buscar con guión (formato guardado) y sin guión
+  var codigoConGuion = codigo.length === 6 ? codigo.slice(0,3) + '-' + codigo.slice(3) : raw;
   const err = document.getElementById('ghCodigoError');
   const btn = document.getElementById('btnIngresarCodigo');
   if (codigo.length < 6) { err.textContent = 'El código debe tener 6 caracteres'; return; }
   btn.textContent = 'Buscando…';
+  err.textContent = '';
   try {
-    const res = await dbGet('grupos', 'codigo=eq.' + codigo);
+    // Buscar con ambos formatos
+    var res = await dbGet('grupos', 'codigo=eq.' + codigoConGuion);
+    if (!res || res.length === 0) {
+      res = await dbGet('grupos', 'codigo=eq.' + codigo);
+    }
     if (!res || res.length === 0) {
       err.textContent = 'Código no encontrado. Verificá e intentá de nuevo.';
       btn.textContent = 'Entrar →';
       return;
     }
     const grupo = res[0];
-    grupo.personasArray = JSON.parse(grupo.personas || '[]') || [grupo.persona1, grupo.persona2].filter(Boolean);
+    try { grupo.personasArray = JSON.parse(grupo.personas || '[]'); } catch(e2){}
+    if (!grupo.personasArray || !grupo.personasArray.length) {
+      grupo.personasArray = [grupo.persona1, grupo.persona2].filter(Boolean);
+    }
     grupo.esHogar = true;
     saveGroupLocal(grupo);
     toast('✅ ¡Bienvenido/a de vuelta!');
     enterApp();
   } catch(e) {
+    console.error(e);
     err.textContent = 'Error de conexión. Verificá tu internet.';
     btn.textContent = 'Entrar →';
   }
