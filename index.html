@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>NuestrasFinanzas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2277,10 +2280,22 @@ function copyGroupCode() {
 
 function cerrarSesion() {
   if (!confirm('¿Cerrar sesión?')) return;
-  sessionStorage.removeItem('nf_sess');
+  localStorage.clear();
+  sessionStorage.clear();
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      regs.forEach(function(r){ r.unregister(); });
+    });
+  }
+  if(window.caches){
+    caches.keys().then(function(keys){ keys.forEach(function(k){ caches.delete(k); }); });
+  }
   closePerfil();
-  location.reload();
+  setTimeout(function(){
+    window.location.href = window.location.pathname + '?nocache=' + Date.now();
+  }, 300);
 }
+
 
 function buildManifest(){
   const m={name:'NuestrasFinanzas',short_name:'NuestrasFinanzas',start_url:'.',display:'standalone',background_color:'#0d1225',theme_color:'#0d1225',orientation:'portrait',icons:[{src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any maskable'},{src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
@@ -3580,10 +3595,16 @@ toggleTheme = function(){
   if(btn) btn.textContent = isDark ? '☀️' : '🌙';
 };
 
+// Desregistrar service workers viejos y limpiar cache para forzar actualizaciones
 if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){
-    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(r){ r.unregister(); });
   });
+  if(window.caches){
+    caches.keys().then(function(keys){
+      keys.forEach(function(k){ caches.delete(k); });
+    });
+  }
 }
 
 // ============================================
@@ -3798,7 +3819,8 @@ function renderGruposPanel() {
 
   function grupoCard(g, isActivo) {
     const ps = g.personasArray || [g.persona1, g.persona2].filter(Boolean);
-    const isHogar = g.esHogar || (!g.esGrupo && !g._esGrupoExtra);
+    const hogarId = getHogarId();
+    const isHogar = (hogarId && g.id === hogarId) || g.esHogar === true;
     const icon = isHogar ? '🏠' : '👥';
     const color = isHogar ? 'rgba(18,199,183,.15)' : 'rgba(108,99,255,.15)';
     const textColor = isHogar ? 'var(--primary)' : '#a89bff';
@@ -3819,14 +3841,27 @@ function renderGruposPanel() {
     </div>`;
   }
 
+  // Separar hogar de grupos de gastos
+  const hogarId = getHogarId();
+  const todosGrupos = gruposExtra.concat(grupoActual ? [] : []);
+  
+  // El hogar es el que tiene el ID guardado en nf_hogar_id
+  let hogar = hogarId ? (grupoActual && grupoActual.id === hogarId ? grupoActual : gruposExtra.find(function(g){ return g.id === hogarId; })) : grupoActual;
+  if (!hogar && grupoActual && grupoActual.esHogar) hogar = grupoActual;
+  if (!hogar) hogar = grupoActual; // fallback
+
+  // Grupos de gastos = los que NO son el hogar
+  const todosConActual = gruposExtra.concat(grupoActual ? [grupoActual] : []);
+  const gruposDeGastos = todosConActual.filter(function(g){ return g.id !== (hogar && hogar.id); });
+
   let html = '';
   html += '<div style="padding:8px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Mi hogar</div>';
-  if (grupoActual) html += grupoCard(grupoActual, true);
+  if (hogar) html += grupoCard(hogar, grupoActual && grupoActual.id === hogar.id);
 
-  if (gruposExtra.length > 0) {
+  if (gruposDeGastos.length > 0) {
     html += '<div class="grupo-divider"></div>';
     html += '<div style="padding:8px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Grupos de gastos</div>';
-    gruposExtra.forEach(function(g) { html += grupoCard(g, false); });
+    gruposDeGastos.forEach(function(g) { html += grupoCard(g, grupoActual && grupoActual.id === g.id); });
   }
 
   html += '<div class="grupo-divider"></div>';
