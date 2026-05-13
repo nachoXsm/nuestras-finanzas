@@ -620,7 +620,7 @@
       <button class="gs-copy-btn" onclick="enviarInvitacion()" style="white-space:nowrap">Invitar →</button>
     </div>
     <div class="gs-error" id="gsInviteMsg" style="color:var(--success)"></div>
-    <button class="gs-btn gs-btn-primary" onclick="enterApp()">Entrar a la app →</button>
+    <button class="gs-btn gs-btn-primary" onclick="enterAppSegunTipo()">Entrar a la app →</button>
   </div>
 </div>
 
@@ -1888,7 +1888,19 @@ function renderAll() {
   document.getElementById('flujoContent').innerHTML = ''; renderFlujo();
   // Si es modo grupo, ocultar secciones de hogar y mostrar balance
   if (typeof esModoGrupo === 'function' && esModoGrupo()) {
-    setTimeout(function() { ocultarSeccionesHogar(); mostrarBalanceGrupo(); }, 50);
+    setTimeout(function() {
+      if (esModoGrupo()) activarModoGrupo();
+      else {
+        var navT = document.getElementById('nav-tarjetas');
+        if(navT) navT.style.display = '';
+        var tw = document.getElementById('tabsWrap');
+        if(tw) tw.querySelectorAll('.tab').forEach(function(t){ t.style.display=''; });
+        var bc = document.querySelector('.balance-card');
+        if(bc) bc.style.display = '';
+        var sm = document.getElementById('summary');
+        if(sm) sm.style.display = '';
+      }
+    }, 100);
   }
 }
 
@@ -3275,8 +3287,8 @@ async function crearHogar() {
     grupo.esHogar = true;
     saveGroupLocal(grupo);
     setHogarId(grupo.id);
-    setModoHogar(); // Modo hogar explícito
-    // Mostrar el código antes de entrar
+    setModoHogar();
+    _tipoCreado = 'hogar'; // Marcar que se creó un hogar
     hideAllGsScreens();
     document.getElementById('gsSuccess').style.display = 'flex';
     document.getElementById('gsCode').textContent = codigo;
@@ -3385,14 +3397,9 @@ async function createGroup() {
     });
     const grupo = res[0];
     grupo.personasArray = personas;
-    grupo.esGrupo = true;  // Marca como grupo de gastos (no hogar)
+    grupo.esGrupo = true;
     saveGroupLocal(grupo);
-
-    grupo._esGrupoExtra = true;
-    // Guardar en extras y mantener modo hogar hasta que el usuario elija entrar
-    const extrasActuales = getGruposGuardados();
-    const yaExiste = extrasActuales.find(function(g){ return g.id === grupo.id; });
-    if (!yaExiste) { extrasActuales.push(grupo); saveGruposExtra(extrasActuales); }
+    _tipoCreado = 'grupo'; // Marcar que se creó un grupo de gastos
     document.getElementById('gsCreate').style.display = 'none';
     document.getElementById('gsSuccess').style.display = 'flex';
     document.getElementById('gsCode').textContent = codigo;
@@ -3431,6 +3438,17 @@ async function joinGroup() {
 function copyCode() {
   const code = document.getElementById('gsCode').textContent;
   navigator.clipboard.writeText(code).then(() => toast('✅ Código copiado'));
+}
+
+var _tipoCreado = 'hogar'; // 'hogar' o 'grupo'
+
+function enterAppSegunTipo() {
+  if (_tipoCreado === 'grupo') {
+    setModoGrupo();
+  } else {
+    setModoHogar();
+  }
+  enterApp();
 }
 
 function enterApp() {
