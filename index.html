@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <!-- BUILD: 20260513-002 -->
+  <!-- BUILD: 20260513-003 -->
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <script>
     // VERSION CHECK — cambia este número en cada deploy
-    var APP_VERSION = "20260513-002";
+    var APP_VERSION = "20260513-003";
     var storedVersion = localStorage.getItem('nf_app_version');
     if (storedVersion && storedVersion !== APP_VERSION) {
       // Versión nueva detectada — limpiar caché y recargar
@@ -1889,19 +1889,9 @@ function renderAll() {
   document.getElementById('flujoContent').innerHTML = ''; renderFlujo();
   // Si es modo grupo, ocultar secciones de hogar y mostrar balance
   if (typeof esModoGrupo === 'function' && esModoGrupo()) {
-    setTimeout(function() {
-      if (esModoGrupo()) activarModoGrupo();
-      else {
-        var navT = document.getElementById('nav-tarjetas');
-        if(navT) navT.style.display = '';
-        var tw = document.getElementById('tabsWrap');
-        if(tw) tw.querySelectorAll('.tab').forEach(function(t){ t.style.display=''; });
-        var bc = document.querySelector('.balance-card');
-        if(bc) bc.style.display = '';
-        var sm = document.getElementById('summary');
-        if(sm) sm.style.display = '';
-      }
-    }, 100);
+    if (esModoGrupo()) {
+      activarModoGrupo();
+    }
   }
 }
 
@@ -3514,6 +3504,17 @@ async function startApp() {
   const grupo = loadGroup();
   if (!grupo) return;
   state.grupoId = grupo.id;
+
+  // DETECTAR MODO al iniciar — comparar grupo activo con hogar guardado
+  const hogarId = getHogarId();
+  if (hogarId && grupo.id !== hogarId) {
+    setModoGrupo();
+  } else if (!hogarId && (grupo.esGrupo || grupo._esGrupoExtra)) {
+    setModoGrupo();
+  } else {
+    setModoHogar();
+  }
+
   updatePersonaNames();
   await loadAll();
   document.getElementById('loader').style.display = 'none';
@@ -3521,13 +3522,15 @@ async function startApp() {
   updateAvatarBtn();
   nfSetLang(nfLang);
   initTabsScrollHint();
-  // Configurar UI según modo
+
+  // Aplicar modo
   if (esModoGrupo()) {
     activarModoGrupo();
   } else {
     activarModoHogar();
   }
 }
+
 
 function showGroupScreen() {
   document.getElementById('loader').style.display = 'none';
