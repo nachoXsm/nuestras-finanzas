@@ -1117,27 +1117,23 @@ var NF_LANGS={
 var nfLang=localStorage.getItem('nf_lang')||'es';
 function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; return (lang&&lang[key])||(NF_LANGS['es']&&NF_LANGS['es'][key])||key||''; }
 
-function esHogar() {
-  var g = loadGroup();
-  if (!g) return true;
-  // Usar campo tipo de Supabase como fuente de verdad
-  if (g.tipo === 'grupo') return false;
-  if (g.tipo === 'hogar') return true;
-  // Fallback: comparar con hogar guardado
-  var hogarId = localStorage.getItem('nf_hogar_id');
-  if (hogarId) return g.id === hogarId;
-  return !g.esGrupo;
+function getHogarId() {
+  return localStorage.getItem('nf_hogar_id');
+}
+function setHogarId(id) {
+  localStorage.setItem('nf_hogar_id', id);
 }
 function esModoGrupo() {
   var g = loadGroup();
   if (!g) return false;
-  // Usar campo tipo de Supabase como fuente de verdad
-  if (g.tipo === 'grupo') return true;
-  if (g.tipo === 'hogar') return false;
-  // Fallback
-  var hogarId = localStorage.getItem('nf_hogar_id');
+  var hogarId = getHogarId();
+  // Si hay hogarId guardado y el grupo activo es diferente → es grupo de gastos
   if (hogarId) return g.id !== hogarId;
-  return g.esGrupo === true;
+  // Sin hogarId: nunca mostrar como grupo (evitar falsos positivos)
+  return false;
+}
+function esHogar() {
+  return !esModoGrupo();
 }
 function setModoHogar() {}
 function setModoGrupo() {}
@@ -3167,15 +3163,6 @@ function loadGroup() {
 function saveGroupLocal(grupo) {
   localStorage.setItem('nf_grupo', JSON.stringify(grupo));
 }
-
-function getHogarId() {
-  return localStorage.getItem('nf_hogar_id');
-}
-
-function setHogarId(id) {
-  localStorage.setItem('nf_hogar_id', id);
-}
-
 function showWelcome() {
   ['gsHogar','gsHogarCodigo','gsHogarNuevo','gsCreate','gsJoin','gsSuccess'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.style.display = 'none';
@@ -3238,11 +3225,11 @@ async function ingresarConCodigo() {
     if (!grupo.personasArray || !grupo.personasArray.length) {
       grupo.personasArray = [grupo.persona1, grupo.persona2].filter(Boolean);
     }
-    // Si no tiene tipo definido, marcarlo como hogar (acceso por código = hogar)
-    if (!grupo.tipo) grupo.tipo = 'hogar';
-    grupo.esHogar = grupo.tipo === 'hogar';
+    // Entrar por "Mi Hogar" = SIEMPRE es el hogar, sin importar el tipo guardado
+    grupo.tipo = 'hogar';
+    grupo.esHogar = true;
     saveGroupLocal(grupo);
-    if (grupo.tipo === 'hogar') setHogarId(grupo.id);
+    setHogarId(grupo.id); // Guardar como hogar permanentemente
     toast('✅ ¡Bienvenido/a de vuelta!');
     enterApp();
   } catch(e) {
@@ -3418,8 +3405,25 @@ async function joinGroup() {
     if (!grupo.personasArray) {
       grupo.personasArray = [grupo.persona1, grupo.persona2].filter(Boolean);
     }
+    // Unirse con código = es un grupo de gastos, no el hogar
+    grupo.tipo = grupo.tipo || 'grupo';
     saveGroupLocal(grupo);
-    enterApp();
+    // Agregar a lista de grupos extra (no reemplazar el hogar)
+    const hogarId = getHogarId();
+    if (hogarId) {
+      // Ya hay un hogar — agregar como grupo extra
+      const extras = getGruposGuardados();
+      if (!extras.find(function(g){ return g.id === grupo.id; })) {
+        extras.push(grupo);
+        saveGruposExtra(extras);
+      }
+      // Volver al hogar, no cambiar el grupo activo
+      toast('✅ Grupo agregado a tu lista de grupos');
+      document.getElementById('groupScreen').style.display = 'none';
+      startApp();
+    } else {
+      enterApp();
+    }
   } catch(e) {
     err.textContent = 'Error de conexión. Revisá tu internet.';
   }
@@ -3976,12 +3980,15 @@ async function switchToGrupo(id) {
   const destino = todos.find(function(g){ return g.id === id; });
   if (!destino) return;
 
+  // Guardar el hogar actual en extras si no estaba
   const hId = getHogarId();
-  const esGrupoDestino = hId && destino.id !== hId;
-  if (esGrupoDestino) {
-    setModoGrupo();
-  } else {
-    setModoHogar();
+  const grupoActualParaExtra = loadGroup();
+  if (grupoActualParaExtra && grupoActualParaExtra.id !== destino.id) {
+    const extras = getGruposGuardados();
+    if (!extras.find(function(g){ return g.id === grupoActualParaExtra.id; })) {
+      extras.push(grupoActualParaExtra);
+      saveGruposExtra(extras);
+    }
   }
 
   saveGroupLocal(destino);
