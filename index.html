@@ -2499,8 +2499,8 @@ renderAll = function() {
       </div>`).join('');
 
   // FLUJO
-  personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
-  const personaIngresosF = personas.map(p => ({
+  const personasF = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
+  const personaIngresosF = personasF.map(p => ({
     nombre: p,
     total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
   }));
