@@ -364,7 +364,7 @@
     .month-opt:hover{border-color:var(--primary);color:var(--primary)}.month-opt.active{background:rgba(18,199,183,.2);color:var(--primary);border-color:var(--primary)}
 
     /* BOTTOM NAV */
-    .bottom-nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;display:none;justify-content:space-around;align-items:center;background:rgba(8,17,31,.94);backdrop-filter:blur(24px);padding:12px 16px 16px;border-radius:24px;border:1px solid rgba(255,255,255,.06);box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:100}
+    .bottom-nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;display:none;justify-content:space-around;align-items:center;background:rgba(8,17,31,.94);backdrop-filter:blur(24px);padding:12px 16px 16px;border-radius:24px;border:1px solid rgba(255,255,255,.06);box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:200}
     .nav-item{font-size:11px;color:var(--muted);font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:0 4px;transition:color .2s}
     .nav-item.active{color:var(--primary)}
     .nav-icon{font-size:20px}
@@ -935,7 +935,7 @@
   <div class="nav-item" id="nav-analisis" onclick="switchTab('flujo');setNavActive('nav-analisis')">
     <span class="nav-icon">📊</span>Análisis
   </div>
-  <div class="nav-item" id="nav-cuenta" onclick="switchTab('cuenta');setNavActive('nav-cuenta')">
+  <div class="nav-item" id="nav-cuenta" onclick="openPerfil();setNavActive('nav-cuenta')">
     <span class="nav-icon">👤</span>Cuenta
   </div>
 </nav>
@@ -2234,9 +2234,14 @@ function copyGroupCode() {
 
 function cerrarSesion() {
   if (!confirm('¿Cerrar sesión?')) return;
+  // Limpiar sesión y grupo guardado
   sessionStorage.removeItem('nf_sess');
+  localStorage.removeItem('nf_grupo');
+  localStorage.removeItem('nf_pin');
+  localStorage.removeItem('nf_cid');
   closePerfil();
-  location.reload();
+  // Forzar recarga completa
+  setTimeout(function(){ location.href = location.href.split('?')[0]; }, 100);
 }
 
 function buildManifest(){
@@ -2450,6 +2455,11 @@ renderAll = function() {
 
 // Override renderInforme
 renderInforme = function() {
+  // En modo grupo mostrar solo balance de participantes
+  if (typeof esModoGrupo === 'function' && esModoGrupo()) {
+    renderInformeGrupo();
+    return;
+  }
   const {gastos,ingresos}=state;
   const totalInc=ingresos.reduce((a,i)=>a+parseFloat(i.monto),0);
   const totalGas=gastos.reduce((a,g)=>a+parseFloat(g.monto),0);
@@ -3560,30 +3570,37 @@ function activarModoGrupo() {
   var grupo = loadGroup();
   var nombreGrupo = grupo ? grupo.nombre : 'Grupo';
 
-  // Banner de modo grupo en el header
+  // Banner de modo grupo
   if (!document.getElementById('modoGrupoBanner')) {
     var banner = document.createElement('div');
     banner.id = 'modoGrupoBanner';
     banner.style.cssText = 'background:linear-gradient(135deg,#1a2b5e,var(--secondary));padding:8px 18px;display:flex;justify-content:space-between;align-items:center';
     banner.innerHTML = '<span style="font-size:12px;font-weight:700;color:white">👥 ' + nombreGrupo + '</span>' +
-      '<span style="font-size:11px;color:rgba(255,255,255,.65)">Modo grupo de gastos</span>';
+      '<span style="font-size:11px;color:rgba(255,255,255,.65)">Grupo de gastos</span>';
     var hdr = document.querySelector('.hdr');
     if (hdr) hdr.insertAdjacentElement('afterend', banner);
   }
 
-  // Ocultar tabs que no aplican
+  // Tabs: solo Gastos, Categ. e Informe y Conversor (no Tarjetas, no Flujo)
   var tabsWrap = document.getElementById('tabsWrap');
   if (tabsWrap) {
-    var tabs = tabsWrap.querySelectorAll('.tab');
-    var visibles = ['gastos', 'categorias'];
-    tabs.forEach(function(t) {
-      var onclick = t.getAttribute('onclick') || '';
-      var visible = visibles.some(function(v){ return onclick.includes(v); });
-      t.style.display = visible ? '' : 'none';
+    tabsWrap.querySelectorAll('.tab').forEach(function(t) {
+      var oc = t.getAttribute('onclick') || '';
+      var ok = oc.includes('gastos') || oc.includes('categorias') || oc.includes('informe') || oc.includes('conversor');
+      t.style.display = ok ? '' : 'none';
     });
   }
 
-  // Ocultar sección de ingresos al renderizar
+  // Nav bottom: ocultar Tarjetas
+  var navTarjetas = document.getElementById('nav-tarjetas');
+  if (navTarjetas) navTarjetas.style.display = 'none';
+
+  // Ocultar balance card y summary
+  var balCard = document.querySelector('.balance-card');
+  if (balCard) balCard.style.display = 'none';
+  var summary = document.getElementById('summary');
+  if (summary) summary.style.display = 'none';
+
   setTimeout(function() {
     ocultarSeccionesHogar();
     mostrarBalanceGrupo();
@@ -3613,6 +3630,78 @@ function ocultarSeccionesHogar() {
   if (balCard) balCard.style.display = 'none';
 }
 
+function renderInformeGrupo() {
+  var el = document.getElementById('informeContent');
+  if (!el) return;
+  var gs = state.gastos || [];
+  var totalGrupo = gs.reduce(function(a,g){ return a+parseFloat(g.monto||0); }, 0);
+  var gastosPorPersona = {};
+  gs.forEach(function(g) {
+    var q = g.quien || 'Ambos';
+    gastosPorPersona[q] = (gastosPorPersona[q]||0) + parseFloat(g.monto||0);
+  });
+  var participantes = Object.keys(gastosPorPersona);
+  var parteIgual = participantes.length > 0 ? totalGrupo / participantes.length : 0;
+  var balances = {};
+  participantes.forEach(function(p){ balances[p] = (gastosPorPersona[p]||0) - parteIgual; });
+  var deudas = [];
+  var acreedores = participantes.filter(function(p){ return balances[p] > 0.5; });
+  var deudores   = participantes.filter(function(p){ return balances[p] < -0.5; });
+  acreedores.forEach(function(ac) {
+    deudores.forEach(function(de) {
+      var monto = Math.min(balances[ac], Math.abs(balances[de]));
+      if (monto > 0.5) { deudas.push({de:de,a:ac,monto:monto}); balances[ac]-=monto; balances[de]+=monto; }
+    });
+  });
+
+  var html = '<div class="inf-section-title">Resumen del grupo</div>';
+  html += '<div class="inf-hero">';
+  html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">GASTOS DEL GRUPO</div>';
+  html += '<div class="inf-hero-row">';
+  html += '<div class="inf-hero-stat"><div class="inf-hero-label">Total</div><div class="inf-hero-val neu">' + fmt(totalGrupo) + '</div></div>';
+  html += '<div class="inf-hero-divider"></div>';
+  html += '<div class="inf-hero-stat" style="text-align:center"><div class="inf-hero-label">Parte c/u</div><div class="inf-hero-val neu">' + fmt(parteIgual) + '</div></div>';
+  html += '<div class="inf-hero-divider"></div>';
+  html += '<div class="inf-hero-stat" style="text-align:right"><div class="inf-hero-label">Participantes</div><div class="inf-hero-val neu">' + participantes.length + '</div></div>';
+  html += '</div></div>';
+
+  // Cuánto pagó cada uno
+  html += '<div class="inf-section-title">Pago por participante</div>';
+  html += '<div class="inf-chart-card">';
+  participantes.forEach(function(p, i) {
+    var colors = ['#12c7b7','#6c63ff','#f7c948','#ff7a59','#1ec98f'];
+    var col = colors[i % colors.length];
+    var pct = totalGrupo > 0 ? Math.round(gastosPorPersona[p]/totalGrupo*100) : 0;
+    var saldo = balances[p] > 0.5 ? '✅ Le deben ' + fmt(balances[p]) : balances[p] < -0.5 ? '⚠️ Debe ' + fmt(Math.abs(balances[p])) : '✅ Al día';
+    html += '<div class="inf-persona-card">';
+    html += '<div class="inf-persona-avatar" style="background:' + col + '20;color:' + col + '">' + p[0].toUpperCase() + '</div>';
+    html += '<div class="inf-persona-info"><div class="inf-persona-name">' + p + '</div>';
+    html += '<div class="inf-persona-bar-bg"><div class="inf-persona-fill" style="width:' + pct + '%;background:' + col + '"></div></div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-top:3px">' + saldo + '</div></div>';
+    html += '<div class="inf-persona-right"><div class="inf-persona-inc" style="color:' + col + '">' + fmt(gastosPorPersona[p]) + '</div><div class="inf-persona-gas">' + pct + '%</div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Quién debe a quién
+  html += '<div class="inf-section-title">💸 Liquidar cuentas</div>';
+  if (deudas.length === 0) {
+    html += '<div style="background:rgba(30,201,143,.08);border:1px solid rgba(30,201,143,.2);border-radius:14px;padding:16px;text-align:center">';
+    html += '<div style="font-size:1.4rem">✅</div><div style="font-size:13px;font-weight:700;color:var(--success);margin-top:6px">¡Todos están al día!</div></div>';
+  } else {
+    html += '<div class="inf-chart-card">';
+    deudas.forEach(function(d) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+      html += '<div><span style="font-weight:700;color:var(--danger)">' + d.de + '</span>';
+      html += '<span style="font-size:11px;color:var(--muted)"> le debe a </span>';
+      html += '<span style="font-weight:700;color:var(--success)">' + d.a + '</span></div>';
+      html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span></div>';
+    });
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
 function mostrarBalanceGrupo() {
   var gs = state.gastos || [];
   var personas = state.personas || [];
@@ -3637,75 +3726,52 @@ function mostrarBalanceGrupo() {
     balances[p] = (gastosPorPersona[p] || 0) - parteIgual;
   });
 
-  // Crear deudas
+  // Calcular deudas
   var deudas = [];
   var acreedores = participantes.filter(function(p){ return balances[p] > 0.5; });
   var deudores   = participantes.filter(function(p){ return balances[p] < -0.5; });
   acreedores.forEach(function(ac) {
     deudores.forEach(function(de) {
       var monto = Math.min(balances[ac], Math.abs(balances[de]));
-      if (monto > 0.5) {
-        deudas.push({ de: de, a: ac, monto: monto });
-        balances[ac] -= monto;
-        balances[de] += monto;
-      }
+      if (monto > 0.5) { deudas.push({de:de,a:ac,monto:monto}); balances[ac]-=monto; balances[de]+=monto; }
     });
   });
 
-  // Insertar el panel de balance ANTES de la lista de gastos
-  var existing = document.getElementById('grupoBalancePanel');
-  if (existing) existing.remove();
-
-  var panel = document.createElement('div');
-  panel.id = 'grupoBalancePanel';
-  panel.style.cssText = 'margin-bottom:16px';
-
-  var html = '';
-
-  // Resumen del grupo
-  html += '<div style="background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow)">';
-  html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">TOTAL DEL GRUPO</div>';
-  html += '<div style="font-size:32px;font-weight:800;letter-spacing:-1px;color:#fff">' + fmt(totalGrupo) + '</div>';
-  html += '<div style="font-size:12px;opacity:.6;margin-top:2px">' + participantes.length + ' participantes · ' + fmt(parteIgual) + ' c/u</div>';
-  html += '<div style="height:1px;background:rgba(255,255,255,.15);margin:12px 0"></div>';
-  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-  participantes.forEach(function(p) {
-    var gasto = gastosPorPersona[p] || 0;
-    html += '<div style="background:rgba(255,255,255,.12);border-radius:10px;padding:8px 12px">';
-    html += '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.7)">' + p + '</div>';
-    html += '<div style="font-size:14px;font-weight:800;color:#fff">' + fmt(gasto) + '</div>';
-    html += '</div>';
-  });
-  html += '</div></div>';
-
-  // Panel de balance "quién le debe a quién"
-  if (deudas.length > 0) {
-    html += '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
-    html += '<div style="font-size:13px;font-weight:800;margin-bottom:12px">💸 Balance</div>';
-    deudas.forEach(function(d) {
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
-      html += '<div style="display:flex;align-items:center;gap:8px">';
-      html += '<span style="font-size:13px;font-weight:600;color:var(--danger)">' + d.de + '</span>';
-      html += '<span style="font-size:11px;color:var(--muted)">le debe a</span>';
-      html += '<span style="font-size:13px;font-weight:600;color:var(--success)">' + d.a + '</span>';
-      html += '</div>';
-      html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span>';
-      html += '</div>';
-    });
-    html += '</div>';
-  } else if (participantes.length > 1) {
-    html += '<div style="background:rgba(30,201,143,.08);border:1px solid rgba(30,201,143,.2);border-radius:14px;padding:14px;text-align:center;margin-bottom:14px">';
-    html += '<div style="font-size:1.4rem">✅</div>';
-    html += '<div style="font-size:13px;font-weight:700;color:var(--success);margin-top:6px">¡Todos están al día!</div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">No hay deudas pendientes</div>';
-    html += '</div>';
+  // Reemplazar la balance-card con datos del grupo
+  var balCard = document.querySelector('.balance-card');
+  if (balCard) {
+    balCard.style.display = '';
+    var teDebenTotal = acreedores.reduce(function(a,p){ return a + (gastosPorPersona[p]||0) - parteIgual; }, 0);
+    var debesTotal   = deudores.reduce(function(a,p){ return a + parteIgual - (gastosPorPersona[p]||0); }, 0);
+    balCard.innerHTML =
+      '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65;margin-bottom:6px">BALANCE DEL GRUPO</div>' +
+      '<div style="font-size:32px;font-weight:800;letter-spacing:-1.5px">' + fmt(totalGrupo) + '</div>' +
+      '<div style="font-size:12px;opacity:.6;margin-bottom:12px">' + participantes.length + ' participantes · ' + fmt(parteIgual) + ' c/u</div>' +
+      '<div style="height:1px;background:rgba(255,255,255,.15);margin-bottom:12px"></div>' +
+      '<div style="display:flex;justify-content:space-between">' +
+      '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Gastado</div><div style="font-size:15px;font-weight:800">' + fmt(totalGrupo) + '</div></div>' +
+      '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Te deben</div><div style="font-size:15px;font-weight:800;color:#7effd4">' + fmt(teDebenTotal) + '</div></div>' +
+      '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Debés</div><div style="font-size:15px;font-weight:800;color:#ffb3a0">' + fmt(debesTotal) + '</div></div>' +
+      '</div>';
   }
 
-  panel.innerHTML = html;
-
-  var gastoList = document.getElementById('gastoList');
-  if (gastoList && gastoList.parentElement) {
-    gastoList.parentElement.insertBefore(panel, gastoList);
+  // Panel de quién debe a quién antes de la lista de gastos
+  var existing = document.getElementById('grupoBalancePanel');
+  if (existing) existing.remove();
+  if (deudas.length > 0) {
+    var panel = document.createElement('div');
+    panel.id = 'grupoBalancePanel';
+    var html = '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:10px">💸 Liquidar cuentas</div>';
+    deudas.forEach(function(d) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+      html += '<div><span style="font-weight:700;color:var(--danger)">' + d.de + '</span><span style="font-size:11px;color:var(--muted)"> le debe a </span><span style="font-weight:700;color:var(--success)">' + d.a + '</span></div>';
+      html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span></div>';
+    });
+    html += '</div>';
+    panel.innerHTML = html;
+    var gastoList = document.getElementById('gastoList');
+    if (gastoList && gastoList.parentElement) gastoList.parentElement.insertBefore(panel, gastoList);
   }
 }
 
