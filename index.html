@@ -1752,11 +1752,10 @@ function renderAll() {
     gEl.innerHTML = sorted.map(g=>{
       const tarjeta = g.tarjeta_id?tarjetas.find(t=>t.id===g.tarjeta_id):null;
       const isCuota = g.cuotas>1;
-      const catIcon = CAT_ICONS && CAT_ICONS[g.cat];
+      const catIcon = (typeof CAT_ICONS!=='undefined'&&CAT_ICONS[g.cat]) ? '<img src="'+CAT_ICONS[g.cat]+'" style="width:100%;height:100%;object-fit:contain">' : '';
       const catColor = CAT_COLORS[g.cat]||'#888';
       return `<div class="item">
-        <div class="item-cat-icon" style="background:${catColor}18">
-          ${catIcon ? `<img src="${catIcon}" style="width:100%;height:100%;object-fit:contain;border-radius:8px">` : `<div style="width:100%;height:100%;background:${catColor};border-radius:8px;opacity:.7"></div>`}
+        <div class="item-cat-icon" style="background:${catColor}22">${catIcon}</div>
         </div>
         <div class="item-info">
           <div class="item-name">${g.descripcion||''}${isCuota?` <span style="color:var(--text3);font-size:0.75rem">(${g.cuota_actual}/${g.cuotas})</span>`:''}</div>
