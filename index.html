@@ -1114,11 +1114,14 @@ function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; 
 
 function esHogar() {
   var g = loadGroup();
-  return g && (g.esHogar === true || (!g.esGrupo));
+  if (!g) return true;
+  // Es hogar si fue marcado explícitamente, o si fue creado desde "Mi hogar"
+  return g.esHogar === true || (!g.esGrupo && !g._esGrupoExtra);
 }
 function esModoGrupo() {
   var g = loadGroup();
-  return g && g.esGrupo === true && !g.esHogar;
+  if (!g) return false;
+  return g.esGrupo === true || g._esGrupoExtra === true;
 }
 
 function nfSetLang(c){
@@ -3769,94 +3772,128 @@ function renderGruposPanel() {
   const gruposExtra = getGruposGuardados();
   const badge = document.getElementById('gruposBadge');
   const totalGrupos = gruposExtra.length;
-  
   if (badge) {
     badge.style.display = totalGrupos > 0 ? 'flex' : 'none';
     badge.textContent = totalGrupos + 1;
   }
 
-  let html = '';
-
-  // Espacio actual (hogar)
-  if (grupoActual) {
-    const ps = grupoActual.personasArray || [grupoActual.persona1, grupoActual.persona2].filter(Boolean);
-    const isHogar = ps.length <= 2;
+  function grupoCard(g, isActivo) {
+    const ps = g.personasArray || [g.persona1, g.persona2].filter(Boolean);
+    const isHogar = g.esHogar || (!g.esGrupo && !g._esGrupoExtra);
     const icon = isHogar ? '🏠' : '👥';
-    html += `<div style="padding:8px 18px 4px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Mi hogar</div>`;
-    html += `<div class="grupo-item active" onclick="switchToGrupo('${grupoActual.id}');closeGrupos()">
-      <div class="grupo-item-icon" style="background:rgba(18,199,183,.15);color:var(--primary)">${icon}</div>
-      <div class="grupo-item-info">
-        <div class="grupo-item-name">${grupoActual.nombre || 'Mi hogar'}</div>
-        <div class="grupo-item-sub">${ps.join(' · ')} · Activo ahora</div>
+    const color = isHogar ? 'rgba(18,199,183,.15)' : 'rgba(108,99,255,.15)';
+    const textColor = isHogar ? 'var(--primary)' : '#a89bff';
+    return `<div style="margin:0 12px 8px;background:rgba(255,255,255,.04);border:1px solid ${isActivo?'rgba(18,199,183,.4)':'rgba(255,255,255,.07)'};border-radius:16px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer" onclick="switchToGrupo('${g.id}')">
+        <div style="width:42px;height:42px;border-radius:13px;background:${color};color:${textColor};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700">${g.nombre || 'Sin nombre'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${ps.join(' · ')}${isActivo?' · <span style="color:var(--primary)">Activo</span>':''}</div>
+        </div>
+        ${isActivo ? '<span style="background:rgba(18,199,183,.15);color:var(--primary);font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px">Activo</span>' : '<span style="font-size:18px;color:var(--muted)">›</span>'}
       </div>
-      <span class="grupo-item-badge">Activo</span>
+      ${!isHogar ? `<div style="display:flex;border-top:1px solid rgba(255,255,255,.06)">
+        <div style="flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--primary)" onclick="invitarAlGrupo('${g.id}','${g.codigo}','${g.nombre||''}')">📨 Invitar</div>
+        <div style="width:1px;background:rgba(255,255,255,.06)"></div>
+        <div style="flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--danger)" onclick="eliminarGrupo('${g.id}')">🗑 Eliminar</div>
+      </div>` : ''}
     </div>`;
   }
 
-  // Grupos extra
+  let html = '';
+  html += '<div style="padding:8px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Mi hogar</div>';
+  if (grupoActual) html += grupoCard(grupoActual, true);
+
   if (gruposExtra.length > 0) {
-    html += `<div class="grupo-divider"></div>`;
-    html += `<div style="padding:8px 18px 4px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Grupos de gastos</div>`;
-    gruposExtra.forEach(function(g) {
-      const ps = g.personasArray || [];
-      html += `<div class="grupo-item" onclick="switchToGrupo('${g.id}');closeGrupos()">
-        <div class="grupo-item-icon" style="background:rgba(108,99,255,.15);color:#a89bff">👥</div>
-        <div class="grupo-item-info">
-          <div class="grupo-item-name">${g.nombre}</div>
-          <div class="grupo-item-sub">${ps.length} personas · ${g.codigo}</div>
-        </div>
-        <span style="font-size:18px;color:var(--muted)">›</span>
-      </div>`;
-    });
+    html += '<div class="grupo-divider"></div>';
+    html += '<div style="padding:8px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Grupos de gastos</div>';
+    gruposExtra.forEach(function(g) { html += grupoCard(g, false); });
   }
 
-  // Botones de acción
-  html += `<div class="grupo-divider"></div>`;
+  html += '<div class="grupo-divider"></div>';
   html += `<div class="grupo-add-btn" onclick="crearGrupoDesdeApp()">
     <div style="width:40px;height:40px;border-radius:13px;background:rgba(108,99,255,.12);display:flex;align-items:center;justify-content:center;font-size:16px">＋</div>
-    <div>
-      <div style="font-size:14px;font-weight:700;color:var(--primary)">Crear grupo de gastos</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:1px">Amigos, viajes, casa compartida</div>
-    </div>
+    <div><div style="font-size:14px;font-weight:700;color:var(--primary)">Crear grupo de gastos</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:1px">Amigos, viajes, casa compartida</div></div>
   </div>`;
   html += `<div class="grupo-add-btn" onclick="unirseGrupoDesdeApp()">
     <div style="width:40px;height:40px;border-radius:13px;background:rgba(247,201,72,.1);display:flex;align-items:center;justify-content:center;font-size:16px">🔑</div>
-    <div>
-      <div style="font-size:14px;font-weight:700;color:#f7c948">Unirse con código</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:1px">Tengo un código de invitación</div>
+    <div><div style="font-size:14px;font-weight:700;color:#f7c948">Unirse con código</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:1px">Tengo un código de invitación</div></div>
+  </div>`;
+  html += '<div style="height:16px"></div>';
+  body.innerHTML = html;
+}
+
+function invitarAlGrupo(id, codigo, nombre) {
+  const msg = 'Te invito al grupo ' + nombre + ' en NuestrasFinanzas! Codigo: ' + codigo;
+  const modalHtml = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:flex-end;justify-content:center" onclick="this.remove()">
+    <div style="background:var(--card);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:420px" onclick="event.stopPropagation()">
+      <div style="font-size:16px;font-weight:800;margin-bottom:6px">📨 Invitar al grupo</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Código: <b style="color:var(--primary);letter-spacing:2px">${codigo}</b></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="window.open('https://wa.me/?text='+encodeURIComponent('${msg}'),'_blank')" style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3);color:#25d366;border-radius:14px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">📱 Compartir por WhatsApp</button>
+        <div style="display:flex;gap:8px">
+          <input id="inviteContactInput" type="text" placeholder="Email o teléfono" style="flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:var(--text);font-size:14px">
+          <button onclick="enviarInvitacionDirecta(document.getElementById('inviteContactInput').value,'${codigo}','${nombre}')" style="background:var(--primary);border:none;color:white;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;cursor:pointer">Enviar</button>
+        </div>
+        <button onclick="navigator.clipboard&&navigator.clipboard.writeText('${codigo}').then(function(){toast('✅ Código copiado')})" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:14px;padding:12px;font-size:13px;font-weight:600;cursor:pointer">📋 Copiar código</button>
+      </div>
     </div>
   </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 
-  body.innerHTML = html;
+function enviarInvitacionDirecta(contact, codigo, nombre) {
+  contact = (contact||'').trim();
+  if (!contact) { toast('Ingresá un email o teléfono'); return; }
+  const msg = '¡Te invito al grupo "' + nombre + '" en NuestrasFinanzas! Código: ' + codigo;
+  const isPhone = /^[\d\+]{7,}$/.test(contact.replace(/\s/g,''));
+  if (isPhone) {
+    window.open('https://wa.me/' + contact.replace(/\D/g,'') + '?text=' + encodeURIComponent(msg), '_blank');
+  } else {
+    window.open('mailto:' + contact + '?subject=' + encodeURIComponent('Invitación a NuestrasFinanzas') + '&body=' + encodeURIComponent(msg), '_blank');
+  }
+}
+
+function eliminarGrupo(id) {
+  if (!confirm('¿Eliminar este grupo? Se borrará de tu dispositivo.')) return;
+  const extras = getGruposGuardados().filter(function(g){ return g.id !== id; });
+  saveGruposExtra(extras);
+  toast('✅ Grupo eliminado');
+  renderGruposPanel();
 }
 
 async function switchToGrupo(id) {
   const grupoActual = loadGroup();
-  if (grupoActual && grupoActual.id === id) return; // Ya estoy en ese grupo
+  if (grupoActual && grupoActual.id === id) { closeGrupos(); return; }
 
-  // Guardar el grupo actual en la lista de extras si no está
+  // Guardar el hogar actual en la lista de extras
   const gruposExtra = getGruposGuardados();
   const existe = gruposExtra.find(function(g){ return g.id === grupoActual.id; });
-  
-  // Buscar el grupo destino
+  if (!existe && grupoActual) {
+    grupoActual.esHogar = true; // asegurar que el hogar queda marcado
+    const extras = getGruposGuardados();
+    extras.push(grupoActual);
+    saveGruposExtra(extras);
+  }
+
+  // Buscar el destino
   const todos = [grupoActual, ...gruposExtra];
   const destino = todos.find(function(g){ return g.id === id; });
   if (!destino) return;
 
-  // Guardar el hogar actual si cambia a un grupo extra
-  if (destino.id !== grupoActual.id) {
-    // Guardar el actual como "hogar" en los extras si aún no está
-    if (!existe && grupoActual) {
-      const extras = getGruposGuardados();
-      extras.push(grupoActual);
-      saveGruposExtra(extras);
-    }
-  }
+  // Si es de la lista de extras y no es hogar, marcarlo como grupo de gastos
+  if (!destino.esHogar) destino._esGrupoExtra = true;
 
   saveGroupLocal(destino);
   state.grupoId = destino.id;
   updatePersonaNames();
   await loadAll();
+  closeGrupos();
+  // Activar el modo correcto
+  if (esModoGrupo()) activarModoGrupo();
+  else activarModoHogar();
   toast('✅ Cambiado a ' + (destino.nombre || 'grupo'));
 }
 
