@@ -6,6 +6,25 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <script>
+    // VERSION CHECK — cambia este número en cada deploy
+    var APP_VERSION = "20260513-001";
+    var storedVersion = localStorage.getItem('nf_app_version');
+    if (storedVersion && storedVersion !== APP_VERSION) {
+      // Versión nueva detectada — limpiar caché y recargar
+      localStorage.setItem('nf_app_version', APP_VERSION);
+      if(window.caches) caches.keys().then(function(k){ k.forEach(function(n){ caches.delete(n); }); });
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.getRegistrations().then(function(r){ r.forEach(function(s){ s.unregister(); }); });
+      }
+      // Recargar solo si no estamos ya en un ciclo de recarga
+      if (!location.search.includes('reloaded')) {
+        location.href = location.pathname + '?reloaded=1&t=' + Date.now();
+      }
+    } else {
+      localStorage.setItem('nf_app_version', APP_VERSION);
+    }
+  </script>
   <title>NuestrasFinanzas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1116,24 +1135,16 @@ var nfLang=localStorage.getItem('nf_lang')||'es';
 function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; return (lang&&lang[key])||(NF_LANGS['es']&&NF_LANGS['es'][key])||key||''; }
 
 function esHogar() {
-  var g = loadGroup();
-  if (!g) return true;
-  var hogarId = getHogarId();
-  // Es hogar si el ID coincide con el hogar principal guardado
-  if (hogarId && g.id === hogarId) return true;
-  // O si fue marcado explícitamente como hogar
-  if (g.esHogar === true) return true;
-  // O si no tiene ninguna marca de grupo
-  if (!g.esGrupo && !g._esGrupoExtra) return true;
-  return false;
+  return localStorage.getItem('nf_modo') !== 'grupo';
 }
 function esModoGrupo() {
-  var g = loadGroup();
-  if (!g) return false;
-  var hogarId = getHogarId();
-  // Si hay un hogar guardado y el grupo activo NO es ese hogar → es grupo de gastos
-  if (hogarId && g.id !== hogarId) return true;
-  return g.esGrupo === true || g._esGrupoExtra === true;
+  return localStorage.getItem('nf_modo') === 'grupo';
+}
+function setModoHogar() {
+  localStorage.setItem('nf_modo', 'hogar');
+}
+function setModoGrupo() {
+  localStorage.setItem('nf_modo', 'grupo');
 }
 
 function nfSetLang(c){
@@ -3232,7 +3243,8 @@ async function ingresarConCodigo() {
     }
     grupo.esHogar = true;
     saveGroupLocal(grupo);
-    setHogarId(grupo.id); // Guardar como hogar principal
+    setHogarId(grupo.id);
+    setModoHogar(); // Modo hogar explícito
     toast('✅ ¡Bienvenido/a de vuelta!');
     enterApp();
   } catch(e) {
@@ -3262,7 +3274,8 @@ async function crearHogar() {
     grupo.personasArray = personas;
     grupo.esHogar = true;
     saveGroupLocal(grupo);
-    setHogarId(grupo.id); // Guardar como hogar principal
+    setHogarId(grupo.id);
+    setModoHogar(); // Modo hogar explícito
     // Mostrar el código antes de entrar
     hideAllGsScreens();
     document.getElementById('gsSuccess').style.display = 'flex';
@@ -3375,6 +3388,11 @@ async function createGroup() {
     grupo.esGrupo = true;  // Marca como grupo de gastos (no hogar)
     saveGroupLocal(grupo);
 
+    grupo._esGrupoExtra = true;
+    // Guardar en extras y mantener modo hogar hasta que el usuario elija entrar
+    const extrasActuales = getGruposGuardados();
+    const yaExiste = extrasActuales.find(function(g){ return g.id === grupo.id; });
+    if (!yaExiste) { extrasActuales.push(grupo); saveGruposExtra(extrasActuales); }
     document.getElementById('gsCreate').style.display = 'none';
     document.getElementById('gsSuccess').style.display = 'flex';
     document.getElementById('gsCode').textContent = codigo;
@@ -3937,16 +3955,19 @@ async function switchToGrupo(id) {
   const destino = todos.find(function(g){ return g.id === id; });
   if (!destino) return;
 
-  // Si es de la lista de extras y NO es el hogar principal, marcarlo como grupo de gastos
   const hId = getHogarId();
-  if (hId && destino.id !== hId) destino._esGrupoExtra = true;
+  const esGrupoDestino = hId && destino.id !== hId;
+  if (esGrupoDestino) {
+    setModoGrupo();
+  } else {
+    setModoHogar();
+  }
 
   saveGroupLocal(destino);
   state.grupoId = destino.id;
   updatePersonaNames();
   await loadAll();
   closeGrupos();
-  // Activar el modo correcto
   if (esModoGrupo()) activarModoGrupo();
   else activarModoHogar();
   toast('✅ Cambiado a ' + (destino.nombre || 'grupo'));
