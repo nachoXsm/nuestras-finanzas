@@ -7,25 +7,7 @@
   <!-- BUILD: 20260513-003 -->
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <script>
-    // VERSION CHECK — cambia este número en cada deploy
-    var APP_VERSION = "20260513-003";
-    var storedVersion = localStorage.getItem('nf_app_version');
-    if (storedVersion && storedVersion !== APP_VERSION) {
-      // Versión nueva detectada — limpiar caché y recargar
-      localStorage.setItem('nf_app_version', APP_VERSION);
-      if(window.caches) caches.keys().then(function(k){ k.forEach(function(n){ caches.delete(n); }); });
-      if('serviceWorker' in navigator){
-        navigator.serviceWorker.getRegistrations().then(function(r){ r.forEach(function(s){ s.unregister(); }); });
-      }
-      // Recargar solo si no estamos ya en un ciclo de recarga
-      if (!location.search.includes('reloaded')) {
-        location.href = location.pathname + '?reloaded=1&t=' + Date.now();
-      }
-    } else {
-      localStorage.setItem('nf_app_version', APP_VERSION);
-    }
-  </script>
+
   <title>NuestrasFinanzas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1136,16 +1118,24 @@ var nfLang=localStorage.getItem('nf_lang')||'es';
 function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; return (lang&&lang[key])||(NF_LANGS['es']&&NF_LANGS['es'][key])||key||''; }
 
 function esHogar() {
-  return localStorage.getItem('nf_modo') !== 'grupo';
+  var g = loadGroup();
+  if (!g) return true;
+  var hogarId = localStorage.getItem('nf_hogar_id');
+  if (hogarId) return g.id === hogarId;
+  return !g.esGrupo;
 }
 function esModoGrupo() {
-  return localStorage.getItem('nf_modo') === 'grupo';
+  var g = loadGroup();
+  if (!g) return false;
+  var hogarId = localStorage.getItem('nf_hogar_id');
+  if (hogarId) return g.id !== hogarId;
+  return g.esGrupo === true;
 }
 function setModoHogar() {
-  localStorage.setItem('nf_modo', 'hogar');
+  // No hacer nada — el modo se detecta del grupo
 }
 function setModoGrupo() {
-  localStorage.setItem('nf_modo', 'grupo');
+  // No hacer nada — el modo se detecta del grupo
 }
 
 function nfSetLang(c){
