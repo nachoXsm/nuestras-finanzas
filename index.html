@@ -1115,12 +1115,21 @@ function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; 
 function esHogar() {
   var g = loadGroup();
   if (!g) return true;
-  // Es hogar si fue marcado explícitamente, o si fue creado desde "Mi hogar"
-  return g.esHogar === true || (!g.esGrupo && !g._esGrupoExtra);
+  var hogarId = getHogarId();
+  // Es hogar si el ID coincide con el hogar principal guardado
+  if (hogarId && g.id === hogarId) return true;
+  // O si fue marcado explícitamente como hogar
+  if (g.esHogar === true) return true;
+  // O si no tiene ninguna marca de grupo
+  if (!g.esGrupo && !g._esGrupoExtra) return true;
+  return false;
 }
 function esModoGrupo() {
   var g = loadGroup();
   if (!g) return false;
+  var hogarId = getHogarId();
+  // Si hay un hogar guardado y el grupo activo NO es ese hogar → es grupo de gastos
+  if (hogarId && g.id !== hogarId) return true;
   return g.esGrupo === true || g._esGrupoExtra === true;
 }
 
@@ -3136,6 +3145,14 @@ function saveGroupLocal(grupo) {
   localStorage.setItem('nf_grupo', JSON.stringify(grupo));
 }
 
+function getHogarId() {
+  return localStorage.getItem('nf_hogar_id');
+}
+
+function setHogarId(id) {
+  localStorage.setItem('nf_hogar_id', id);
+}
+
 function showWelcome() {
   ['gsHogar','gsHogarCodigo','gsHogarNuevo','gsCreate','gsJoin','gsSuccess'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.style.display = 'none';
@@ -3200,6 +3217,7 @@ async function ingresarConCodigo() {
     }
     grupo.esHogar = true;
     saveGroupLocal(grupo);
+    setHogarId(grupo.id); // Guardar como hogar principal
     toast('✅ ¡Bienvenido/a de vuelta!');
     enterApp();
   } catch(e) {
@@ -3229,6 +3247,7 @@ async function crearHogar() {
     grupo.personasArray = personas;
     grupo.esHogar = true;
     saveGroupLocal(grupo);
+    setHogarId(grupo.id); // Guardar como hogar principal
     // Mostrar el código antes de entrar
     hideAllGsScreens();
     document.getElementById('gsSuccess').style.display = 'flex';
@@ -3883,8 +3902,9 @@ async function switchToGrupo(id) {
   const destino = todos.find(function(g){ return g.id === id; });
   if (!destino) return;
 
-  // Si es de la lista de extras y no es hogar, marcarlo como grupo de gastos
-  if (!destino.esHogar) destino._esGrupoExtra = true;
+  // Si es de la lista de extras y NO es el hogar principal, marcarlo como grupo de gastos
+  const hId = getHogarId();
+  if (hId && destino.id !== hId) destino._esGrupoExtra = true;
 
   saveGroupLocal(destino);
   state.grupoId = destino.id;
