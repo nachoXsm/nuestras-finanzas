@@ -1120,6 +1120,10 @@ function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; 
 function esHogar() {
   var g = loadGroup();
   if (!g) return true;
+  // Usar campo tipo de Supabase como fuente de verdad
+  if (g.tipo === 'grupo') return false;
+  if (g.tipo === 'hogar') return true;
+  // Fallback: comparar con hogar guardado
   var hogarId = localStorage.getItem('nf_hogar_id');
   if (hogarId) return g.id === hogarId;
   return !g.esGrupo;
@@ -1127,16 +1131,16 @@ function esHogar() {
 function esModoGrupo() {
   var g = loadGroup();
   if (!g) return false;
+  // Usar campo tipo de Supabase como fuente de verdad
+  if (g.tipo === 'grupo') return true;
+  if (g.tipo === 'hogar') return false;
+  // Fallback
   var hogarId = localStorage.getItem('nf_hogar_id');
   if (hogarId) return g.id !== hogarId;
   return g.esGrupo === true;
 }
-function setModoHogar() {
-  // No hacer nada — el modo se detecta del grupo
-}
-function setModoGrupo() {
-  // No hacer nada — el modo se detecta del grupo
-}
+function setModoHogar() {}
+function setModoGrupo() {}
 
 function nfSetLang(c){
   nfLang=c; localStorage.setItem('nf_lang',c);
@@ -3234,10 +3238,11 @@ async function ingresarConCodigo() {
     if (!grupo.personasArray || !grupo.personasArray.length) {
       grupo.personasArray = [grupo.persona1, grupo.persona2].filter(Boolean);
     }
-    grupo.esHogar = true;
+    // Si no tiene tipo definido, marcarlo como hogar (acceso por código = hogar)
+    if (!grupo.tipo) grupo.tipo = 'hogar';
+    grupo.esHogar = grupo.tipo === 'hogar';
     saveGroupLocal(grupo);
-    setHogarId(grupo.id);
-    setModoHogar(); // Modo hogar explícito
+    if (grupo.tipo === 'hogar') setHogarId(grupo.id);
     toast('✅ ¡Bienvenido/a de vuelta!');
     enterApp();
   } catch(e) {
@@ -3261,11 +3266,13 @@ async function crearHogar() {
     const res = await dbPost('grupos', {
       codigo, nombre,
       persona1: personas[0], persona2: personas[1] || '',
-      personas: JSON.stringify(personas)
+      personas: JSON.stringify(personas),
+      tipo: 'hogar'
     });
     const grupo = res[0];
     grupo.personasArray = personas;
     grupo.esHogar = true;
+    grupo.tipo = 'hogar';
     saveGroupLocal(grupo);
     setHogarId(grupo.id);
     setModoHogar();
@@ -3374,11 +3381,13 @@ async function createGroup() {
       codigo, nombre,
       persona1: personas[0],
       persona2: personas[1] || '',
-      personas: JSON.stringify(personas)
+      personas: JSON.stringify(personas),
+      tipo: 'grupo'
     });
     const grupo = res[0];
     grupo.personasArray = personas;
     grupo.esGrupo = true;
+    grupo.tipo = 'grupo';
     saveGroupLocal(grupo);
     _tipoCreado = 'grupo'; // Marcar que se creó un grupo de gastos
     document.getElementById('gsCreate').style.display = 'none';
