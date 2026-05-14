@@ -2313,6 +2313,11 @@ init();
 // Override renderAll to use new CSS classes
 const _origRenderAll = renderAll;
 renderAll = function() {
+  // MODO GRUPO: renderizado completamente diferente
+  if (esModoGrupo()) {
+    renderAllGrupo();
+    return;
+  }
   const {gastos,ingresos,tarjetas} = state;
   const totalInc = ingresos.reduce((a,i)=>a+parseFloat(i.monto),0);
   const totalGas = gastos.reduce((a,g)=>a+parseFloat(g.monto),0);
@@ -2509,6 +2514,150 @@ renderAll = function() {
       <div class="meta-c"><div class="meta-label">Real</div><div class="meta-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(Math.max(0,saldo))}</div></div>
     </div>`}`;
 };
+
+// ============================================
+// RENDER COMPLETO PARA MODO GRUPO
+// ============================================
+function renderAllGrupo() {
+  const gs = state.gastos || [];
+  const totalGrupo = gs.reduce(function(a,g){ return a+parseFloat(g.monto||0); }, 0);
+  const personas = state.personas || [];
+  
+  // Calcular balances
+  var gastosPorPersona = {};
+  gs.forEach(function(g) {
+    var q = g.quien || 'Todos';
+    gastosPorPersona[q] = (gastosPorPersona[q]||0) + parseFloat(g.monto||0);
+  });
+  var participantes = personas.length ? personas : Object.keys(gastosPorPersona);
+  var parteIgual = participantes.length > 0 ? totalGrupo / participantes.length : 0;
+  var balances = {};
+  participantes.forEach(function(p){ balances[p] = (gastosPorPersona[p]||0) - parteIgual; });
+  
+  // Calcular deudas
+  var deudas = [];
+  var acreedores = participantes.filter(function(p){ return balances[p] > 0.5; });
+  var deudores = participantes.filter(function(p){ return balances[p] < -0.5; });
+  acreedores.forEach(function(ac) {
+    deudores.forEach(function(de) {
+      var monto = Math.min(balances[ac], Math.abs(balances[de]));
+      if (monto > 0.5) {
+        deudas.push({de:de, a:ac, monto:monto});
+        balances[ac] -= monto;
+        balances[de] += monto;
+      }
+    });
+  });
+
+  // OCULTAR TODO LO DE HOGAR
+  var toHide = ['.balance-card', '#summary', '#ingresoList', '#fIngreso'];
+  toHide.forEach(function(sel) {
+    var el = document.querySelector(sel);
+    if (el) el.style.display = 'none';
+  });
+  // Ocultar sec-head de ingresos
+  document.querySelectorAll('.sec-head').forEach(function(el) {
+    if (el.textContent.includes('Ingreso') || el.textContent.includes('Income')) {
+      el.style.display = 'none';
+    }
+  });
+
+  // TABS: solo Gastos, Categ., Informe, Conversor
+  var tabsWrap = document.getElementById('tabsWrap');
+  if (tabsWrap) {
+    tabsWrap.querySelectorAll('.tab').forEach(function(t) {
+      var oc = t.getAttribute('onclick') || '';
+      var mostrar = oc.includes('gastos') || oc.includes('categorias') || 
+                    oc.includes('informe') || oc.includes('conversor');
+      t.style.display = mostrar ? '' : 'none';
+    });
+  }
+
+  // NAV: ocultar Tarjetas
+  var navT = document.getElementById('nav-tarjetas');
+  if (navT) navT.style.display = 'none';
+
+  // RECUADRO AZUL PARA GRUPO
+  var balCard = document.querySelector('.balance-card');
+  if (balCard) {
+    balCard.style.display = '';
+    var teDebenTotal = acreedores.reduce(function(a,p){
+      return a + Math.max(0, (gastosPorPersona[p]||0) - parteIgual);
+    }, 0);
+    var debesTotal = deudores.reduce(function(a,p){
+      return a + Math.max(0, parteIgual - (gastosPorPersona[p]||0));
+    }, 0);
+    balCard.innerHTML =
+      '<small style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65">BALANCE DEL GRUPO</small>' +
+      '<h2 style="font-size:32px;font-weight:800;margin:8px 0 2px;letter-spacing:-1px">' + fmt(totalGrupo) + '</h2>' +
+      '<div style="font-size:12px;opacity:.6;margin-bottom:14px">' + participantes.length + ' participantes · ' + fmt(parteIgual) + ' c/u</div>' +
+      '<div style="height:1px;background:rgba(255,255,255,.15);margin-bottom:14px"></div>' +
+      '<div style="display:flex;justify-content:space-between">' +
+        '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Gastado</div>' +
+        '<div style="font-size:16px;font-weight:800">' + fmt(totalGrupo) + '</div></div>' +
+        '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Te deben</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#7effd4">' + fmt(teDebenTotal) + '</div></div>' +
+        '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Debés</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#ffb3a0">' + fmt(debesTotal) + '</div></div>' +
+      '</div>';
+  }
+
+  // PANEL LIQUIDAR antes de gastos
+  var existing = document.getElementById('grupoBalancePanel');
+  if (existing) existing.remove();
+  if (deudas.length > 0) {
+    var panel = document.createElement('div');
+    panel.id = 'grupoBalancePanel';
+    var html = '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:10px">💸 Liquidar cuentas</div>';
+    deudas.forEach(function(d) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+      html += '<div><span style="font-weight:700;color:var(--danger)">' + d.de + '</span>';
+      html += '<span style="font-size:11px;color:var(--muted)"> le debe a </span>';
+      html += '<span style="font-weight:700;color:var(--success)">' + d.a + '</span></div>';
+      html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span></div>';
+    });
+    html += '</div>';
+    panel.innerHTML = html;
+    var gastoList = document.getElementById('gastoList');
+    if (gastoList && gastoList.parentElement) {
+      gastoList.parentElement.insertBefore(panel, gastoList);
+    }
+  }
+
+  // RENDERIZAR LISTA DE GASTOS (solo gastos, sin ingresos)
+  var gastoList2 = document.getElementById('gastoList');
+  if (gastoList2) {
+    if (gs.length === 0) {
+      gastoList2.innerHTML = '<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">Sin gastos este mes</div></div>';
+    } else {
+      gastoList2.innerHTML = gs.map(function(g) {
+        const catIcon = (typeof CAT_ICONS!=='undefined'&&CAT_ICONS[g.cat]) ? '<img src="'+CAT_ICONS[g.cat]+'" style="width:100%;height:100%;object-fit:contain">' : '';
+        const catColor = CAT_COLORS[g.cat]||'#888';
+        return '<div class="item">' +
+          '<div class="item-cat-icon" style="background:'+catColor+'22">'+catIcon+'</div>' +
+          '<div class="item-info">' +
+            '<div class="item-name">'+g.desc+'</div>' +
+            '<div class="item-tags">' +
+              '<span class="tag tag-quien">👤 '+g.quien+'</span>' +
+              '<span class="tag tag-cat">'+g.cat+'</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">' +
+            '<span class="item-amount exp">'+fmt(parseFloat(g.monto))+'</span>' +
+            '<div style="display:flex;gap:6px">' +
+              '<button class="action-btn edit" onclick="editGasto(&quot;'+g.id+'&quot;)">✏️</button>' +
+              '<button class="action-btn del" onclick="deleteGasto(&quot;'+g.id+'&quot;)">🗑</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+  }
+
+  // Actualizar sync
+  setSyncing('ok');
+}
 
 // Override renderInforme
 renderInforme = function() {
