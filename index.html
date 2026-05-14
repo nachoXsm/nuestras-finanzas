@@ -4114,40 +4114,48 @@ async function switchToGrupo(id) {
   const grupoActual = loadGroup();
   if (grupoActual && grupoActual.id === id) { closeGrupos(); return; }
 
-  // Guardar el hogar actual en la lista de extras
+  // Buscar el destino en todos los grupos disponibles
   const gruposExtra = getGruposGuardados();
-  const existe = gruposExtra.find(function(g){ return g.id === grupoActual.id; });
-  if (!existe && grupoActual) {
-    grupoActual.esHogar = true; // asegurar que el hogar queda marcado
-    const extras = getGruposGuardados();
-    extras.push(grupoActual);
-    saveGruposExtra(extras);
-  }
-
-  // Buscar el destino
-  const todos = [grupoActual, ...gruposExtra];
+  const todos = grupoActual ? [grupoActual, ...gruposExtra] : gruposExtra;
   const destino = todos.find(function(g){ return g.id === id; });
-  if (!destino) return;
+  if (!destino) { toast('❌ Grupo no encontrado'); return; }
 
-  // Guardar el hogar actual en extras si no estaba
-  const hId = getHogarId();
-  const grupoActualParaExtra = loadGroup();
-  if (grupoActualParaExtra && grupoActualParaExtra.id !== destino.id) {
-    const extras = getGruposGuardados();
-    if (!extras.find(function(g){ return g.id === grupoActualParaExtra.id; })) {
-      extras.push(grupoActualParaExtra);
-      saveGruposExtra(extras);
+  // Guardar el actual en extras SIN duplicar
+  if (grupoActual) {
+    const extrasActuales = getGruposGuardados();
+    const yaEsta = extrasActuales.find(function(g){ return g.id === grupoActual.id; });
+    if (!yaEsta) {
+      extrasActuales.push(grupoActual);
+      saveGruposExtra(extrasActuales);
     }
+    // Remover el destino de extras (pasa a ser el activo)
+    const sinDestino = getGruposGuardados().filter(function(g){ return g.id !== id; });
+    saveGruposExtra(sinDestino);
   }
 
+  // Cambiar al grupo destino
   saveGroupLocal(destino);
   state.grupoId = destino.id;
+  closeGrupos();
+
+  // Resetear el DOM completamente antes de cargar
+  document.getElementById('appMain').setAttribute('data-modo', '');
+  var navT = document.getElementById('nav-tarjetas');
+  if (navT) navT.style.display = '';
+  var tw = document.getElementById('tabsWrap');
+  if (tw) tw.querySelectorAll('.tab').forEach(function(t){ t.style.display=''; });
+  var bc = document.querySelector('.balance-card');
+  if (bc) { bc.style.display=''; bc.innerHTML = ''; }
+  var sm = document.getElementById('summary');
+  if (sm) sm.style.display = '';
+  var gbp = document.getElementById('grupoBalancePanel');
+  if (gbp) gbp.remove();
+  var banner = document.getElementById('modoGrupoBanner');
+  if (banner) banner.remove();
+
   updatePersonaNames();
   await loadAll();
-  closeGrupos();
-  if (esModoGrupo()) activarModoGrupo();
-  else activarModoHogar();
-  toast('✅ Cambiado a ' + (destino.nombre || 'grupo'));
+  toast('✅ ' + (destino.nombre || 'Grupo'));
 }
 
 function crearGrupoDesdeApp() {
