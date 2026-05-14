@@ -4153,8 +4153,13 @@ async function switchToGrupo(id) {
   var banner = document.getElementById('modoGrupoBanner');
   if (banner) banner.remove();
 
+  // Limpiar state inmediatamente antes de cargar
+  state.gastos = [];
+  state.ingresos = [];
+  state.tarjetas = [];
   updatePersonaNames();
-  await loadAll();
+  renderAll(); // Renderizar con datos vacíos primero
+  await loadAll(); // Luego cargar los reales
   toast('✅ ' + (destino.nombre || 'Grupo'));
 }
 
