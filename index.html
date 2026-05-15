@@ -1628,17 +1628,45 @@ async function saveGasto() {
       state.gastos = state.gastos.map(g=>g.id===editingGastoId?res[0]:g);
       editingGastoId=null; toast('✅ Gasto actualizado');
     } else {
+      const quienVal = document.getElementById('g_quien').value;
+      const cat = document.getElementById('g_cat').value;
+      const tipo = document.getElementById('g_tipo').value;
+      const diaVal = _fdate.getDate();
+
+      // Verificar si hay división manual entre personas
+      const divField = document.getElementById('gDivisionField');
+      const divInputs = divField ? divField.querySelectorAll('.g_division_input') : [];
+      const hasDivision = divField && divField.style.display !== 'none' && divInputs.length > 0;
+
+      if (hasDivision) {
+        // Guardar un gasto por persona con su monto individual
+        for (const inp of divInputs) {
+          const persona = inp.getAttribute('data-persona');
+          const montoPersona = parseFloat(inp.value) || 0;
+          if (montoPersona <= 0) continue;
+          const bodyDiv = {
+            grupo_id: state.grupoId,
+            mes: gMes, anio: gAnio,
+            descripcion: desc,
+            monto: montoPersona,
+            cat, tipo, medio, tarjeta_id,
+            quien: persona,
+            dia: diaVal,
+            cuotas: 1, cuota_actual: 1, gasto_origen_id: null
+          };
+          const resDiv = await dbPost('gastos', bodyDiv);
+          state.gastos.push(resDiv[0]);
+        }
+      } else {
       // Create first cuota — build body here
       const body = {
         grupo_id: state.grupoId,
         mes: gMes, anio: gAnio,
         descripcion: desc,
         monto: cuotaMonto,
-        cat: document.getElementById('g_cat').value,
-        tipo: document.getElementById('g_tipo').value,
-        medio, tarjeta_id,
-        quien: document.getElementById('g_quien').value,
-        dia: _fdate.getDate(),
+        cat, tipo, medio, tarjeta_id,
+        quien: quienVal,
+        dia: diaVal,
         cuotas, cuota_actual: 1, gasto_origen_id: null
       };
       const res = await dbPost('gastos', body);
@@ -1655,7 +1683,8 @@ async function saveGasto() {
         // Fire and forget future cuotas
         for (const f of futures) { dbPost('gastos', f).catch(()=>{}); }
         toast(`✅ Gasto en ${cuotas} cuotas creado`);
-      } else { toast('✅ Gasto guardado'); }
+      } else { toast('\u2705 Gasto guardado'); }
+      } // cierre else (sin división)
     }
     document.getElementById('g_desc').value=''; document.getElementById('g_monto').value='';
     document.getElementById('fGasto').classList.remove('open');
@@ -2541,39 +2570,49 @@ function renderAllGrupo() {
   const totalGrupo = gs.reduce(function(a,g){ return a+parseFloat(g.monto||0); }, 0);
   const personas = state.personas || [];
   
-  // Calcular balances — "Ambos" se divide entre todos los participantes reales
-  var participantes = personas.length ? personas : [];
+  // Calcular balances correctamente:
+  // "quien" en el gasto = quién PAGÓ (desembolsó el dinero)
+  // "Todos" = gasto compartido donde todos deben pagar su parte
+  // balance = lo que pagó - lo que le corresponde pagar
+  // positivo → le deben | negativo → debe
+  
+  var participantes = personas.length ? personas.slice() : [];
   if (!participantes.length) {
-    // Inferir participantes de los gastos (excluir "Ambos" y "Todos")
     gs.forEach(function(g) {
       var q = g.quien;
-      if (q && q !== 'Ambos' && q !== 'Todos' && participantes.indexOf(q) === -1) {
+      if (q && q !== 'Todos' && q !== 'Ambos' && participantes.indexOf(q) === -1) {
         participantes.push(q);
       }
     });
   }
-  
-  var gastosPorPersona = {};
-  participantes.forEach(function(p){ gastosPorPersona[p] = 0; });
-  
+
+  // pagoPorPersona: cuánto desembolsó cada participante
+  var pagoPorPersona = {};
+  participantes.forEach(function(p){ pagoPorPersona[p] = 0; });
+
   gs.forEach(function(g) {
     var monto = parseFloat(g.monto||0);
     var quien = g.quien || 'Todos';
     if (quien === 'Todos' || quien === 'Ambos') {
-      // Repartir entre todos los participantes
+      // Nadie pagó individualmente — se reparte el costo sin acreditar a nadie
+      // (equivale a que todos pusieron su parte)
       if (participantes.length > 0) {
-        var parteMonto = monto / participantes.length;
-        participantes.forEach(function(p){ gastosPorPersona[p] = (gastosPorPersona[p]||0) + parteMonto; });
+        var parte = monto / participantes.length;
+        participantes.forEach(function(p){ pagoPorPersona[p] = (pagoPorPersona[p]||0) + parte; });
       }
-    } else {
-      gastosPorPersona[quien] = (gastosPorPersona[quien]||0) + monto;
+    } else if (pagoPorPersona.hasOwnProperty(quien)) {
+      // Esta persona pagó el total — se acredita todo a ella
+      pagoPorPersona[quien] = (pagoPorPersona[quien]||0) + monto;
     }
   });
 
   var parteIgual = participantes.length > 0 ? totalGrupo / participantes.length : 0;
   var balances = {};
-  participantes.forEach(function(p){ balances[p] = (gastosPorPersona[p]||0) - parteIgual; });
-  
+  participantes.forEach(function(p){
+    balances[p] = Math.round((pagoPorPersona[p]||0) - parteIgual);
+  });
+
+  // Calcular deudas
   // Calcular deudas
   var deudas = [];
   var acreedores = participantes.filter(function(p){ return balances[p] > 0.5; });
