@@ -70,7 +70,8 @@
     .gs-input:focus{outline:none;border-color:var(--primary)}
     .gs-error{color:var(--danger);font-size:.8rem;min-height:16px}
     .gs-code{font-size:2rem;font-weight:900;color:var(--primary);letter-spacing:6px;background:rgba(18,199,183,.08);border:2px solid rgba(18,199,183,.2);padding:16px 28px;border-radius:16px;text-align:center}
-    .gs-copy-btn{background:rgba(255,255,255,.06);color:white;border:1px solid rgba(255,255,255,.08);padding:10px 20px;border-radius:999px;font-size:.85rem;font-weight:600;cursor:pointer}
+    .gs-copy-btn{background:rgba(18,199,183,.1);color:var(--primary);border:1.5px solid rgba(18,199,183,.3);padding:10px 20px;border-radius:999px;font-size:.85rem;font-weight:700;cursor:pointer}
+    body:not(.dark) .gs-copy-btn{background:rgba(18,199,183,.15);color:#0a8a7a;border-color:rgba(18,199,183,.5)}
     .person-field{display:flex;align-items:center;gap:8px}
     .rm-btn{background:rgba(255,122,89,.1);border:1px solid rgba(255,122,89,.3);color:var(--danger);width:32px;height:32px;border-radius:50%;cursor:pointer}
     .add-person-btn{background:rgba(18,199,183,.1);border:1px solid rgba(18,199,183,.3);color:var(--primary);padding:4px 12px;border-radius:999px;font-size:.72rem;font-weight:700;cursor:pointer}
@@ -1463,6 +1464,10 @@ function toggleForm(id) {
   const wasOpen = el.classList.contains('open');
   el.classList.toggle('open');
   updateCardSelects();
+  // Inicializar división si corresponde al abrir
+  if (id === 'fGasto' && !wasOpen) {
+    setTimeout(function() { toggleDivision(); }, 50);
+  }
   updatePersonaNames();
   if (!wasOpen) {
     // Set default month/year to currently selected
@@ -1498,7 +1503,7 @@ function toggleDivision() {
   var divInputs = document.getElementById('gDivisionInputs');
   if (!quien || !divField) return;
   
-  if (quien.value === 'Ambos') {
+  if (quien.value === 'Todos' || quien.value === 'Ambos') {
     divField.style.display = '';
     // Generar inputs por persona
     var personas = state.personas || [state.persona1||'Yo', state.persona2||''].filter(Boolean);
@@ -1671,7 +1676,7 @@ function editGasto(id) {
   document.getElementById('g_cat').value=g.cat||'Otros';
   document.getElementById('g_tipo').value=g.tipo||'variable';
   document.getElementById('g_medio').value=g.medio||'efectivo';
-  document.getElementById('g_quien').value=g.quien||'Ambos';
+  document.getElementById('g_quien').value=g.quien||'Todos';
   // g_dia ya no existe como campo separado
   toggleCardFields();
   // Set tarjeta after populating select
@@ -2536,13 +2541,35 @@ function renderAllGrupo() {
   const totalGrupo = gs.reduce(function(a,g){ return a+parseFloat(g.monto||0); }, 0);
   const personas = state.personas || [];
   
-  // Calcular balances
+  // Calcular balances — "Ambos" se divide entre todos los participantes reales
+  var participantes = personas.length ? personas : [];
+  if (!participantes.length) {
+    // Inferir participantes de los gastos (excluir "Ambos" y "Todos")
+    gs.forEach(function(g) {
+      var q = g.quien;
+      if (q && q !== 'Ambos' && q !== 'Todos' && participantes.indexOf(q) === -1) {
+        participantes.push(q);
+      }
+    });
+  }
+  
   var gastosPorPersona = {};
+  participantes.forEach(function(p){ gastosPorPersona[p] = 0; });
+  
   gs.forEach(function(g) {
-    var q = g.quien || 'Todos';
-    gastosPorPersona[q] = (gastosPorPersona[q]||0) + parseFloat(g.monto||0);
+    var monto = parseFloat(g.monto||0);
+    var quien = g.quien || 'Todos';
+    if (quien === 'Todos' || quien === 'Ambos') {
+      // Repartir entre todos los participantes
+      if (participantes.length > 0) {
+        var parteMonto = monto / participantes.length;
+        participantes.forEach(function(p){ gastosPorPersona[p] = (gastosPorPersona[p]||0) + parteMonto; });
+      }
+    } else {
+      gastosPorPersona[quien] = (gastosPorPersona[quien]||0) + monto;
+    }
   });
-  var participantes = personas.length ? personas : Object.keys(gastosPorPersona);
+
   var parteIgual = participantes.length > 0 ? totalGrupo / participantes.length : 0;
   var balances = {};
   participantes.forEach(function(p){ balances[p] = (gastosPorPersona[p]||0) - parteIgual; });
@@ -2650,7 +2677,7 @@ function renderAllGrupo() {
         return '<div class="item">' +
           '<div class="item-cat-icon" style="background:'+catColor+'22">'+catIcon+'</div>' +
           '<div class="item-info">' +
-            '<div class="item-name">'+g.desc+'</div>' +
+            '<div class="item-name">'+(g.descripcion||g.desc||'Sin descripción')+'</div>' +
             '<div class="item-tags">' +
               '<span class="tag tag-quien">👤 '+g.quien+'</span>' +
               '<span class="tag tag-cat">'+g.cat+'</span>' +
@@ -3634,7 +3661,7 @@ function updatePersonaNames() {
     const current = sel.value;
     // For gastos: add "Todos" option, for ingresos: just personas
     const options = id === 'g_quien'
-      ? ['Ambos', ...personas]
+      ? ['Todos', ...personas]
       : personas;
     sel.innerHTML = options.map(p =>
       `<option value="${p}">${p}</option>`
