@@ -738,7 +738,9 @@
           <div class="field"><label>¿Quién paga?</label><select id="g_quien" onchange="toggleDivision()"></select></div>
           <div id="gDivisionField" style="display:none;grid-column:1/-1">
             <div style="background:rgba(255,255,255,.05);border-radius:14px;padding:12px;margin-top:-4px">
-              <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">¿Cuánto paga cada uno?</div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">¿Quién pagó físicamente?</div>
+              <select id="gPagador" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:var(--text);font-size:14px;font-weight:600;margin-bottom:10px"></select>
+              <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">¿Cuánto le toca a cada uno?</div>
               <div id="gDivisionInputs" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
           </div>
@@ -1505,10 +1507,17 @@ function toggleDivision() {
   
   if (quien.value === 'Todos' || quien.value === 'Ambos') {
     divField.style.display = '';
-    // Generar inputs por persona
     var personas = state.personas || [state.persona1||'Yo', state.persona2||''].filter(Boolean);
     var monto = parseFloat(document.getElementById('g_monto').value) || 0;
     var parte = monto > 0 ? Math.round(monto / personas.length) : 0;
+    // Poblar select de pagador
+    var pagadorSel = document.getElementById('gPagador');
+    if (pagadorSel) {
+      pagadorSel.innerHTML = personas.map(function(p){
+        return '<option value="'+p+'">'+p+' pagó todo</option>';
+      }).join('');
+    }
+    // Poblar inputs de división
     divInputs.innerHTML = personas.map(function(p) {
       return '<div style="display:flex;align-items:center;gap:10px">' +
         '<div style="width:28px;height:28px;border-radius:8px;background:rgba(18,199,183,.15);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">' + p[0].toUpperCase() + '</div>' +
@@ -1639,24 +1648,29 @@ async function saveGasto() {
       const hasDivision = divField && divField.style.display !== 'none' && divInputs.length > 0;
 
       if (hasDivision) {
-        // Guardar un gasto por persona con su monto individual
-        for (const inp of divInputs) {
-          const persona = inp.getAttribute('data-persona');
-          const montoPersona = parseFloat(inp.value) || 0;
-          if (montoPersona <= 0) continue;
-          const bodyDiv = {
-            grupo_id: state.grupoId,
-            mes: gMes, anio: gAnio,
-            descripcion: desc,
-            monto: montoPersona,
-            cat, tipo, medio, tarjeta_id,
-            quien: persona,
-            dia: diaVal,
-            cuotas: 1, cuota_actual: 1, gasto_origen_id: null
-          };
-          const resDiv = await dbPost('gastos', bodyDiv);
-          state.gastos.push(resDiv[0]);
-        }
+        // Guardar UN gasto con quien=pagador y division en notas
+        const pagadorEl = document.getElementById('gPagador');
+        const pagador = pagadorEl ? pagadorEl.value : quienVal;
+        const divisionObj = {};
+        divInputs.forEach(function(inp) {
+          const p = inp.getAttribute('data-persona');
+          const m = parseFloat(inp.value) || 0;
+          if (m > 0) divisionObj[p] = m;
+        });
+        const bodyDiv = {
+          grupo_id: state.grupoId,
+          mes: gMes, anio: gAnio,
+          descripcion: desc,
+          monto: cuotaMonto,
+          cat, tipo, medio, tarjeta_id,
+          quien: pagador,
+          dia: diaVal,
+          cuotas: 1, cuota_actual: 1, gasto_origen_id: null,
+          division: JSON.stringify(divisionObj)
+        };
+        const resDiv = await dbPost('gastos', bodyDiv);
+        if (resDiv && resDiv[0]) state.gastos.push(resDiv[0]);
+        toast('✅ Gasto dividido guardado');
       } else {
       // Create first cuota — build body here
       const body = {
@@ -2570,12 +2584,9 @@ function renderAllGrupo() {
   const totalGrupo = gs.reduce(function(a,g){ return a+parseFloat(g.monto||0); }, 0);
   const personas = state.personas || [];
   
-  // Calcular balances correctamente:
-  // "quien" en el gasto = quién PAGÓ (desembolsó el dinero)
-  // "Todos" = gasto compartido donde todos deben pagar su parte
-  // balance = lo que pagó - lo que le corresponde pagar
-  // positivo → le deben | negativo → debe
-  
+  // Calcular balances:
+  // Para gastos normales: quien pagó ese monto
+  // Para gastos con división: quien pagó el total, los demás le deben su parte
   var participantes = personas.length ? personas.slice() : [];
   if (!participantes.length) {
     gs.forEach(function(g) {
@@ -2586,32 +2597,51 @@ function renderAllGrupo() {
     });
   }
 
-  // pagoPorPersona: cuánto desembolsó cada participante
-  var pagoPorPersona = {};
-  participantes.forEach(function(p){ pagoPorPersona[p] = 0; });
+  // balance[p] = lo que pagó - lo que le corresponde gastar
+  var balance = {};
+  participantes.forEach(function(p){ balance[p] = 0; });
 
   gs.forEach(function(g) {
-    var monto = parseFloat(g.monto||0);
-    var quien = g.quien || 'Todos';
-    if (quien === 'Todos' || quien === 'Ambos') {
-      // Nadie pagó individualmente — se reparte el costo sin acreditar a nadie
-      // (equivale a que todos pusieron su parte)
-      if (participantes.length > 0) {
-        var parte = monto / participantes.length;
-        participantes.forEach(function(p){ pagoPorPersona[p] = (pagoPorPersona[p]||0) + parte; });
+    var monto = parseFloat(g.monto || 0);
+    var pagador = g.quien || 'Todos';
+    
+    if (g.division) {
+      // Gasto con división: pagador puso el total, cada uno debe su parte
+      var divObj = {};
+      try { divObj = JSON.parse(g.division); } catch(e) {}
+      var totalDiv = Object.values(divObj).reduce(function(a,v){ return a+v; }, 0);
+      
+      // El pagador aportó el total
+      if (balance.hasOwnProperty(pagador)) {
+        balance[pagador] += monto; // pagó todo
       }
-    } else if (pagoPorPersona.hasOwnProperty(quien)) {
-      // Esta persona pagó el total — se acredita todo a ella
-      pagoPorPersona[quien] = (pagoPorPersona[quien]||0) + monto;
+      // Cada persona "consume" su parte
+      Object.keys(divObj).forEach(function(p) {
+        if (balance.hasOwnProperty(p)) {
+          balance[p] -= divObj[p]; // debe su parte
+        }
+      });
+    } else if (pagador === 'Todos' || pagador === 'Ambos') {
+      // Gasto compartido sin división: se reparte entre todos
+      var parte = participantes.length > 0 ? monto / participantes.length : 0;
+      participantes.forEach(function(p) { balance[p] += parte - parte; }); // cancela
+    } else {
+      // Gasto individual: el pagador aportó, todos deben su parte
+      var parteInd = participantes.length > 0 ? monto / participantes.length : 0;
+      participantes.forEach(function(p) {
+        if (p === pagador) {
+          balance[p] += monto - parteInd; // pagó de más
+        } else {
+          balance[p] -= parteInd; // debe su parte
+        }
+      });
     }
   });
 
-  var parteIgual = participantes.length > 0 ? totalGrupo / participantes.length : 0;
-  var balances = {};
-  participantes.forEach(function(p){
-    balances[p] = Math.round((pagoPorPersona[p]||0) - parteIgual);
-  });
+  var parteIgual = 0; // ya está calculado en balance
+  var balances = balance;
 
+  // Calcular deudas
   // Calcular deudas
   // Calcular deudas
   var deudas = [];
