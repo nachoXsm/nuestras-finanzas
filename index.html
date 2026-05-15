@@ -738,9 +738,7 @@
           <div class="field"><label>¿Quién paga?</label><select id="g_quien" onchange="toggleDivision()"></select></div>
           <div id="gDivisionField" style="display:none;grid-column:1/-1">
             <div style="background:rgba(255,255,255,.05);border-radius:14px;padding:12px;margin-top:-4px">
-              <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">¿Quién pagó físicamente?</div>
-              <select id="gPagador" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:var(--text);font-size:14px;font-weight:600;margin-bottom:10px"></select>
-              <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">¿Cuánto le toca a cada uno?</div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">¿Cuánto puso cada uno?</div>
               <div id="gDivisionInputs" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
           </div>
@@ -1508,13 +1506,6 @@ function toggleDivision() {
   if (quien.value === 'Todos' || quien.value === 'Ambos') {
     divField.style.display = '';
     var personas = state.personas || [state.persona1||'Yo', state.persona2||''].filter(Boolean);
-    // Poblar select de pagador
-    var pagadorSel = document.getElementById('gPagador');
-    if (pagadorSel) {
-      pagadorSel.innerHTML = personas.map(function(p){
-        return '<option value="'+p+'">'+p+' pagó todo</option>';
-      }).join('');
-    }
     // Poblar inputs de división
     divInputs.innerHTML = personas.map(function(p) {
       return '<div style="display:flex;align-items:center;gap:10px">' +
@@ -1647,8 +1638,6 @@ async function saveGasto() {
 
       if (hasDivision) {
         // Guardar UN gasto con quien=pagador y division en notas
-        const pagadorEl = document.getElementById('gPagador');
-        const pagador = pagadorEl ? pagadorEl.value : quienVal;
         const divisionObj = {};
         divInputs.forEach(function(inp) {
           const p = inp.getAttribute('data-persona');
@@ -1661,7 +1650,7 @@ async function saveGasto() {
           descripcion: desc,
           monto: cuotaMonto,
           cat, tipo, medio, tarjeta_id,
-          quien: pagador,
+          quien: 'Todos',
           dia: diaVal,
           cuotas: 1, cuota_actual: 1, gasto_origen_id: null,
           division: JSON.stringify(divisionObj)
