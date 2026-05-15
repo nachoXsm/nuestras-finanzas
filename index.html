@@ -1508,8 +1508,6 @@ function toggleDivision() {
   if (quien.value === 'Todos' || quien.value === 'Ambos') {
     divField.style.display = '';
     var personas = state.personas || [state.persona1||'Yo', state.persona2||''].filter(Boolean);
-    var monto = parseFloat(document.getElementById('g_monto').value) || 0;
-    var parte = monto > 0 ? Math.round(monto / personas.length) : 0;
     // Poblar select de pagador
     var pagadorSel = document.getElementById('gPagador');
     if (pagadorSel) {
@@ -1791,7 +1789,12 @@ async function deleteTarjeta(id) {
 // ============================================
 // RENDER
 // ============================================
-function fmt(n) { return '$'+Math.round(n||0).toLocaleString('es-AR'); }
+function fmt(n) {
+  if (isNaN(n) || n === null || n === undefined) return '$0';
+  var num = Math.round((n||0) * 100) / 100;
+  if (num % 1 === 0) return '$' + num.toLocaleString('es-AR');
+  return '$' + num.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
 
 function renderAll() {
   const {gastos,ingresos,tarjetas} = state;
@@ -2585,8 +2588,8 @@ function renderAllGrupo() {
   const personas = state.personas || [];
   
   // Calcular balances:
-  // Para gastos normales: quien pagó ese monto
-  // Para gastos con división: quien pagó el total, los demás le deben su parte
+  // balance[p] > 0 → le deben plata
+  // balance[p] < 0 → debe plata
   var participantes = personas.length ? personas.slice() : [];
   if (!participantes.length) {
     gs.forEach(function(g) {
@@ -2594,53 +2597,58 @@ function renderAllGrupo() {
       if (q && q !== 'Todos' && q !== 'Ambos' && participantes.indexOf(q) === -1) {
         participantes.push(q);
       }
+      if (g.division) {
+        try {
+          var d = JSON.parse(g.division);
+          Object.keys(d).forEach(function(p) {
+            if (participantes.indexOf(p) === -1) participantes.push(p);
+          });
+        } catch(e) {}
+      }
     });
   }
 
-  // balance[p] = lo que pagó - lo que le corresponde gastar
   var balance = {};
   participantes.forEach(function(p){ balance[p] = 0; });
 
   gs.forEach(function(g) {
     var monto = parseFloat(g.monto || 0);
     var pagador = g.quien || 'Todos';
-    
+
     if (g.division) {
-      // Gasto con división: pagador puso el total, cada uno debe su parte
+      // Gasto con división: cada uno puso lo que figura en division
+      // balance = lo que puso - lo que le corresponde (monto/participantes)
       var divObj = {};
       try { divObj = JSON.parse(g.division); } catch(e) {}
-      var totalDiv = Object.values(divObj).reduce(function(a,v){ return a+v; }, 0);
-      
-      // El pagador aportó el total
-      if (balance.hasOwnProperty(pagador)) {
-        balance[pagador] += monto; // pagó todo
-      }
-      // Cada persona "consume" su parte
-      Object.keys(divObj).forEach(function(p) {
+      var divPersonas = Object.keys(divObj);
+      var n = divPersonas.length || 1;
+      var parteJusta = Math.round(monto / n * 100) / 100;
+      divPersonas.forEach(function(p) {
+        var pusoPer = parseFloat(divObj[p]) || 0;
         if (balance.hasOwnProperty(p)) {
-          balance[p] -= divObj[p]; // debe su parte
+          balance[p] += pusoPer - parteJusta; // positivo=le deben, negativo=debe
         }
       });
     } else if (pagador === 'Todos' || pagador === 'Ambos') {
-      // Gasto compartido sin división: se reparte entre todos
-      var parte = participantes.length > 0 ? monto / participantes.length : 0;
-      participantes.forEach(function(p) { balance[p] += parte - parte; }); // cancela
+      // Todos pagaron igual — sin deuda
     } else {
-      // Gasto individual: el pagador aportó, todos deben su parte
-      var parteInd = participantes.length > 0 ? monto / participantes.length : 0;
+      // Una sola persona pagó todo — los demás le deben su parte
+      var n2 = participantes.length || 1;
+      var parte = Math.round(monto / n2 * 100) / 100;
       participantes.forEach(function(p) {
         if (p === pagador) {
-          balance[p] += monto - parteInd; // pagó de más
+          balance[p] += monto - parte; // pagó de más
         } else {
-          balance[p] -= parteInd; // debe su parte
+          balance[p] -= parte; // debe su parte
         }
       });
     }
   });
 
-  var parteIgual = 0; // ya está calculado en balance
+  var parteIgual = 0;
   var balances = balance;
 
+  // Calcular deudas
   // Calcular deudas
   // Calcular deudas
   // Calcular deudas
