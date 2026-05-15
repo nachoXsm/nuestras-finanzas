@@ -2580,19 +2580,17 @@ function renderAllGrupo() {
   const personas = state.personas || [];
   
   // Calcular balances:
-  // balance[p] > 0 → le deben plata
-  // balance[p] < 0 → debe plata
+  // Una persona pagó → los demás le deben su parte
+  // "Todos" con division → cada uno puso lo que figura, balance según diferencia con parte justa
+  // "Todos" sin division → nadie debe nada (pagaron partes iguales)
   var participantes = personas.length ? personas.slice() : [];
   if (!participantes.length) {
     gs.forEach(function(g) {
       var q = g.quien;
-      if (q && q !== 'Todos' && q !== 'Ambos' && participantes.indexOf(q) === -1) {
-        participantes.push(q);
-      }
+      if (q && q !== 'Todos' && q !== 'Ambos' && participantes.indexOf(q) === -1) participantes.push(q);
       if (g.division) {
         try {
-          var d = JSON.parse(g.division);
-          Object.keys(d).forEach(function(p) {
+          Object.keys(JSON.parse(g.division)).forEach(function(p) {
             if (participantes.indexOf(p) === -1) participantes.push(p);
           });
         } catch(e) {}
@@ -2606,32 +2604,31 @@ function renderAllGrupo() {
   gs.forEach(function(g) {
     var monto = parseFloat(g.monto || 0);
     var pagador = g.quien || 'Todos';
+    var n = participantes.length || 1;
 
     if (g.division) {
-      // Gasto con división: cada uno puso lo que figura en division
-      // balance = lo que puso - lo que le corresponde (monto/participantes)
+      // Cada uno puso lo que dice division — balance = puso - parte justa
       var divObj = {};
       try { divObj = JSON.parse(g.division); } catch(e) {}
       var divPersonas = Object.keys(divObj);
-      var n = divPersonas.length || 1;
-      var parteJusta = Math.round(monto / n * 100) / 100;
+      var nd = divPersonas.length || n;
+      var parteJusta = Math.round(monto / nd * 100) / 100;
       divPersonas.forEach(function(p) {
-        var pusoPer = parseFloat(divObj[p]) || 0;
         if (balance.hasOwnProperty(p)) {
-          balance[p] += pusoPer - parteJusta; // positivo=le deben, negativo=debe
+          balance[p] += Math.round((parseFloat(divObj[p]) - parteJusta) * 100) / 100;
         }
       });
     } else if (pagador === 'Todos' || pagador === 'Ambos') {
-      // Todos pagaron igual — sin deuda
+      // Sin division: pagaron partes iguales, sin deuda
+      // No modificar balance
     } else {
-      // Una sola persona pagó todo — los demás le deben su parte
-      var n2 = participantes.length || 1;
-      var parte = Math.round(monto / n2 * 100) / 100;
+      // Una persona pagó todo — los demás le deben su parte
+      var parte = Math.round(monto / n * 100) / 100;
       participantes.forEach(function(p) {
         if (p === pagador) {
-          balance[p] += monto - parte; // pagó de más
+          balance[p] += Math.round((monto - parte) * 100) / 100;
         } else {
-          balance[p] -= parte; // debe su parte
+          balance[p] -= parte;
         }
       });
     }
@@ -2640,6 +2637,7 @@ function renderAllGrupo() {
   var parteIgual = 0;
   var balances = balance;
 
+  // Calcular deudas
   // Calcular deudas
   // Calcular deudas
   // Calcular deudas
