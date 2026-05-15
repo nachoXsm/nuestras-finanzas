@@ -3425,8 +3425,9 @@ function showHogarNuevo() {
 }
 
 async function ingresarConCodigo() {
-  var codigo = (document.getElementById('gh_codigo').value || '').trim().toUpperCase().replace(/-/g,'');
-  var codigoConGuion = codigo; // Sin guión ahora
+  var raw = (document.getElementById('gh_codigo').value || '').trim().toUpperCase();
+  var codigo = raw.replace(/-/g,''); // Sin guión
+  var codigoConGuion = raw; // Con guión (para códigos viejos)
   const err = document.getElementById('ghCodigoError');
   const btn = document.getElementById('btnIngresarCodigo');
   if (codigo.length < 6) { err.textContent = 'El código debe tener 6 caracteres'; return; }
@@ -3610,7 +3611,8 @@ async function createGroup() {
 }
 
 async function joinGroup() {
-  const codigo = document.getElementById('gj_codigo').value.trim().toUpperCase().replace(/-/g,'');
+  const raw2 = document.getElementById('gj_codigo').value.trim().toUpperCase();
+  const codigo = raw2.replace(/-/g,'');
   const err = document.getElementById('gjError');
 
   if (codigo.length < 6) { err.textContent = 'Ingresá el código completo'; return; }
