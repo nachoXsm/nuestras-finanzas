@@ -65,7 +65,8 @@
     .gs-btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary)}
     .gs-back{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:white;width:32px;height:32px;border-radius:50%;cursor:pointer}
     .gs-title{font-weight:800;font-size:1.1rem}
-    .gs-input{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);color:white;padding:12px 14px;border-radius:16px;font-size:.95rem;width:100%;transition:border-color .2s}
+    .gs-input{background:rgba(128,128,128,.08);border:1.5px solid rgba(128,128,128,.25);color:var(--text);padding:12px 14px;border-radius:16px;font-size:.95rem;width:100%;transition:border-color .2s}
+    body:not(.dark) .gs-input{color:#1a1a2e !important;background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.2)}
     .gs-input:focus{outline:none;border-color:var(--primary)}
     .gs-error{color:var(--danger);font-size:.8rem;min-height:16px}
     .gs-code{font-size:2rem;font-weight:900;color:var(--primary);letter-spacing:6px;background:rgba(18,199,183,.08);border:2px solid rgba(18,199,183,.2);padding:16px 28px;border-radius:16px;text-align:center}
@@ -535,8 +536,8 @@
       <div class="gs-title">Ingresar con código</div>
     </div>
     <div style="font-size:.85rem;color:var(--muted);line-height:1.5">Ingresá el código de tu hogar para acceder a tus datos.</div>
-    <input class="gs-input" id="gh_codigo" type="text" placeholder="ABC-123" maxlength="7"
-      oninput="this.value=this.value.toUpperCase()"
+    <input class="gs-input" id="gh_codigo" type="text" placeholder="ABC123" maxlength="6"
+      oninput="this.value=this.value.toUpperCase().replace(/-/g,'')"
       style="font-size:1.6rem;font-weight:800;text-align:center;letter-spacing:5px">
     <div class="gs-error" id="ghCodigoError"></div>
     <button class="gs-btn gs-btn-primary" onclick="ingresarConCodigo()" id="btnIngresarCodigo">Entrar →</button>
@@ -583,7 +584,7 @@
   </div>
   <div id="gsJoin" style="display:none;flex-direction:column;gap:16px;width:100%;max-width:340px">
     <div style="display:flex;align-items:center;gap:10px"><button class="gs-back" onclick="showWelcome()">‹</button><div class="gs-title">Unirme a un grupo</div></div>
-    <input class="gs-input" id="gj_codigo" type="text" placeholder="ABC-123" maxlength="7" oninput="this.value=this.value.toUpperCase()" style="font-size:1.4rem;font-weight:800;text-align:center;letter-spacing:4px">
+    <input class="gs-input" id="gj_codigo" type="text" placeholder="ABC123" maxlength="6" oninput="this.value=this.value.toUpperCase().replace(/-/g,'')" style="font-size:1.4rem;font-weight:800;text-align:center;letter-spacing:4px">
     <div class="gs-error" id="gjError"></div>
     <button class="gs-btn gs-btn-primary" onclick="joinGroup()">Entrar al grupo →</button>
   </div>
@@ -684,7 +685,7 @@
   <div class="tab-content active" id="tab-gastos">
     <div class="sec-wrap">
       <div class="sec-head">
-        <div class="sec-title">💰 Ingresos</div>
+        <div class="sec-title" id="incTitle" onclick="toggleIngresos()" style="cursor:pointer;user-select:none">💰 Ingresos <span id="incToggleIcon" style="font-size:11px;opacity:.5;margin-left:4px">▼</span></div>
         <button class="sec-action" onclick="toggleForm('fIngreso')">+ Agregar</button>
       </div>
       <div class="form-panel" id="fIngreso">
@@ -944,7 +945,7 @@
   <div class="nav-item" id="nav-analisis" onclick="switchTab('flujo');setNavActive('nav-analisis')">
     <span class="nav-icon">📊</span>Análisis
   </div>
-  <div class="nav-item" id="nav-cuenta" onclick="switchTab('cuenta');setNavActive('nav-cuenta')">
+  <div class="nav-item" id="nav-cuenta" onclick="setNavActive('nav-cuenta');openPerfil()">
     <span class="nav-icon">👤</span>Cuenta
   </div>
 </nav>
@@ -1479,6 +1480,18 @@ function toggleForm(id) {
     }
   }
 }
+function toggleIngresos() {
+  var list = document.getElementById('ingresoList');
+  var form = document.getElementById('fIngreso');
+  var icon = document.getElementById('incToggleIcon');
+  var btn = document.querySelector('.sec-action[onclick*="fIngreso"]');
+  var hidden = list && list.style.display === 'none';
+  if (list) list.style.display = hidden ? '' : 'none';
+  if (form && !hidden) form.style.display = 'none';
+  if (btn) btn.style.display = hidden ? '' : 'none';
+  if (icon) icon.textContent = hidden ? '▼' : '▶';
+}
+
 function toggleDivision() {
   var quien = document.getElementById('g_quien');
   var divField = document.getElementById('gDivisionField');
@@ -3294,12 +3307,10 @@ function quickConvert(from, to) {
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 6; i++) {
-    if (i === 3) code += '-';
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
+
 
 function loadGroup() {
   const saved = localStorage.getItem('nf_grupo');
@@ -3348,11 +3359,8 @@ function showHogarNuevo() {
 }
 
 async function ingresarConCodigo() {
-  var raw = (document.getElementById('gh_codigo').value || '').trim().toUpperCase();
-  // Normalizar: aceptar con o sin guión
-  var codigo = raw.replace('-', '');
-  // Intentar buscar con guión (formato guardado) y sin guión
-  var codigoConGuion = codigo.length === 6 ? codigo.slice(0,3) + '-' + codigo.slice(3) : raw;
+  var codigo = (document.getElementById('gh_codigo').value || '').trim().toUpperCase().replace(/-/g,'');
+  var codigoConGuion = codigo; // Sin guión ahora
   const err = document.getElementById('ghCodigoError');
   const btn = document.getElementById('btnIngresarCodigo');
   if (codigo.length < 6) { err.textContent = 'El código debe tener 6 caracteres'; return; }
@@ -3536,7 +3544,7 @@ async function createGroup() {
 }
 
 async function joinGroup() {
-  const codigo = document.getElementById('gj_codigo').value.trim().toUpperCase();
+  const codigo = document.getElementById('gj_codigo').value.trim().toUpperCase().replace(/-/g,'');
   const err = document.getElementById('gjError');
 
   if (codigo.length < 6) { err.textContent = 'Ingresá el código completo'; return; }
@@ -4145,7 +4153,7 @@ async function switchToGrupo(id) {
   var tw = document.getElementById('tabsWrap');
   if (tw) tw.querySelectorAll('.tab').forEach(function(t){ t.style.display=''; });
   var bc = document.querySelector('.balance-card');
-  if (bc) { bc.style.display=''; bc.innerHTML = ''; }
+  if (bc) { bc.style.display=''; }
   var sm = document.getElementById('summary');
   if (sm) sm.style.display = '';
   var gbp = document.getElementById('grupoBalancePanel');
