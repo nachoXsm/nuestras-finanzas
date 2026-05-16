@@ -1438,11 +1438,14 @@ async function loadAll() {
   setSyncing('syncing');
   try {
     const gid = state.grupoId;
+    const mes = state.mes;
+    const anio = state.anio;
     const [tarjetas, ingresos, gastos] = await Promise.all([
       dbGet('tarjetas', `grupo_id=eq.${gid}`),
-      dbGet('ingresos', `grupo_id=eq.${gid}&mes=eq.${state.mes}&anio=eq.${state.anio}`),
-      dbGet('gastos', `grupo_id=eq.${gid}&mes=eq.${state.mes}&anio=eq.${state.anio}`)
+      dbGet('ingresos', `grupo_id=eq.${gid}&mes=eq.${mes}&anio=eq.${anio}`),
+      dbGet('gastos', `grupo_id=eq.${gid}&mes=eq.${mes}&anio=eq.${anio}`)
     ]);
+    if (state.grupoId !== gid || state.mes !== mes || state.anio !== anio) return;
     state.tarjetas=tarjetas; state.ingresos=ingresos; state.gastos=gastos;
     setSyncing('ok');
     setTimeout(checkTarjetasVencimiento, 1500); // Verificar vencimientos
@@ -2719,6 +2722,7 @@ function calcularLiquidacionGrupo() {
 
 function renderAllGrupo() {
   updatePersonaNames();
+  rememberHomeBalanceCard();
   var liq = calcularLiquidacionGrupo();
   const gs = liq.gastos;
   const totalGrupo = liq.totalGrupo;
@@ -3974,7 +3978,52 @@ if('serviceWorker' in navigator){
 // ============================================
 // MODO HOGAR vs MODO GRUPO
 // ============================================
+var nfHomeBalanceHTML = null;
+function rememberHomeBalanceCard() {
+  var bc = document.querySelector('.balance-card');
+  if (bc && !nfHomeBalanceHTML && bc.querySelector('#balanceTotal')) {
+    nfHomeBalanceHTML = bc.innerHTML;
+  }
+}
+
+function resetVistaCompartida() {
+  var app = document.getElementById('appMain');
+  if (app) app.setAttribute('data-modo', '');
+
+  var navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(function(n){ n.style.display = ''; });
+
+  var tabsWrap = document.getElementById('tabsWrap');
+  if (tabsWrap) tabsWrap.querySelectorAll('.tab').forEach(function(t){ t.style.display = ''; });
+
+  var balCard = document.querySelector('.balance-card');
+  if (balCard) {
+    balCard.style.display = '';
+    if (nfHomeBalanceHTML && !balCard.querySelector('#balanceTotal')) {
+      balCard.innerHTML = nfHomeBalanceHTML;
+    }
+  }
+
+  var summary = document.getElementById('summary');
+  if (summary) summary.style.display = '';
+  var ingresoList = document.getElementById('ingresoList');
+  if (ingresoList) ingresoList.style.display = '';
+  var fIngreso = document.getElementById('fIngreso');
+  if (fIngreso) fIngreso.style.display = '';
+
+  document.querySelectorAll('.sec-head').forEach(function(el){ el.style.display = ''; });
+
+  var grupoPanel = document.getElementById('grupoBalancePanel');
+  if (grupoPanel) grupoPanel.remove();
+  var banner = document.getElementById('modoGrupoBanner');
+  if (banner) banner.remove();
+}
+
+rememberHomeBalanceCard();
+
 function activarModoHogar() {
+  rememberHomeBalanceCard();
+  resetVistaCompartida();
   // Mostrar todas las secciones normales
   document.getElementById('appMain').setAttribute('data-modo', 'hogar');
   // Tabs completos
@@ -4023,6 +4072,7 @@ function activarModoGrupo() {
 
   // Ocultar sección de ingresos al renderizar
   setTimeout(function() {
+    if (!esModoGrupo()) return;
     ocultarSeccionesHogar();
     mostrarBalanceGrupo();
   }, 300);
@@ -4346,26 +4396,19 @@ async function switchToGrupo(id) {
   closeGrupos();
 
   // Resetear el DOM completamente antes de cargar
-  document.getElementById('appMain').setAttribute('data-modo', '');
-  var navT = document.getElementById('nav-tarjetas');
-  if (navT) navT.style.display = '';
-  var tw = document.getElementById('tabsWrap');
-  if (tw) tw.querySelectorAll('.tab').forEach(function(t){ t.style.display=''; });
-  var bc = document.querySelector('.balance-card');
-  if (bc) { bc.style.display=''; }
-  var sm = document.getElementById('summary');
-  if (sm) sm.style.display = '';
-  var gbp = document.getElementById('grupoBalancePanel');
-  if (gbp) gbp.remove();
-  var banner = document.getElementById('modoGrupoBanner');
-  if (banner) banner.remove();
+  resetVistaCompartida();
+  if (esModoGrupo()) {
+    activarModoGrupo();
+  } else {
+    activarModoHogar();
+  }
 
   // Limpiar state inmediatamente antes de cargar
   state.gastos = [];
   state.ingresos = [];
   state.tarjetas = [];
   updatePersonaNames();
-  renderAll(); // Renderizar con datos vacíos primero
+  renderAll(); // Renderizar con datos vacios primero
   await loadAll(); // Luego cargar los reales
   toast('✅ ' + (destino.nombre || 'Grupo'));
 }
