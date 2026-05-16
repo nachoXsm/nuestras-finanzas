@@ -1505,7 +1505,27 @@ function toggleDivision() {
 
   if (quien.value === 'Todos' || quien.value === 'Ambos') {
     divField.style.display = '';
-    var personas = (state.personas && state.personas.length) ? state.personas : [state.persona1, state.persona2].filter(Boolean);
+    // Obtener personas de múltiples fuentes
+    var personas = [];
+    if (state.personas && state.personas.length) {
+      personas = state.personas;
+    } else {
+      var g = loadGroup();
+      if (g) {
+        if (g.personasArray && g.personasArray.length) {
+          personas = g.personasArray;
+        } else if (g.personas) {
+          try { personas = JSON.parse(g.personas); } catch(e) {}
+        }
+        if (!personas.length) {
+          personas = [g.persona1, g.persona2].filter(Boolean);
+        }
+      }
+    }
+    if (!personas.length) personas = ['Persona 1', 'Persona 2'];
+    // Actualizar state para futuras llamadas
+    state.personas = personas;
+
     var monto = parseFloat(document.getElementById('g_monto').value) || 0;
     var nPers = personas.length || 1;
     var parte = monto > 0 ? (Math.round(monto / nPers * 100) / 100) : 0;
@@ -3720,9 +3740,13 @@ function updatePersonaNames() {
   const grupo = loadGroup();
   if (!grupo) return;
 
-  const personas = grupo.personasArray ||
-    [grupo.persona1, grupo.persona2].filter(Boolean);
-
+  var personas = grupo.personasArray || [];
+  if (!personas.length && grupo.personas) {
+    try { personas = JSON.parse(grupo.personas); } catch(e) {}
+  }
+  if (!personas.length) {
+    personas = [grupo.persona1, grupo.persona2].filter(Boolean);
+  }
   state.personas = personas;
   state.persona1 = personas[0] || 'Persona 1';
   state.persona2 = personas[1] || 'Persona 2';
