@@ -1640,27 +1640,31 @@ async function saveGasto() {
       const hasDivision = divField && divField.style.display !== 'none' && divInputs.length > 0;
 
       if (hasDivision) {
-        // Guardar UN gasto con quien=pagador y division en notas
+        // Guardar UN gasto con division JSON
         const divisionObj = {};
-        divInputs.forEach(function(inp) {
+        document.querySelectorAll('.g_division_input').forEach(function(inp) {
           const p = inp.getAttribute('data-persona');
           const m = parseFloat(inp.value) || 0;
-          if (m > 0) divisionObj[p] = m;
+          if (p && m > 0) divisionObj[p] = m;
         });
+        const divStr = JSON.stringify(divisionObj);
         const bodyDiv = {
           grupo_id: state.grupoId,
           mes: gMes, anio: gAnio,
           descripcion: desc,
           monto: cuotaMonto,
-          cat, tipo, medio, tarjeta_id,
+          cat: cat, tipo: tipo, medio: medio, tarjeta_id: tarjeta_id,
           quien: 'Todos',
           dia: diaVal,
           cuotas: 1, cuota_actual: 1, gasto_origen_id: null,
-          division: JSON.stringify(divisionObj)
+          division: divStr
         };
         const resDiv = await dbPost('gastos', bodyDiv);
-        if (resDiv && resDiv[0]) state.gastos.push(resDiv[0]);
-        toast('✅ Gasto dividido guardado');
+        if (resDiv && resDiv[0]) {
+          resDiv[0].division = divStr;
+          state.gastos.push(resDiv[0]);
+        }
+        toast('✅ Gasto guardado');
       } else {
       // Create first cuota — build body here
       const body = {
@@ -3762,7 +3766,7 @@ async function startApp() {
   state.grupoId = grupo.id;
 
   // DETECTAR MODO al iniciar — comparar grupo activo con hogar guardado
-  const hogarId = getHogarId();
+  var hogarId = getHogarId();
   if (hogarId && grupo.id !== hogarId) {
     setModoGrupo();
   } else if (!hogarId && (grupo.esGrupo || grupo._esGrupoExtra)) {
@@ -4115,7 +4119,7 @@ function renderGruposPanel() {
 
   function grupoCard(g, isActivo) {
     const ps = g.personasArray || [g.persona1, g.persona2].filter(Boolean);
-    const hogarId = getHogarId();
+    var hogarId = getHogarId();
     const isHogar = (hogarId && g.id === hogarId) || g.esHogar === true;
     const icon = isHogar ? '🏠' : '👥';
     const color = isHogar ? 'rgba(18,199,183,.15)' : 'rgba(108,99,255,.15)';
@@ -4138,7 +4142,7 @@ function renderGruposPanel() {
   }
 
   // Separar hogar de grupos de gastos
-  const hogarId = getHogarId();
+  var hogarId = getHogarId();
   const todosGrupos = gruposExtra.concat(grupoActual ? [] : []);
   
   // El hogar es el que tiene el ID guardado en nf_hogar_id
@@ -4171,8 +4175,42 @@ function renderGruposPanel() {
     <div><div style="font-size:14px;font-weight:700;color:#f7c948">Unirse con código</div>
     <div style="font-size:11px;color:var(--muted);margin-top:1px">Tengo un código de invitación</div></div>
   </div>`;
+  // Botón volver al hogar (solo si no estamos en el hogar)
+  var hogarId = getHogarId();
+  const grupoActualId = loadGroup() ? loadGroup().id : null;
+  if (hogarId && grupoActualId !== hogarId) {
+    html += '<div class="grupo-divider"></div>';
+    html += '<div style="margin:0 12px 16px;background:rgba(18,199,183,.08);border:1.5px solid rgba(18,199,183,.2);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="volverAlHogar()">';
+    html += '<div style="font-size:22px">🏠</div>';
+    html += '<div><div style="font-size:14px;font-weight:700;color:var(--primary)">Volver a Mi Hogar</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">Salir del grupo de gastos</div></div></div>';
+  }
   html += '<div style="height:16px"></div>';
   body.innerHTML = html;
+}
+
+async function volverAlHogar() {
+  const hogarId = getHogarId();
+  if (!hogarId) return;
+  // Buscar el hogar en extras o cargar desde Supabase
+  const extras = getGruposGuardados();
+  const grupoActual = loadGroup();
+  let hogar = extras.find(function(g){ return g.id === hogarId; });
+  if (!hogar && grupoActual && grupoActual.id === hogarId) hogar = grupoActual;
+  if (!hogar) {
+    // Cargar desde Supabase
+    try {
+      const res = await dbGet('grupos', 'id=eq.' + hogarId);
+      if (res && res[0]) {
+        hogar = res[0];
+        try { hogar.personasArray = JSON.parse(hogar.personas || '[]'); } catch(e) {}
+        if (!hogar.personasArray.length) hogar.personasArray = [hogar.persona1, hogar.persona2].filter(Boolean);
+      }
+    } catch(e) { toast('❌ Error al cargar el hogar'); return; }
+  }
+  if (!hogar) { toast('❌ No se encontró el hogar'); return; }
+  closeGrupos();
+  await switchToGrupo(hogarId);
 }
 
 function invitarAlGrupo(id, codigo, nombre) {
