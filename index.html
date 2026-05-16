@@ -401,6 +401,9 @@
     body:not(.dark) .bottom-nav{background:rgba(240,244,255,.95)!important}
     body:not(.dark) .sum-card,body:not(.dark) .income-item,body:not(.dark) .item-card,body:not(.dark) .rate-card,body:not(.dark) .ars-rate{background:white!important;border-color:rgba(20,33,61,.08)!important}
     #summary{display:grid!important;grid-template-columns:1fr 1fr!important;gap:14px!important;margin-bottom:20px!important}
+    #appMain[data-modo="grupo"] #summary,
+    #appMain[data-modo="grupo"] #ingresoList,
+    #appMain[data-modo="grupo"] #fIngreso{display:none!important}
     .sum-card{border-radius:20px!important;padding:16px!important}
     .sum-label{font-size:11px!important;color:var(--muted)!important;text-transform:uppercase!important;letter-spacing:1.2px!important;display:block!important;margin-bottom:8px!important;font-weight:600!important}
     .sum-val{font-size:22px!important;font-weight:800!important;display:block!important;letter-spacing:-.5px!important}
@@ -2851,6 +2854,100 @@ renderInforme = function() {
   const personas=state.personas||[state.persona1||'Nacho',state.persona2||'Celi'];
   const colors=['#12c7b7','#6c63ff','#f7c948','#ff7a59','#1ec98f'];
   const liqGrupo = (typeof calcularLiquidacionGrupo === 'function') ? calcularLiquidacionGrupo() : null;
+
+  if (typeof esModoGrupo === 'function' && esModoGrupo() && liqGrupo) {
+    const elGrupo=document.getElementById('informeContent');
+    const totalGrupo=liqGrupo.totalGrupo;
+    const parteGrupo=liqGrupo.parteIgual;
+    const maxAporte=Math.max(1, ...personas.map(p=>liqGrupo.aportes[p]||0));
+    elGrupo.innerHTML=`
+      <div class="inf-hero">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">RESUMEN DEL GRUPO</div>
+        <div class="inf-hero-row">
+          <div class="inf-hero-stat">
+            <div class="inf-hero-label">Total</div>
+            <div class="inf-hero-val neu">${fmtInt(totalGrupo)}</div>
+          </div>
+          <div class="inf-hero-divider"></div>
+          <div class="inf-hero-stat">
+            <div class="inf-hero-label">Parte c/u</div>
+            <div class="inf-hero-val pos">${fmt(parteGrupo)}</div>
+          </div>
+          <div class="inf-hero-divider"></div>
+          <div class="inf-hero-stat">
+            <div class="inf-hero-label">Movimientos</div>
+            <div class="inf-hero-val neu">${gastos.length}</div>
+            <div class="inf-hero-sub">gastos cargados</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="inf-section-title">Por integrante</div>
+      <div class="inf-chart-card">
+        ${personas.map((p,i)=>{
+          const aporte=liqGrupo.aportes[p]||0;
+          const balance=liqGrupo.balances[p]||0;
+          const pct=totalGrupo>0?Math.round(aporte/totalGrupo*100):0;
+          const barW=Math.round(aporte/maxAporte*100);
+          const color=colors[i]||'#888';
+          const estado=balance>0.5 ? 'Le deben ' + fmt(balance) : balance<-0.5 ? 'Debe ' + fmt(Math.abs(balance)) : 'Al día';
+          const estadoColor=balance>0.5 ? 'var(--success)' : balance<-0.5 ? 'var(--danger)' : 'var(--muted)';
+          return `<div class="inf-persona-card">
+            <div class="inf-persona-avatar" style="background:${color}20;color:${color}">${p[0]}</div>
+            <div class="inf-persona-info">
+              <div class="inf-persona-name">${p}</div>
+              <div class="inf-persona-bar-bg">
+                <div class="inf-persona-fill" style="width:${barW}%;background:${color}"></div>
+              </div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px">Aportó ${fmt(aporte)} · ${pct}% del total</div>
+            </div>
+            <div class="inf-persona-right">
+              <div class="inf-persona-inc">${fmt(aporte)}</div>
+              <div class="inf-persona-gas" style="color:${estadoColor}">${estado}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="inf-section-title">Liquidación</div>
+      <div class="inf-chart-card">
+        ${liqGrupo.deudas.length===0
+          ? `<div style="text-align:center;padding:18px;color:var(--muted)">No hay deudas pendientes</div>`
+          : liqGrupo.deudas.map(d=>`
+            <div class="inf-persona-card">
+              <div class="inf-persona-info">
+                <div class="inf-persona-name">${d.de} le debe a ${d.a}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:4px">Para dejar el grupo equilibrado</div>
+              </div>
+              <div class="inf-persona-right">
+                <div class="inf-persona-inc">${fmt(d.monto)}</div>
+              </div>
+            </div>`).join('')
+        }
+      </div>
+
+      <div class="inf-section-title">Gastos por categoría</div>
+      <div class="inf-chart-card">
+        ${catSorted.length===0
+          ? `<div style="text-align:center;padding:20px;color:var(--muted)">Sin datos este mes</div>`
+          : catSorted.map(([cat,tot])=>{
+              const max=catSorted[0][1];
+              const barW=Math.round(tot/max*100);
+              const col=CAT_COLORS[cat]||'#888';
+              return `<div class="inf-cat-row">
+                <div class="inf-cat-dot" style="background:${col}"></div>
+                <div class="inf-cat-name">${cat}</div>
+                <div class="inf-cat-bar-bg">
+                  <div class="inf-cat-fill" style="width:${barW}%;background:${col}"></div>
+                </div>
+                <div class="inf-cat-val">${fmt(tot)}</div>
+              </div>`;
+            }).join('')
+        }
+      </div>`;
+    return;
+  }
+
   const pInc=personas.map((p,i)=>({
     nombre:p, color:colors[i]||'#888',
     inc:ingresos.filter(x=>x.quien===p).reduce((a,x)=>a+parseFloat(x.monto),0),
