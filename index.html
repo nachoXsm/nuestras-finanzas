@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -1645,6 +1645,20 @@ async function saveGasto() {
         mes: gMes,
         anio: gAnio
       };
+      const divField = document.getElementById('gDivisionField');
+      const divInputs = divField ? divField.querySelectorAll('.g_division_input') : [];
+      if (divField && divField.style.display !== 'none' && divInputs.length > 0) {
+        const divisionObj = {};
+        divInputs.forEach(function(inp) {
+          const p = inp.getAttribute('data-persona');
+          const m = parseFloat(inp.value) || 0;
+          if (p && m > 0) divisionObj[p] = m;
+        });
+        editBody.quien = 'Todos';
+        editBody.division = JSON.stringify(divisionObj);
+      } else {
+        editBody.division = null;
+      }
       const res = await dbPatch('gastos', editingGastoId, editBody);
       state.gastos = state.gastos.map(g=>g.id===editingGastoId?res[0]:g);
       editingGastoId=null; toast('✅ Gasto actualizado');
@@ -1734,6 +1748,16 @@ function editGasto(id) {
   document.getElementById('g_tipo').value=g.tipo||'variable';
   document.getElementById('g_medio').value=g.medio||'efectivo';
   document.getElementById('g_quien').value=g.quien||'Todos';
+  toggleDivision();
+  if (g.division) {
+    try {
+      const divObj = typeof g.division === 'string' ? JSON.parse(g.division) : g.division;
+      document.querySelectorAll('.g_division_input').forEach(function(inp) {
+        const p = inp.getAttribute('data-persona');
+        if (p && divObj[p] != null) inp.value = divObj[p];
+      });
+    } catch(e) {}
+  }
   // g_dia ya no existe como campo separado
   toggleCardFields();
   // Set tarjeta after populating select
@@ -2603,34 +2627,30 @@ renderAll = function() {
 // ============================================
 // RENDER COMPLETO PARA MODO GRUPO
 // ============================================
-function renderAllGrupo() {
-  // Asegurar que las personas del grupo estén cargadas
-  updatePersonaNames();
+function calcularLiquidacionGrupo() {
   const gs = state.gastos || [];
-  const totalGrupo = gs.reduce(function(a,g){ return a+parseFloat(g.monto||0); }, 0);
   const personas = state.personas || [];
-  
-  // Calcular balances:
-  // Una persona pagó → los demás le deben su parte
-  // "Todos" con division → cada uno puso lo que figura, balance según diferencia con parte justa
-  // "Todos" sin division → nadie debe nada (pagaron partes iguales)
-  var participantes = personas.length ? personas.slice() : [];
-  if (!participantes.length) {
-    gs.forEach(function(g) {
-      var q = g.quien;
-      if (q && q !== 'Todos' && q !== 'Ambos' && participantes.indexOf(q) === -1) participantes.push(q);
-      if (g.division) {
-        try {
-          Object.keys(JSON.parse(g.division)).forEach(function(p) {
-            if (participantes.indexOf(p) === -1) participantes.push(p);
-          });
-        } catch(e) {}
-      }
-    });
-  }
+  const totalGrupo = gs.reduce(function(a,g){ return a + parseFloat(g.monto || 0); }, 0);
 
+  var participantes = personas.length ? personas.slice() : [];
+  gs.forEach(function(g) {
+    var q = g.quien;
+    if (q && q !== 'Todos' && q !== 'Ambos' && participantes.indexOf(q) === -1) participantes.push(q);
+    if (g.division) {
+      try {
+        Object.keys(typeof g.division === 'string' ? JSON.parse(g.division) : g.division).forEach(function(p) {
+          if (participantes.indexOf(p) === -1) participantes.push(p);
+        });
+      } catch(e) {}
+    }
+  });
+
+  var aportes = {};
   var balance = {};
-  participantes.forEach(function(p){ balance[p] = 0; });
+  participantes.forEach(function(p) {
+    aportes[p] = 0;
+    balance[p] = 0;
+  });
 
   gs.forEach(function(g) {
     var monto = parseFloat(g.monto || 0);
@@ -2638,55 +2658,73 @@ function renderAllGrupo() {
     var n = participantes.length || 1;
 
     if (g.division) {
-      // Cada uno puso lo que dice division — balance = puso - parte justa
       var divObj = {};
-      try { divObj = JSON.parse(g.division); } catch(e) {}
-      var divPersonas = Object.keys(divObj);
-      var nd = divPersonas.length || n;
-      var parteJusta = Math.round(monto / nd * 100) / 100;
-      divPersonas.forEach(function(p) {
-        if (balance.hasOwnProperty(p)) {
-          balance[p] += Math.round((parseFloat(divObj[p]) - parteJusta) * 100) / 100;
+      try { divObj = typeof g.division === 'string' ? JSON.parse(g.division) : g.division; } catch(e) {}
+      Object.keys(divObj).forEach(function(p) {
+        var puso = parseFloat(divObj[p] || 0);
+        if (!balance.hasOwnProperty(p)) {
+          participantes.push(p);
+          aportes[p] = 0;
+          balance[p] = 0;
         }
+        aportes[p] += puso;
       });
     } else if (pagador === 'Todos' || pagador === 'Ambos') {
-      // Sin division: pagaron partes iguales, sin deuda
-      // No modificar balance
+      var parteTodos = n ? monto / n : 0;
+      participantes.forEach(function(p) { aportes[p] += parteTodos; });
     } else {
-      // Una persona pagó todo — los demás le deben su parte
-      var parte = Math.round(monto / n * 100) / 100;
-      participantes.forEach(function(p) {
-        if (p === pagador) {
-          balance[p] += Math.round((monto - parte) * 100) / 100;
-        } else {
-          balance[p] -= parte;
-        }
-      });
+      if (!balance.hasOwnProperty(pagador)) {
+        participantes.push(pagador);
+        aportes[pagador] = 0;
+        balance[pagador] = 0;
+      }
+      aportes[pagador] += monto;
     }
   });
 
-  var parteIgual = 0;
-  var balances = balance;
+  var parteIgual = participantes.length ? totalGrupo / participantes.length : 0;
+  participantes.forEach(function(p) {
+    balance[p] = Math.round(((aportes[p] || 0) - parteIgual) * 100) / 100;
+  });
 
-  // Calcular deudas
-  // Calcular deudas
-  // Calcular deudas
-  // Calcular deudas
-  // Calcular deudas
+  var balancesParaLiquidar = {};
+  participantes.forEach(function(p){ balancesParaLiquidar[p] = balance[p]; });
+  var acreedores = participantes.filter(function(p){ return balancesParaLiquidar[p] > 0.5; });
+  var deudores = participantes.filter(function(p){ return balancesParaLiquidar[p] < -0.5; });
   var deudas = [];
-  var acreedores = participantes.filter(function(p){ return balances[p] > 0.5; });
-  var deudores = participantes.filter(function(p){ return balances[p] < -0.5; });
   acreedores.forEach(function(ac) {
     deudores.forEach(function(de) {
-      var monto = Math.min(balances[ac], Math.abs(balances[de]));
+      var monto = Math.min(balancesParaLiquidar[ac], Math.abs(balancesParaLiquidar[de]));
       if (monto > 0.5) {
-        deudas.push({de:de, a:ac, monto:monto});
-        balances[ac] -= monto;
-        balances[de] += monto;
+        monto = Math.round(monto * 100) / 100;
+        deudas.push({de: de, a: ac, monto: monto});
+        balancesParaLiquidar[ac] = Math.round((balancesParaLiquidar[ac] - monto) * 100) / 100;
+        balancesParaLiquidar[de] = Math.round((balancesParaLiquidar[de] + monto) * 100) / 100;
       }
     });
   });
 
+  return {
+    gastos: gs,
+    totalGrupo: totalGrupo,
+    participantes: participantes,
+    parteIgual: parteIgual,
+    aportes: aportes,
+    balances: balance,
+    deudas: deudas,
+    teDebenTotal: participantes.reduce(function(a,p){ return a + Math.max(0, balance[p] || 0); }, 0),
+    debesTotal: participantes.reduce(function(a,p){ return a + Math.max(0, -(balance[p] || 0)); }, 0)
+  };
+}
+
+function renderAllGrupo() {
+  updatePersonaNames();
+  var liq = calcularLiquidacionGrupo();
+  const gs = liq.gastos;
+  const totalGrupo = liq.totalGrupo;
+  var participantes = liq.participantes;
+  var parteIgual = liq.parteIgual;
+  var deudas = liq.deudas;
   // OCULTAR TODO LO DE HOGAR
   var toHide = ['.balance-card', '#summary', '#ingresoList', '#fIngreso'];
   toHide.forEach(function(sel) {
@@ -2719,12 +2757,6 @@ function renderAllGrupo() {
   var balCard = document.querySelector('.balance-card');
   if (balCard) {
     balCard.style.display = '';
-    var teDebenTotal = acreedores.reduce(function(a,p){
-      return a + Math.max(0, (gastosPorPersona[p]||0) - parteIgual);
-    }, 0);
-    var debesTotal = deudores.reduce(function(a,p){
-      return a + Math.max(0, parteIgual - (gastosPorPersona[p]||0));
-    }, 0);
     balCard.innerHTML =
       '<small style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65">BALANCE DEL GRUPO</small>' +
       '<h2 style="font-size:32px;font-weight:800;margin:8px 0 2px;letter-spacing:-1px">' + fmt(totalGrupo) + '</h2>' +
@@ -2734,9 +2766,9 @@ function renderAllGrupo() {
         '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Gastado</div>' +
         '<div style="font-size:16px;font-weight:800">' + fmt(totalGrupo) + '</div></div>' +
         '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Te deben</div>' +
-        '<div style="font-size:16px;font-weight:800;color:#7effd4">' + fmt(teDebenTotal) + '</div></div>' +
+        '<div style="font-size:16px;font-weight:800;color:#7effd4">' + fmt(liq.teDebenTotal) + '</div></div>' +
         '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Debés</div>' +
-        '<div style="font-size:16px;font-weight:800;color:#ffb3a0">' + fmt(debesTotal) + '</div></div>' +
+        '<div style="font-size:16px;font-weight:800;color:#ffb3a0">' + fmt(liq.debesTotal) + '</div></div>' +
       '</div>';
   }
 
@@ -2814,10 +2846,11 @@ renderInforme = function() {
 
   const personas=state.personas||[state.persona1||'Nacho',state.persona2||'Celi'];
   const colors=['#12c7b7','#6c63ff','#f7c948','#ff7a59','#1ec98f'];
+  const liqGrupo = (typeof calcularLiquidacionGrupo === 'function') ? calcularLiquidacionGrupo() : null;
   const pInc=personas.map((p,i)=>({
     nombre:p, color:colors[i]||'#888',
     inc:ingresos.filter(x=>x.quien===p).reduce((a,x)=>a+parseFloat(x.monto),0),
-    gas:gastos.filter(x=>x.quien===p).reduce((a,x)=>a+parseFloat(x.monto),0)
+    gas: liqGrupo ? (liqGrupo.aportes[p] || 0) : gastos.filter(x=>x.quien===p).reduce((a,x)=>a+parseFloat(x.monto),0)
   }));
   const ambosG=gastos.filter(g=>g.quien==='Ambos').reduce((a,g)=>a+parseFloat(g.monto),0);
 
@@ -4019,6 +4052,7 @@ function ocultarSeccionesHogar() {
 }
 
 function mostrarBalanceGrupo() {
+  if (typeof renderAllGrupo === 'function') { renderAllGrupo(); return; }
   var gs = state.gastos || [];
   var personas = state.personas || [];
   if (!gs.length && !personas.length) return;
