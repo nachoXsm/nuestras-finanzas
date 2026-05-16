@@ -1811,6 +1811,11 @@ function fmt(n) {
   if (num % 1 === 0) return '$' + num.toLocaleString('es-AR');
   return '$' + num.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
+function fmtInt(n) {
+  // Sin decimales — para totales en cards grandes
+  if (isNaN(n) || n === null || n === undefined) return '$0';
+  return '$' + Math.round(n||0).toLocaleString('es-AR');
+}
 
 function renderAll() {
   const {gastos,ingresos,tarjetas} = state;
@@ -1826,23 +1831,23 @@ function renderAll() {
   document.getElementById('summary').innerHTML = `
     <div class="sum-card">
       <div class="sum-label">Ingresos</div>
-      <div class="sum-val green">${fmt(totalInc)}</div>
+      <div class="sum-val green">${fmtInt(totalInc)}</div>
       <div class="sum-sub">Nacho + Celi</div>
     </div>
     <div class="sum-card">
       <div class="sum-label">Gastos</div>
-      <div class="sum-val red">${fmt(totalGas)}</div>
+      <div class="sum-val red">${fmtInt(totalGas)}</div>
       <div class="sum-sub">${pct}% del ingreso</div>
       <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)'}"></div></div>
     </div>
     <div class="sum-card">
       <div class="sum-label">Fijos</div>
-      <div class="sum-val blue">${fmt(fijos)}</div>
+      <div class="sum-val blue">${fmtInt(fijos)}</div>
       <div class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}% del total</div>
     </div>
     <div class="sum-card">
       <div class="sum-label">Flujo libre</div>
-      <div class="sum-val ${saldo>=0?'orange':'red'}">${fmt(saldo)}</div>
+      <div class="sum-val ${saldo>=0?'orange':'red'}">${fmtInt(saldo)}</div>
       <div class="sum-sub">${saldo>=0?'disponible':'déficit'}</div>
     </div>`;
 
@@ -1992,9 +1997,9 @@ function renderInforme() {
 
   document.getElementById('informeContent').innerHTML = `
     <div class="informe-grid">
-      <div class="informe-card"><div class="sum-label">Ingresos</div><div class="sum-val green" style="font-size:0.9rem">${fmt(totalInc)}</div></div>
-      <div class="informe-card"><div class="sum-label">Gastos</div><div class="sum-val red" style="font-size:0.9rem">${fmt(totalGas)}</div></div>
-      <div class="informe-card"><div class="sum-label">Saldo</div><div class="sum-val ${saldo>=0?'green':'red'}" style="font-size:0.9rem">${fmt(saldo)}</div></div>
+      <div class="informe-card"><div class="sum-label">Ingresos</div><div class="sum-val green" style="font-size:0.9rem">${fmtInt(totalInc)}</div></div>
+      <div class="informe-card"><div class="sum-label">Gastos</div><div class="sum-val red" style="font-size:0.9rem">${fmtInt(totalGas)}</div></div>
+      <div class="informe-card"><div class="sum-label">Saldo</div><div class="sum-val ${saldo>=0?'green':'red'}" style="font-size:0.9rem">${fmtInt(saldo)}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="card-block">
@@ -2010,7 +2015,7 @@ function renderInforme() {
         <div style="font-size:0.75rem;font-weight:700;margin-bottom:10px">Fijos vs Variables</div>
         <canvas id="cTipos" height="130"></canvas>
         <div style="margin-top:8px;font-size:0.72rem">
-          ${fijos>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#3b82f6">● Fijos</span><span>${fmt(fijos)}</span></div>`:''}
+          ${fijos>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#3b82f6">● Fijos</span><span>${fmtInt(fijos)}</span></div>`:''}
           ${variables>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#ef4444">● Var.</span><span>${fmt(variables)}</span></div>`:''}
         </div>
       </div>
@@ -2415,13 +2420,13 @@ renderAll = function() {
   const bsP    = document.getElementById('bsPct');
   const bsF    = document.getElementById('bsFijos');
   const bsFP   = document.getElementById('bsFijosPct');
-  if(bTotal) bTotal.textContent = fmt(saldo);
+  if(bTotal) bTotal.textContent = fmtInt(saldo);
   if(bTotal) bTotal.style.color = saldo>=0?'#ffffff':'#ffb3a0';
   if(bSub)   bSub.textContent  = saldo>=0?L('balDisponible'):L('balDeficit');
-  if(bsI)    bsI.textContent   = fmt(totalInc);
-  if(bsG)    bsG.textContent   = fmt(totalGas);
+  if(bsI)    bsI.textContent   = fmtInt(totalInc);
+  if(bsG)    bsG.textContent   = fmtInt(totalGas);
   if(bsP)    bsP.textContent   = pct+L('sumDelIngreso');
-  if(bsF)    bsF.textContent   = fmt(fijos);
+  if(bsF)    bsF.textContent   = fmtInt(fijos);
   if(bsFP)   bsFP.textContent  = (totalGas>0?Math.round(fijos/totalGas*100):0)+L('balDeGastos');
 
   // SUMMARY — 3 cards: Ingresos / Gastos / Fijos
@@ -2429,23 +2434,23 @@ renderAll = function() {
   document.getElementById('summary').innerHTML = `
     <div class="sum-card">
       <span class="sum-label">${L('sumIngresos')}</span>
-      <span class="sum-val green">${fmt(totalInc)}</span>
+      <span class="sum-val green">${fmtInt(totalInc)}</span>
       <span class="sum-sub">${personas.join(' + ')}</span>
     </div>
     <div class="sum-card">
       <span class="sum-label">${L('sumGastos')}</span>
-      <span class="sum-val red">${fmt(totalGas)}</span>
+      <span class="sum-val red">${fmtInt(totalGas)}</span>
       <span class="sum-sub">${pct}${L('sumDelIngreso')}</span>
       <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${pct>80?'var(--danger)':pct>60?'var(--accent)':'var(--success)'}"></div></div>
     </div>
     <div class="sum-card">
       <span class="sum-label">${L('sumFijos')}</span>
-      <span class="sum-val blue">${fmt(fijos)}</span>
+      <span class="sum-val blue">${fmtInt(fijos)}</span>
       <span class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}${L('sumDelTotal')}</span>
     </div>
     <div class="sum-card">
       <span class="sum-label">${L('sumVariables')}</span>
-      <span class="sum-val purple">${fmt(variables)}</span>
+      <span class="sum-val purple">${fmtInt(variables)}</span>
       <span class="sum-sub">${totalGas>0?Math.round(variables/totalGas*100):0}${L('sumDelTotal')}</span>
     </div>`;
 
@@ -2579,12 +2584,12 @@ renderAll = function() {
       ${nachoIncF>0?`<div class="frow"><span class="frow-label">${state.persona1||'Nacho'}</span><span class="frow-val" style="color:var(--green)">${fmt(nachoIncF)}</span></div>`:''}
       ${celiIncF>0?`<div class="frow"><span class="frow-label">${state.persona2||'Celi'}</span><span class="frow-val" style="color:var(--green)">${fmt(celiIncF)}</span></div>`:''}
       ${compIncF>0?`<div class="frow"><span class="frow-label">Compartido</span><span class="frow-val" style="color:var(--green)">${fmt(compIncF)}</span></div>`:''}
-      <div class="frow"><span class="frow-label" style="font-weight:700;color:var(--text)">Total ingresos</span><span class="frow-val" style="color:var(--green)">${fmt(totalInc)}</span></div>
-      <div class="frow"><span class="frow-label">Gastos fijos</span><span class="frow-val" style="color:var(--lavender)">${fmt(fijos)}</span></div>
+      <div class="frow"><span class="frow-label" style="font-weight:700;color:var(--text)">Total ingresos</span><span class="frow-val" style="color:var(--green)">${fmtInt(totalInc)}</span></div>
+      <div class="frow"><span class="frow-label">Gastos fijos</span><span class="frow-val" style="color:var(--lavender)">${fmtInt(fijos)}</span></div>
       <div class="frow"><span class="frow-label">Flujo tras fijos</span><span class="frow-val">${fmt(totalInc-fijos)}</span></div>
       <div class="frow"><span class="frow-label">Gastos variables</span><span class="frow-val" style="color:var(--text3)">${fmt(variables)}</span></div>
       <div class="frow"><span class="frow-label">En tarjeta</span><span class="frow-val" style="color:var(--teal)">${fmt(enTarjeta)}</span></div>
-      <div class="frow hl"><span class="frow-label">💰 Flujo libre</span><span class="frow-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(saldo)}</span></div>
+      <div class="frow hl"><span class="frow-label">💰 Flujo libre</span><span class="frow-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmtInt(saldo)}</span></div>
     </div>
     <div class="sec-head"><div class="sec-title">🎯 Metas de ahorro</div></div>
     ${totalInc===0?`<div class="empty"><div class="empty-text">Agregá ingresos para ver las metas</div></div>`:`
@@ -2824,18 +2829,18 @@ renderInforme = function() {
       <div class="inf-hero-row">
         <div class="inf-hero-stat">
           <div class="inf-hero-label">Ingresos</div>
-          <div class="inf-hero-val neu" style="font-size:clamp(11px,3.2vw,15px)">${fmt(totalInc)}</div>
+          <div class="inf-hero-val neu" style="font-size:clamp(11px,3.2vw,15px)">${fmtInt(totalInc)}</div>
         </div>
         <div class="inf-hero-divider"></div>
         <div class="inf-hero-stat">
           <div class="inf-hero-label">Gastos</div>
-          <div class="inf-hero-val neg">${fmt(totalGas)}</div>
+          <div class="inf-hero-val neg">${fmtInt(totalGas)}</div>
           <div class="inf-hero-sub">${pctGas}% del ingreso</div>
         </div>
         <div class="inf-hero-divider"></div>
         <div class="inf-hero-stat">
           <div class="inf-hero-label">Saldo</div>
-          <div class="inf-hero-val ${saldo>=0?'pos':'neg'}">${fmt(saldo)}</div>
+          <div class="inf-hero-val ${saldo>=0?'pos':'neg'}">${fmtInt(saldo)}</div>
           <div class="inf-hero-sub">${saldo>=0?'disponible':'déficit'}</div>
         </div>
       </div>
@@ -2852,12 +2857,12 @@ renderInforme = function() {
         <div style="display:flex;flex-direction:column;justify-content:center;gap:12px;padding-top:8px">
           <div>
             <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Fijos</div>
-            <div style="font-size:20px;font-weight:800;color:#6c63ff">${fmt(fijos)}</div>
+            <div style="font-size:20px;font-weight:800;color:#6c63ff">${fmtInt(fijos)}</div>
             <div style="font-size:11px;color:var(--muted)">${pctFij}% del total</div>
           </div>
           <div>
             <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Variables</div>
-            <div style="font-size:20px;font-weight:800;color:#ff7a59">${fmt(variables)}</div>
+            <div style="font-size:20px;font-weight:800;color:#ff7a59">${fmtInt(variables)}</div>
             <div style="font-size:11px;color:var(--muted)">${100-pctFij}% del total</div>
           </div>
         </div>
