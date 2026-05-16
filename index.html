@@ -2599,6 +2599,8 @@ renderAll = function() {
 // RENDER COMPLETO PARA MODO GRUPO
 // ============================================
 function renderAllGrupo() {
+  // Asegurar que las personas del grupo estén cargadas
+  updatePersonaNames();
   const gs = state.gastos || [];
   const totalGrupo = gs.reduce(function(a,g){ return a+parseFloat(g.monto||0); }, 0);
   const personas = state.personas || [];
