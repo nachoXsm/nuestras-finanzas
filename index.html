@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -505,7 +505,7 @@
         <div style="width:44px;height:44px;border-radius:14px;background:rgba(247,201,72,.15);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🔑</div>
         <div>
           <div style="font-weight:800;font-size:.95rem">Unirme a un grupo</div>
-          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Tengo un código de invitación</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${L('groupJoinSub')}</div>
         </div>
         <div style="margin-left:auto;color:#f7c948;font-size:1.1rem">›</div>
       </div>
@@ -730,7 +730,7 @@
             <input type="file" id="ocrInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
           </div>
           <div class="field"><label id="g_monto_label">Monto</label><input type="number" id="g_monto" placeholder="0"></div>
-          <div class="field"><label>Categoría</label>
+          <div class="field"><label id="g_cat_label">Categoría</label>
             <div class="category-select-wrap">
               <span id="g_cat_preview" class="cat-select-preview"></span>
               <select id="g_cat" onchange="updateCategoryPreview()">
@@ -743,22 +743,22 @@
               </select>
             </div>
           </div>
-          <div class="field"><label>Tipo</label><select id="g_tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select></div>
-          <div class="field"><label>Medio de pago</label>
+          <div class="field"><label id="g_tipo_label">Tipo</label><select id="g_tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select></div>
+          <div class="field"><label id="g_medio_label">Medio de pago</label>
             <select id="g_medio" onchange="toggleCardFields()"><option value="efectivo">Efectivo / Débito</option><option value="tarjeta">Tarjeta crédito</option></select>
           </div>
           <div class="field" id="gTarjetaField" style="display:none"><label>Tarjeta</label><select id="g_tarjeta"></select></div>
           <div class="field" id="gCuotasField" style="display:none"><label>Cuotas</label>
             <select id="g_cuotas"><option value="1">1 cuota</option><option value="2">2 cuotas</option><option value="3">3 cuotas</option><option value="4">4 cuotas</option><option value="5">5 cuotas</option><option value="6">6 cuotas</option><option value="7">7 cuotas</option><option value="8">8 cuotas</option><option value="9">9 cuotas</option><option value="10">10 cuotas</option><option value="11">11 cuotas</option><option value="12">12 cuotas</option><option value="13">13 cuotas</option><option value="14">14 cuotas</option><option value="15">15 cuotas</option><option value="16">16 cuotas</option><option value="17">17 cuotas</option><option value="18">18 cuotas</option><option value="19">19 cuotas</option><option value="20">20 cuotas</option><option value="21">21 cuotas</option><option value="22">22 cuotas</option><option value="23">23 cuotas</option><option value="24">24 cuotas</option></select>
           </div>
-          <div class="field"><label>¿Quién paga?</label><select id="g_quien" onchange="toggleDivision()"></select></div>
+          <div class="field"><label id="g_quien_label">¿Quién paga?</label><select id="g_quien" onchange="toggleDivision()"></select></div>
           <div id="gDivisionField" style="display:none;grid-column:1/-1">
             <div style="background:rgba(255,255,255,.05);border-radius:14px;padding:12px;margin-top:-4px">
-              <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">¿Cuánto puso cada uno?</div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px" id="g_division_label">¿Cuánto puso cada uno?</div>
               <div id="gDivisionInputs" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
           </div>
-          <div class="field" style="grid-column:1/-1"><label>Fecha</label><input type="date" id="g_fecha" value="2026-05-13" style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:var(--text);font-size:15px;font-weight:600"></div>
+          <div class="field" style="grid-column:1/-1"><label id="g_fecha_label">Fecha</label><input type="date" id="g_fecha" value="2026-05-13" style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:var(--text);font-size:15px;font-weight:600"></div>
         </div>
         <div id="ocrProgress">
           <div style="font-size:1.5rem;margin-bottom:6px" id="ocrEmoji">📷</div>
@@ -824,7 +824,7 @@
           <div class="conv-rate" id="conv_rate"></div>
         </div>
       </div>
-      <div class="sec-head"><div class="sec-title">Cotizaciones vs ARS</div></div>
+      <div class="sec-head"><div class="sec-title" id="convRatesTitle">Cotizaciones vs ARS</div></div>
       <div class="rates-grid" id="ratesGrid"></div>
       <div class="sec-head" style="margin-top:16px"><div class="sec-title">🇦🇷 Dólar en Argentina</div></div>
       <div id="arsRates"></div>
@@ -942,8 +942,8 @@
 <div class="grupos-panel" id="gruposPanel">
   <div class="grupos-panel-head">
     <button class="grupos-panel-close" onclick="closeGrupos()">✕</button>
-    <div class="grupos-panel-title">👥 Mis espacios</div>
-    <div class="grupos-panel-sub">Hogar y grupos de gastos</div>
+    <div class="grupos-panel-title" id="groupPanelTitle">👥 Mis espacios</div>
+    <div class="grupos-panel-sub" id="groupPanelSub">Hogar y grupos de gastos</div>
   </div>
   <div class="grupos-body" id="gruposPanelBody">
     <!-- Se rellena dinámicamente -->
@@ -1016,7 +1016,7 @@ var NF_LANGS={
     sumIngresos:'💰 Ingresos', sumGastos:'💸 Gastos', sumFijos:'📌 Fijos', sumVariables:'📊 Variables',
     sumDelIngreso:'% del ingreso', sumDelTotal:'% del total',
     // Balance card
-    balLabel:'SALDO NETO FAMILIAR', balIngresos:'INGRESOS', balGastos:'GASTOS', balFijos:'FIJOS',
+    balLabel:'SALDO NETO FAMILIAR', balIngresos:'INGRESOS', balGastos:'GASTOS', balFijos:'FIJOS', balSaldo:'SALDO',
     balDisponible:'disponible este mes', balDeficit:'déficit este mes',
     balDeGastos:'% de gastos',
     // Tags
@@ -1040,6 +1040,12 @@ var NF_LANGS={
     // Conversor
     convActualizado:'Actualizado', convResultado:'RESULTADO', convCotizaciones:'Cotizaciones vs ARS',
     convDolarArg:'🇦🇷 Dólar en Argentina',
+    fCuantoPuso:'¿Cuánto puso cada uno?', fFecha:'Fecha',
+    flujoTitulo:'FLUJO DEL MES', flujoDesglose:'DESGLOSE', flujoUsoIngreso:'📊 Uso del ingreso', flujoAhorro10:'Ahorro 10%', flujoAhorro20:'Ahorro 20%', flujoReal:'Real', flujoLibreCorto:'Libre',
+    pctIngreso:'% del ingreso', pctGastos:'% de gastos', disponibleCorto:'disponible', deficitCorto:'déficit',
+    informeResumen:'RESUMEN DEL MES', informeComposicion:'COMPOSICIÓN DE GASTOS', informeFijosVar:'Fijos vs Variables', informePorIntegrante:'POR INTEGRANTE', informeGastosCat:'Gastos por categoría', informeSinDatosMes:'Sin datos este mes', informeGastosPersona:'Gastos', informeSinGastos:'Sin gastos registrados',
+    grupoAporto:'Aportó', grupoAlDia:'Al día', grupoDebe:'Debe', grupoLeDeben:'Le deben', grupoLiquidacion:'Liquidación', optTodos:'Todos', optCompartido:'Compartido', optCompartida:'Compartida', pagoDividido:'Pago dividido', pagadoPor:'Pagado por', sinDefinir:'Sin definir', convRatesTitle:'Cotizaciones vs ARS', groupPanelTitle:'👥 Mis espacios', groupPanelSub:'Hogar y grupos de gastos', groupMode:'Modo grupo de gastos', groupGreeting:'el grupo', groupMyHome:'Mi hogar', groupExpenses:'Grupos de gastos', groupCreate:'Crear grupo de gastos', groupCreateSub:'Amigos, viajes, casa compartida', groupJoin:'Unirse con código', groupJoinSub:'Tengo un código de invitación', groupBackHome:'Volver a Mi Hogar', groupLeave:'Salir del grupo de gastos', groupInvite:'Invitar', groupDelete:'Eliminar', groupActive:'Activo', groupNoName:'Sin nombre', groupBalance:'BALANCE DEL GRUPO', groupParticipants:'participantes', groupEach:'c/u', groupSpent:'Gastado', groupSettleAccounts:'Liquidar cuentas', groupNoExpenses:'Sin gastos en este grupo', groupNoDebts:'No hay deudas pendientes', groupOwesTo:'le debe a', groupSettleHint:'Para dejar el grupo equilibrado', groupSummary:'RESUMEN DEL GRUPO', groupTotal:'Total', groupPerPerson:'Parte c/u', groupMovements:'Movimientos', groupExpensesLoaded:'gastos cargados', incomeByPerson:'Ingresos por persona', sharedExpenses:'Gastos compartidos', ambosLabel:'Ambos', sinDescripcion:'Sin descripción',
+    catVivienda:'Vivienda', catAlimentacion:'Alimentación', catTransporte:'Transporte', catSalud:'Salud', catEducacion:'Educación', catEntretenimiento:'Entretenimiento', catServicios:'Servicios', catRopa:'Ropa', catMascota:'Mascota', catSuscripciones:'Suscripciones', catOtros:'Otros',
     // Toasts
     toastGuardado:'✅ Guardado', toastActualizado:'✅ Actualizado', toastError:'❌ Error al guardar',
     toastConexion:'❌ Error de conexión', toastCopiado:'✅ Código copiado', toastFoto:'✅ Foto actualizada',
@@ -1066,7 +1072,7 @@ var NF_LANGS={
     fPlaceholderTarjeta:'Visa Santander',
     sumIngresos:'💰 Income', sumGastos:'💸 Expenses', sumFijos:'📌 Fixed', sumVariables:'📊 Variable',
     sumDelIngreso:'% of income', sumDelTotal:'% of total',
-    balLabel:'FAMILY NET BALANCE', balIngresos:'INCOME', balGastos:'EXPENSES', balFijos:'FIXED',
+    balLabel:'FAMILY NET BALANCE', balIngresos:'INCOME', balGastos:'EXPENSES', balFijos:'FIXED', balSaldo:'BALANCE',
     balDisponible:'available this month', balDeficit:'deficit this month', balDeGastos:'% of expenses',
     tagFijo:'Fixed', tagVar:'Variable', tagEfectivo:'💵 Cash', tagCuotas:'📅 Installments',
     emptyIngresos:'Add your income for this month', emptyGastos:'No expenses this month',
@@ -1084,6 +1090,12 @@ var NF_LANGS={
     flujoSinIngresos:'Add income to see goals',
     convActualizado:'Updated', convResultado:'RESULT', convCotizaciones:'Rates vs ARS',
     convDolarArg:'🇦🇷 Dollar in Argentina',
+    fCuantoPuso:'How much did each person pay?', fFecha:'Date',
+    flujoTitulo:'MONTHLY CASH FLOW', flujoDesglose:'BREAKDOWN', flujoUsoIngreso:'📊 Income use', flujoAhorro10:'10% savings', flujoAhorro20:'20% savings', flujoReal:'Actual', flujoLibreCorto:'Free',
+    pctIngreso:'% of income', pctGastos:'% of expenses', disponibleCorto:'available', deficitCorto:'deficit',
+    informeResumen:'MONTH SUMMARY', informeComposicion:'EXPENSE BREAKDOWN', informeFijosVar:'Fixed vs Variable', informePorIntegrante:'BY MEMBER', informeGastosCat:'Expenses by category', informeSinDatosMes:'No data this month', informeGastosPersona:'Expenses', informeSinGastos:'No expenses recorded',
+    grupoAporto:'Paid', grupoAlDia:'Settled', grupoDebe:'Owes', grupoLeDeben:'Is owed', grupoLiquidacion:'Settlement', optTodos:'Everyone', optCompartido:'Shared', optCompartida:'Shared', pagoDividido:'Split payment', pagadoPor:'Paid by', sinDefinir:'Not set', convRatesTitle:'Rates vs ARS', groupPanelTitle:'👥 My spaces', groupPanelSub:'Home and expense groups', groupMode:'Expense group mode', groupGreeting:'the group', groupMyHome:'My home', groupExpenses:'Expense groups', groupCreate:'Create expense group', groupCreateSub:'Friends, trips, shared home', groupJoin:'Join with code', groupJoinSub:'I have an invitation code', groupBackHome:'Back to My Home', groupLeave:'Leave expense group', groupInvite:'Invite', groupDelete:'Delete', groupActive:'Active', groupNoName:'No name', groupBalance:'GROUP BALANCE', groupParticipants:'participants', groupEach:'each', groupSpent:'Spent', groupSettleAccounts:'Settle up', groupNoExpenses:'No expenses in this group', groupNoDebts:'No pending debts', groupOwesTo:'owes', groupSettleHint:'To balance the group', groupSummary:'GROUP SUMMARY', groupTotal:'Total', groupPerPerson:'Share each', groupMovements:'Movements', groupExpensesLoaded:'expenses added', incomeByPerson:'Income by person', sharedExpenses:'Shared expenses', ambosLabel:'Shared', sinDescripcion:'No description',
+    catVivienda:'Housing', catAlimentacion:'Food', catTransporte:'Transport', catSalud:'Health', catEducacion:'Education', catEntretenimiento:'Entertainment', catServicios:'Utilities', catRopa:'Clothing', catMascota:'Pets', catSuscripciones:'Subscriptions', catOtros:'Other',
     toastGuardado:'✅ Saved', toastActualizado:'✅ Updated', toastError:'❌ Error saving',
     toastConexion:'❌ Connection error', toastCopiado:'✅ Code copied', toastFoto:'✅ Photo updated',
     toastExcel:'✅ Excel downloaded'
@@ -1109,7 +1121,7 @@ var NF_LANGS={
     fPlaceholderTarjeta:'Visa Santander',
     sumIngresos:'💰 Receitas', sumGastos:'💸 Despesas', sumFijos:'📌 Fixos', sumVariables:'📊 Variáveis',
     sumDelIngreso:'% da receita', sumDelTotal:'% do total',
-    balLabel:'SALDO FAMILIAR LÍQUIDO', balIngresos:'RECEITAS', balGastos:'DESPESAS', balFijos:'FIXOS',
+    balLabel:'SALDO FAMILIAR LÍQUIDO', balIngresos:'RECEITAS', balGastos:'DESPESAS', balFijos:'FIXOS', balSaldo:'SALDO',
     balDisponible:'disponível este mês', balDeficit:'déficit este mês', balDeGastos:'% das despesas',
     tagFijo:'Fixo', tagVar:'Variável', tagEfectivo:'💵 Dinheiro', tagCuotas:'📅 Parcelas',
     emptyIngresos:'Adicione suas receitas do mês', emptyGastos:'Sem despesas este mês',
@@ -1127,6 +1139,12 @@ var NF_LANGS={
     flujoSinIngresos:'Adicione receitas para ver as metas',
     convActualizado:'Atualizado', convResultado:'RESULTADO', convCotizaciones:'Cotações vs ARS',
     convDolarArg:'🇦🇷 Dólar na Argentina',
+    fCuantoPuso:'Quanto cada um pagou?', fFecha:'Data',
+    flujoTitulo:'FLUXO DO MÊS', flujoDesglose:'DETALHAMENTO', flujoUsoIngreso:'📊 Uso da receita', flujoAhorro10:'Economia 10%', flujoAhorro20:'Economia 20%', flujoReal:'Real', flujoLibreCorto:'Livre',
+    pctIngreso:'% da receita', pctGastos:'% das despesas', disponibleCorto:'disponível', deficitCorto:'déficit',
+    informeResumen:'RESUMO DO MÊS', informeComposicion:'COMPOSIÇÃO DAS DESPESAS', informeFijosVar:'Fixos vs Variáveis', informePorIntegrante:'POR INTEGRANTE', informeGastosCat:'Despesas por categoria', informeSinDatosMes:'Sem dados este mês', informeGastosPersona:'Despesas', informeSinGastos:'Sem despesas registradas',
+    grupoAporto:'Pagou', grupoAlDia:'Em dia', grupoDebe:'Deve', grupoLeDeben:'Tem a receber', grupoLiquidacion:'Acerto', optTodos:'Todos', optCompartido:'Compartilhado', optCompartida:'Compartilhada', pagoDividido:'Pagamento dividido', pagadoPor:'Pago por', sinDefinir:'Sem definir', convRatesTitle:'Cotações vs ARS', groupPanelTitle:'👥 Meus espaços', groupPanelSub:'Casa e grupos de despesas', groupMode:'Modo grupo de despesas', groupGreeting:'o grupo', groupMyHome:'Minha casa', groupExpenses:'Grupos de despesas', groupCreate:'Criar grupo de despesas', groupCreateSub:'Amigos, viagens, casa compartilhada', groupJoin:'Entrar com código', groupJoinSub:'Tenho um código de convite', groupBackHome:'Voltar para Minha Casa', groupLeave:'Sair do grupo de despesas', groupInvite:'Convidar', groupDelete:'Excluir', groupActive:'Ativo', groupNoName:'Sem nome', groupBalance:'SALDO DO GRUPO', groupParticipants:'participantes', groupEach:'cada', groupSpent:'Gasto', groupSettleAccounts:'Acertar contas', groupNoExpenses:'Sem despesas neste grupo', groupNoDebts:'Sem dívidas pendentes', groupOwesTo:'deve a', groupSettleHint:'Para equilibrar o grupo', groupSummary:'RESUMO DO GRUPO', groupTotal:'Total', groupPerPerson:'Parte por pessoa', groupMovements:'Movimentos', groupExpensesLoaded:'despesas lançadas', incomeByPerson:'Receitas por pessoa', sharedExpenses:'Despesas compartilhadas', ambosLabel:'Ambos', sinDescripcion:'Sem descrição',
+    catVivienda:'Moradia', catAlimentacion:'Alimentação', catTransporte:'Transporte', catSalud:'Saúde', catEducacion:'Educação', catEntretenimiento:'Entretenimento', catServicios:'Serviços', catRopa:'Roupas', catMascota:'Pets', catSuscripciones:'Assinaturas', catOtros:'Outros',
     toastGuardado:'✅ Salvo', toastActualizado:'✅ Atualizado', toastError:'❌ Erro ao salvar',
     toastConexion:'❌ Erro de conexão', toastCopiado:'✅ Código copiado', toastFoto:'✅ Foto atualizada',
     toastExcel:'✅ Excel baixado'
@@ -1134,6 +1152,13 @@ var NF_LANGS={
 };
 var nfLang=localStorage.getItem('nf_lang')||'es';
 function L(key){ if(!key) return ''; var lang=NF_LANGS[nfLang]||NF_LANGS['es']; return (lang&&lang[key])||(NF_LANGS['es']&&NF_LANGS['es'][key])||key||''; }
+
+const CAT_LABEL_KEYS = {'Vivienda':'catVivienda','Alimentación':'catAlimentacion','Transporte':'catTransporte','Salud':'catSalud','Educación':'catEducacion','Entretenimiento':'catEntretenimiento','Servicios':'catServicios','Ropa':'catRopa','Mascota':'catMascota','Suscripciones':'catSuscripciones','Otros':'catOtros'};
+function catLabel(cat){ return L(CAT_LABEL_KEYS[cat] || '') || cat || ''; }
+function optionLabel(value){ if(value==='Todos') return L('optTodos'); if(value==='Ambos'||value==='Compartido') return L('optCompartido'); if(value==='Compartida') return L('optCompartida'); return value || ''; }
+function pctIncomeText(pct){ return pct + L('pctIngreso'); }
+function pctTotalText(pct){ return pct + L('sumDelTotal'); }
+function pctExpensesText(pct){ return pct + L('pctGastos'); }
 
 function getHogarId() {
   return localStorage.getItem('nf_hogar_id');
@@ -1254,6 +1279,13 @@ function nfSetLang(c){
   var montoLbl = document.getElementById('g_monto_label');
   if(montoLbl) montoLbl.textContent = LD.fMonto;
 
+  T('g_cat_label', LD.fCategoria);
+  T('g_tipo_label', LD.fTipo);
+  T('g_medio_label', LD.fMedioPago);
+  T('g_quien_label', LD.fQuienPaga);
+  T('g_division_label', LD.fCuantoPuso);
+  T('g_fecha_label', LD.fFecha);
+
   // Placeholders
   var iDesc = document.getElementById('i_desc'); if(iDesc) iDesc.placeholder = LD.fPlaceholderDesc;
   var gDesc = document.getElementById('g_desc'); if(gDesc) gDesc.placeholder = LD.fPlaceholderGasto;
@@ -1266,6 +1298,14 @@ function nfSetLang(c){
     sel.innerHTML = '<option value="fijo">'+LD.fTipoFijo+'</option><option value="variable">'+LD.fTipoVar+'</option>';
     sel.value = v;
   });
+
+  var medioSel = document.getElementById('g_medio');
+  if(medioSel){ var mv = medioSel.value; medioSel.innerHTML = '<option value="efectivo">'+LD.fEfectivo+'</option><option value="tarjeta">'+LD.fTarjetaCredito+'</option>'; medioSel.value = mv; }
+  T('convRatesTitle', LD.convRatesTitle || LD.convCotizaciones);
+  T('groupPanelTitle', LD.groupPanelTitle);
+  T('groupPanelSub', LD.groupPanelSub);
+  var catSel = document.getElementById('g_cat');
+  if(catSel){ var cv = catSel.value; Array.from(catSel.options).forEach(function(o){ o.textContent = catLabel(o.value); }); catSel.value = cv; updateCategoryPreview(); }
 
   // Botones cancelar/guardar en formularios
   document.querySelectorAll('.btn-cancel').forEach(function(el){ el.textContent=LD.btnCancelar; });
@@ -1899,25 +1939,25 @@ function renderAll() {
   // SUMMARY
   document.getElementById('summary').innerHTML = `
     <div class="sum-card">
-      <div class="sum-label">Ingresos</div>
+      <div class="sum-label">${L('balIngresos')}</div>
       <div class="sum-val green">${fmtInt(totalInc)}</div>
       <div class="sum-sub">Nacho + Celi</div>
     </div>
     <div class="sum-card">
-      <div class="sum-label">Gastos</div>
+      <div class="sum-label">${L('balGastos')}</div>
       <div class="sum-val red">${fmtInt(totalGas)}</div>
-      <div class="sum-sub">${pct}% del ingreso</div>
+      <div class="sum-sub">${pctIncomeText(pct)}</div>
       <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)'}"></div></div>
     </div>
     <div class="sum-card">
-      <div class="sum-label">Fijos</div>
+      <div class="sum-label">${L('balFijos')}</div>
       <div class="sum-val blue">${fmtInt(fijos)}</div>
-      <div class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}% del total</div>
+      <div class="sum-sub">${pctTotalText(totalGas>0?Math.round(fijos/totalGas*100):0)}</div>
     </div>
     <div class="sum-card">
-      <div class="sum-label">Flujo libre</div>
+      <div class="sum-label">${L('flujoLibre').replace('💰 ','')}</div>
       <div class="sum-val ${saldo>=0?'orange':'red'}">${fmtInt(saldo)}</div>
-      <div class="sum-sub">${saldo>=0?'disponible':'déficit'}</div>
+      <div class="sum-sub">${saldo>=0?L('disponibleCorto'):L('deficitCorto')}</div>
     </div>`;
 
   // INGRESOS
@@ -1963,7 +2003,7 @@ function renderAll() {
           <div class="item-name">${g.descripcion||''}${isCuota?` <span style="color:var(--text3);font-size:0.75rem">(${g.cuota_actual}/${g.cuotas})</span>`:''}</div>
           <div class="item-meta">
             <span class="chip chip-${g.tipo==='fijo'?'fixed':'var'}">${g.tipo==='fijo'?'FIJO':'VAR'}</span>
-            <span class="chip chip-${g.medio==='tarjeta'?'card':'cash'}">${g.medio==='tarjeta'?(tarjeta?tarjeta.nombre:'Tarjeta'):'Efectivo'}</span>
+            <span class="chip chip-${g.medio==='tarjeta'?'card':'cash'}">${g.medio==='tarjeta'?(tarjeta?tarjeta.nombre:L('fTarjeta')):L('fEfectivo').split(' / ')[0]}</span>
             ${isCuota?`<span class="chip chip-cuota">CUOTAS</span>`:''}
             <span style="font-size:0.7rem;color:var(--text3)">${g.quien}</span>
             ${g.dia?`<span style="font-size:0.7rem;color:var(--text3)">día ${g.dia}</span>`:''}
@@ -2017,7 +2057,7 @@ function renderAll() {
     ? `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">${L('emptyCat')}</div></div>`
     : catSorted.map(([cat,tot])=>`
       <div class="cat-row">
-        <div class="cat-name-with-icon">${catIconHtml(cat)}<span>${cat}</span></div>
+        <div class="cat-name-with-icon">${catIconHtml(cat)}<span>${catLabel(cat)}</span></div>
         <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round(tot/catMax*100)}%;background:${CAT_COLORS[cat]||'#888'}"></div></div>
         <div class="cat-amt">${fmt(tot)}</div>
       </div>`).join('');
@@ -2066,9 +2106,9 @@ function renderInforme() {
 
   document.getElementById('informeContent').innerHTML = `
     <div class="informe-grid">
-      <div class="informe-card"><div class="sum-label">Ingresos</div><div class="sum-val green" style="font-size:0.9rem">${fmtInt(totalInc)}</div></div>
-      <div class="informe-card"><div class="sum-label">Gastos</div><div class="sum-val red" style="font-size:0.9rem">${fmtInt(totalGas)}</div></div>
-      <div class="informe-card"><div class="sum-label">Saldo</div><div class="sum-val ${saldo>=0?'green':'red'}" style="font-size:0.9rem">${fmtInt(saldo)}</div></div>
+      <div class="informe-card"><div class="sum-label">${L('balIngresos')}</div><div class="sum-val green" style="font-size:0.9rem">${fmtInt(totalInc)}</div></div>
+      <div class="informe-card"><div class="sum-label">${L('balGastos')}</div><div class="sum-val red" style="font-size:0.9rem">${fmtInt(totalGas)}</div></div>
+      <div class="informe-card"><div class="sum-label">${L('balSaldo')}</div><div class="sum-val ${saldo>=0?'green':'red'}" style="font-size:0.9rem">${fmtInt(saldo)}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="card-block">
@@ -2081,7 +2121,7 @@ function renderInforme() {
         </div>
       </div>
       <div class="card-block">
-        <div style="font-size:0.75rem;font-weight:700;margin-bottom:10px">Fijos vs Variables</div>
+        <div style="font-size:0.75rem;font-weight:700;margin-bottom:10px">${L('informeFijosVar')}</div>
         <canvas id="cTipos" height="130"></canvas>
         <div style="margin-top:8px;font-size:0.72rem">
           ${fijos>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#3b82f6">● Fijos</span><span>${fmtInt(fijos)}</span></div>`:''}
@@ -2090,11 +2130,11 @@ function renderInforme() {
       </div>
     </div>
     <div class="card-block" style="margin-bottom:10px">
-      <div style="font-size:0.75rem;font-weight:700;margin-bottom:10px">Gastos por categoría</div>
+      <div style="font-size:0.75rem;font-weight:700;margin-bottom:10px">${L('informeGastosCat')}</div>
       <canvas id="cCat" height="150"></canvas>
     </div>
     <div class="card-block">
-      <div style="font-size:0.75rem;font-weight:700;margin-bottom:10px">Por integrante</div>
+      <div style="font-size:0.75rem;font-weight:700;margin-bottom:10px">${L('informePorIntegrante')}</div>
       <canvas id="cPersonas" height="90"></canvas>
     </div>`;
 
@@ -2632,7 +2672,7 @@ renderAll = function() {
     ?`<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">${L('emptyCat')}</div></div>`
     :catSorted.map(([cat,tot])=>`
       <div class="cat-row">
-        <div class="cat-name-with-icon">${catIconHtml(cat)}<span>${cat}</span></div>
+        <div class="cat-name-with-icon">${catIconHtml(cat)}<span>${catLabel(cat)}</span></div>
         <div class="cat-bg"><div class="cat-fill" style="width:${Math.round(tot/catMax*100)}%;background:${CAT_COLORS[cat]||'#888'}"></div></div>
         <div class="cat-amt">${fmt(tot)}</div>
       </div>`).join('');
@@ -2649,23 +2689,23 @@ renderAll = function() {
   document.getElementById('flujoContent').innerHTML = `
     <div style="height:12px"></div>
     <div class="fcard">
-      <div class="fcard-title">🏦 Flujo mensual</div>
+      <div class="fcard-title">${L('flujoMensual')}</div>
       ${nachoIncF>0?`<div class="frow"><span class="frow-label">${state.persona1||'Nacho'}</span><span class="frow-val" style="color:var(--green)">${fmt(nachoIncF)}</span></div>`:''}
       ${celiIncF>0?`<div class="frow"><span class="frow-label">${state.persona2||'Celi'}</span><span class="frow-val" style="color:var(--green)">${fmt(celiIncF)}</span></div>`:''}
-      ${compIncF>0?`<div class="frow"><span class="frow-label">Compartido</span><span class="frow-val" style="color:var(--green)">${fmt(compIncF)}</span></div>`:''}
-      <div class="frow"><span class="frow-label" style="font-weight:700;color:var(--text)">Total ingresos</span><span class="frow-val" style="color:var(--green)">${fmtInt(totalInc)}</span></div>
-      <div class="frow"><span class="frow-label">Gastos fijos</span><span class="frow-val" style="color:var(--lavender)">${fmtInt(fijos)}</span></div>
-      <div class="frow"><span class="frow-label">Flujo tras fijos</span><span class="frow-val">${fmt(totalInc-fijos)}</span></div>
-      <div class="frow"><span class="frow-label">Gastos variables</span><span class="frow-val" style="color:var(--text3)">${fmt(variables)}</span></div>
-      <div class="frow"><span class="frow-label">En tarjeta</span><span class="frow-val" style="color:var(--teal)">${fmt(enTarjeta)}</span></div>
-      <div class="frow hl"><span class="frow-label">💰 Flujo libre</span><span class="frow-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmtInt(saldo)}</span></div>
+      ${compIncF>0?`<div class="frow"><span class="frow-label">${L('optCompartido')}</span><span class="frow-val" style="color:var(--green)">${fmt(compIncF)}</span></div>`:''}
+      <div class="frow"><span class="frow-label" style="font-weight:700;color:var(--text)">${L('flujoTotalIngresos')}</span><span class="frow-val" style="color:var(--green)">${fmtInt(totalInc)}</span></div>
+      <div class="frow"><span class="frow-label">${L('flujoFijos')}</span><span class="frow-val" style="color:var(--lavender)">${fmtInt(fijos)}</span></div>
+      <div class="frow"><span class="frow-label">${L('flujoTrasFijos')}</span><span class="frow-val">${fmt(totalInc-fijos)}</span></div>
+      <div class="frow"><span class="frow-label">${L('flujoVariables')}</span><span class="frow-val" style="color:var(--text3)">${fmt(variables)}</span></div>
+      <div class="frow"><span class="frow-label">${L('flujoEnTarjeta')}</span><span class="frow-val" style="color:var(--teal)">${fmt(enTarjeta)}</span></div>
+      <div class="frow hl"><span class="frow-label">${L('flujoLibre')}</span><span class="frow-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmtInt(saldo)}</span></div>
     </div>
-    <div class="sec-head"><div class="sec-title">🎯 Metas de ahorro</div></div>
-    ${totalInc===0?`<div class="empty"><div class="empty-text">Agregá ingresos para ver las metas</div></div>`:`
+    <div class="sec-head"><div class="sec-title">${L('flujoMetas')}</div></div>
+    ${totalInc===0?`<div class="empty"><div class="empty-text">${L('flujoSinIngresos')}</div></div>`:`
     <div class="meta-grid">
       <div class="meta-c"><div class="meta-label">10%</div><div class="meta-val">${fmt(totalInc*.1)}</div></div>
       <div class="meta-c"><div class="meta-label">20%</div><div class="meta-val">${fmt(totalInc*.2)}</div></div>
-      <div class="meta-c"><div class="meta-label">Real</div><div class="meta-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(Math.max(0,saldo))}</div></div>
+      <div class="meta-c"><div class="meta-label">${L('flujoReal')}</div><div class="meta-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(Math.max(0,saldo))}</div></div>
     </div>`}`;
 };
 
@@ -2793,7 +2833,7 @@ function renderAllGrupo() {
   });
   // Ocultar sec-head de ingresos
   document.querySelectorAll('.sec-head').forEach(function(el) {
-    if (el.textContent.includes('Ingreso') || el.textContent.includes('Income')) {
+    if (el.textContent.includes('Ingreso') || el.textContent.includes('Income') || el.textContent.includes('Receita')) {
       el.style.display = 'none';
     }
   });
@@ -2818,16 +2858,16 @@ function renderAllGrupo() {
   if (balCard) {
     balCard.style.display = '';
     balCard.innerHTML =
-      '<small style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65">BALANCE DEL GRUPO</small>' +
+      '<small style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65">' + L('groupBalance') + '</small>' +
       '<h2 style="font-size:32px;font-weight:800;margin:8px 0 2px;letter-spacing:-1px">' + fmt(totalGrupo) + '</h2>' +
-      '<div style="font-size:12px;opacity:.6;margin-bottom:14px">' + participantes.length + ' participantes · ' + fmt(parteIgual) + ' c/u</div>' +
+      '<div style="font-size:12px;opacity:.6;margin-bottom:14px">' + participantes.length + ' ' + L('groupParticipants') + ' · ' + fmt(parteIgual) + ' ' + L('groupEach') + '</div>' +
       '<div style="height:1px;background:rgba(255,255,255,.15);margin-bottom:14px"></div>' +
       '<div style="display:flex;justify-content:space-between">' +
-        '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Gastado</div>' +
+        '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('groupSpent') + '</div>' +
         '<div style="font-size:16px;font-weight:800">' + fmt(totalGrupo) + '</div></div>' +
-        '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Te deben</div>' +
+        '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoLeDeben') + '</div>' +
         '<div style="font-size:16px;font-weight:800;color:#7effd4">' + fmt(liq.teDebenTotal) + '</div></div>' +
-        '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Debés</div>' +
+        '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoDebe') + '</div>' +
         '<div style="font-size:16px;font-weight:800;color:#ffb3a0">' + fmt(liq.debesTotal) + '</div></div>' +
       '</div>';
   }
@@ -2839,11 +2879,11 @@ function renderAllGrupo() {
     var panel = document.createElement('div');
     panel.id = 'grupoBalancePanel';
     var html = '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
-    html += '<div style="font-size:13px;font-weight:800;margin-bottom:10px">💸 Liquidar cuentas</div>';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:10px">💸 ' + L('groupSettleAccounts') + '</div>';
     deudas.forEach(function(d) {
       html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
       html += '<div><span style="font-weight:700;color:var(--danger)">' + d.de + '</span>';
-      html += '<span style="font-size:11px;color:var(--muted)"> le debe a </span>';
+      html += '<span style="font-size:11px;color:var(--muted)"> ' + L('groupOwesTo') + ' </span>';
       html += '<span style="font-weight:700;color:var(--success)">' + d.a + '</span></div>';
       html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span></div>';
     });
@@ -2859,7 +2899,7 @@ function renderAllGrupo() {
   var gastoList2 = document.getElementById('gastoList');
   if (gastoList2) {
     if (gs.length === 0) {
-      gastoList2.innerHTML = '<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">Sin gastos en este grupo</div></div>';
+      gastoList2.innerHTML = '<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">' + L('groupNoExpenses') + '</div></div>';
     } else {
       const sorted = [...gs].sort(function(a,b){ return fechaGastoDate(b) - fechaGastoDate(a); });
       var lastDate = '';
@@ -2869,14 +2909,14 @@ function renderAllGrupo() {
         const key = fechaGastoKey(g);
         const dateHead = key !== lastDate ? '<div style="font-size:16px;font-weight:800;color:var(--text);margin:20px 4px 10px;text-transform:capitalize">' + fechaGastoTitulo(g) + '</div>' : '';
         lastDate = key;
-        var pagador = g.quien === 'Todos' ? 'Pago dividido' : 'Pagado por ' + (g.quien || 'Sin definir');
+        var pagador = g.quien === 'Todos' ? L('pagoDividido') : L('pagadoPor') + ' ' + (g.quien || L('sinDefinir'));
         return dateHead + '<div class="item">' +
           '<div class="item-cat-icon" style="background:'+catColor+'22">'+catIcon+'</div>' +
           '<div class="item-info">' +
-            '<div class="item-name">'+(g.descripcion||g.desc||'Sin descripción')+'</div>' +
+            '<div class="item-name">'+(g.descripcion||g.desc||L('sinDescripcion'))+'</div>' +
             '<div class="item-tags">' +
               '<span class="tag tag-quien">👤 '+pagador+'</span>' +
-              '<span class="tag tag-cat">'+g.cat+'</span>' +
+              '<span class="tag tag-cat">'+catLabel(g.cat)+'</span>' +
             '</div>' +
           '</div>' +
           '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">' +
@@ -2921,27 +2961,27 @@ renderInforme = function() {
     const maxAporte=Math.max(1, ...personas.map(p=>liqGrupo.aportes[p]||0));
     elGrupo.innerHTML=`
       <div class="inf-hero">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">RESUMEN DEL GRUPO</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">${L('groupSummary')}</div>
         <div class="inf-hero-row">
           <div class="inf-hero-stat">
-            <div class="inf-hero-label">Total</div>
+            <div class="inf-hero-label">${L('groupTotal')}</div>
             <div class="inf-hero-val neu">${fmtInt(totalGrupo)}</div>
           </div>
           <div class="inf-hero-divider"></div>
           <div class="inf-hero-stat">
-            <div class="inf-hero-label">Parte c/u</div>
+            <div class="inf-hero-label">${L('groupPerPerson')}</div>
             <div class="inf-hero-val pos">${fmt(parteGrupo)}</div>
           </div>
           <div class="inf-hero-divider"></div>
           <div class="inf-hero-stat">
-            <div class="inf-hero-label">Movimientos</div>
+            <div class="inf-hero-label">${L('groupMovements')}</div>
             <div class="inf-hero-val neu">${gastos.length}</div>
-            <div class="inf-hero-sub">gastos cargados</div>
+            <div class="inf-hero-sub">${L('groupExpensesLoaded')}</div>
           </div>
         </div>
       </div>
 
-      <div class="inf-section-title">Por integrante</div>
+      <div class="inf-section-title">${L('informePorIntegrante')}</div>
       <div class="inf-chart-card">
         ${personas.map((p,i)=>{
           const aporte=liqGrupo.aportes[p]||0;
@@ -2949,7 +2989,7 @@ renderInforme = function() {
           const pct=totalGrupo>0?Math.round(aporte/totalGrupo*100):0;
           const barW=Math.round(aporte/maxAporte*100);
           const color=colors[i]||'#888';
-          const estado=balance>0.5 ? 'Le deben ' + fmt(balance) : balance<-0.5 ? 'Debe ' + fmt(Math.abs(balance)) : 'Al día';
+          const estado=balance>0.5 ? L('grupoLeDeben') + ' ' + fmt(balance) : balance<-0.5 ? L('grupoDebe') + ' ' + fmt(Math.abs(balance)) : L('grupoAlDia');
           const estadoColor=balance>0.5 ? 'var(--success)' : balance<-0.5 ? 'var(--danger)' : 'var(--muted)';
           return `<div class="inf-persona-card">
             <div class="inf-persona-avatar" style="background:${color}20;color:${color}">${p[0]}</div>
@@ -2958,7 +2998,7 @@ renderInforme = function() {
               <div class="inf-persona-bar-bg">
                 <div class="inf-persona-fill" style="width:${barW}%;background:${color}"></div>
               </div>
-              <div style="font-size:10px;color:var(--muted);margin-top:4px">Aportó ${fmt(aporte)} · ${pct}% del total</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px">${L('grupoAporto')} ${fmt(aporte)} · ${pctTotalText(pct)}</div>
             </div>
             <div class="inf-persona-right">
               <div class="inf-persona-inc">${fmt(aporte)}</div>
@@ -2968,15 +3008,15 @@ renderInforme = function() {
         }).join('')}
       </div>
 
-      <div class="inf-section-title">Liquidación</div>
+      <div class="inf-section-title">${L('grupoLiquidacion')}</div>
       <div class="inf-chart-card">
         ${liqGrupo.deudas.length===0
-          ? `<div style="text-align:center;padding:18px;color:var(--muted)">No hay deudas pendientes</div>`
+          ? `<div style="text-align:center;padding:18px;color:var(--muted)">${L('groupNoDebts')}</div>`
           : liqGrupo.deudas.map(d=>`
             <div class="inf-persona-card">
               <div class="inf-persona-info">
-                <div class="inf-persona-name">${d.de} le debe a ${d.a}</div>
-                <div style="font-size:10px;color:var(--muted);margin-top:4px">Para dejar el grupo equilibrado</div>
+                <div class="inf-persona-name">${d.de} ${L('groupOwesTo')} ${d.a}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:4px">${L('groupSettleHint')}</div>
               </div>
               <div class="inf-persona-right">
                 <div class="inf-persona-inc">${fmt(d.monto)}</div>
@@ -2985,16 +3025,16 @@ renderInforme = function() {
         }
       </div>
 
-      <div class="inf-section-title">Gastos por categoría</div>
+      <div class="inf-section-title">${L('informeGastosCat')}</div>
       <div class="inf-chart-card">
         ${catSorted.length===0
-          ? `<div style="text-align:center;padding:20px;color:var(--muted)">Sin datos este mes</div>`
+          ? `<div style="text-align:center;padding:20px;color:var(--muted)">${L('informeSinDatosMes')}</div>`
           : catSorted.map(([cat,tot])=>{
               const max=catSorted[0][1];
               const barW=Math.round(tot/max*100);
               const col=CAT_COLORS[cat]||'#888';
               return `<div class="inf-cat-row">
-                <div class="inf-cat-name-with-icon">${catIconHtml(cat, 'inf-cat-icon')}<span>${cat}</span></div>
+                <div class="inf-cat-name-with-icon">${catIconHtml(cat, 'inf-cat-icon')}<span>${catLabel(cat)}</span></div>
                 <div class="inf-cat-bar-bg">
                   <div class="inf-cat-fill" style="width:${barW}%;background:${col}"></div>
                 </div>
@@ -3017,52 +3057,52 @@ renderInforme = function() {
   el.innerHTML=`
     <!-- HERO RESUMEN -->
     <div class="inf-hero">
-      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">RESUMEN DEL MES</div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">${L('informeResumen')}</div>
       <div class="inf-hero-row">
         <div class="inf-hero-stat">
-          <div class="inf-hero-label">Ingresos</div>
+          <div class="inf-hero-label">${L('balIngresos')}</div>
           <div class="inf-hero-val neu" style="font-size:clamp(11px,3.2vw,15px)">${fmtInt(totalInc)}</div>
         </div>
         <div class="inf-hero-divider"></div>
         <div class="inf-hero-stat">
-          <div class="inf-hero-label">Gastos</div>
+          <div class="inf-hero-label">${L('balGastos')}</div>
           <div class="inf-hero-val neg">${fmtInt(totalGas)}</div>
-          <div class="inf-hero-sub">${pctGas}% del ingreso</div>
+          <div class="inf-hero-sub">${pctIncomeText(pctGas)}</div>
         </div>
         <div class="inf-hero-divider"></div>
         <div class="inf-hero-stat">
-          <div class="inf-hero-label">Saldo</div>
+          <div class="inf-hero-label">${L('balSaldo')}</div>
           <div class="inf-hero-val ${saldo>=0?'pos':'neg'}">${fmtInt(saldo)}</div>
-          <div class="inf-hero-sub">${saldo>=0?'disponible':'déficit'}</div>
+          <div class="inf-hero-sub">${saldo>=0?L('disponibleCorto'):L('deficitCorto')}</div>
         </div>
       </div>
     </div>
 
     <!-- FIJOS VS VARIABLES -->
-    <div class="inf-section-title">Composición de gastos</div>
+    <div class="inf-section-title">${L('informeComposicion')}</div>
     <div class="inf-chart-card">
       <div class="inf-chart-grid">
         <div>
-          <div class="inf-chart-title">Fijos vs Variables</div>
+          <div class="inf-chart-title">${L('informeFijosVar')}</div>
           <canvas id="cTipos" height="120"></canvas>
         </div>
         <div style="display:flex;flex-direction:column;justify-content:center;gap:12px;padding-top:8px">
           <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Fijos</div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">${L('balFijos')}</div>
             <div style="font-size:20px;font-weight:800;color:#6c63ff">${fmtInt(fijos)}</div>
-            <div style="font-size:11px;color:var(--muted)">${pctFij}% del total</div>
+            <div style="font-size:11px;color:var(--muted)">${pctTotalText(pctFij)}</div>
           </div>
           <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Variables</div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">${L('sumVariables').replace('📊 ','')}</div>
             <div style="font-size:20px;font-weight:800;color:#ff7a59">${fmtInt(variables)}</div>
-            <div style="font-size:11px;color:var(--muted)">${100-pctFij}% del total</div>
+            <div style="font-size:11px;color:var(--muted)">${pctTotalText(100-pctFij)}</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- POR INTEGRANTE -->
-    <div class="inf-section-title">Por integrante</div>
+    <div class="inf-section-title">${L('informePorIntegrante')}</div>
     <div class="inf-chart-card">
       ${pInc.map(p=>{
         const pctI=totalInc>0?Math.round(p.inc/totalInc*100):0;
@@ -3074,20 +3114,20 @@ renderInforme = function() {
               <div class="inf-persona-fill" style="width:${pctI}%;background:${p.color}"></div>
             </div>
             <div style="font-size:10px;color:var(--muted);margin-top:4px">
-              ${p.gas>0?`Gastos: ${fmt(p.gas)}`:'Sin gastos registrados'}
+              ${p.gas>0?`${L('informeGastosPersona')}: ${fmt(p.gas)}`:L('informeSinGastos')}
             </div>
           </div>
           <div class="inf-persona-right">
             <div class="inf-persona-inc">${fmt(p.inc)}</div>
-            <div class="inf-persona-gas">${pctI}% del total</div>
+            <div class="inf-persona-gas">${pctTotalText(pctI)}</div>
           </div>
         </div>`;
       }).join('')}
       ${ambosG>0?`<div class="inf-persona-card">
         <div class="inf-persona-avatar" style="background:rgba(247,201,72,.15);color:#f7c948">A</div>
         <div class="inf-persona-info">
-          <div class="inf-persona-name">Ambos</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:4px">Gastos compartidos</div>
+          <div class="inf-persona-name">${L('ambosLabel')}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">${L('sharedExpenses')}</div>
         </div>
         <div class="inf-persona-right">
           <div class="inf-persona-inc" style="color:#f7c948">${fmt(ambosG)}</div>
@@ -3096,17 +3136,17 @@ renderInforme = function() {
     </div>
 
     <!-- CATEGORÍAS -->
-    <div class="inf-section-title">Gastos por categoría</div>
+    <div class="inf-section-title">${L('informeGastosCat')}</div>
     <div class="inf-chart-card">
       ${catSorted.length===0
-        ? `<div style="text-align:center;padding:20px;color:var(--muted)">Sin datos este mes</div>`
+        ? `<div style="text-align:center;padding:20px;color:var(--muted)">${L('informeSinDatosMes')}</div>`
         : catSorted.map(([cat,tot])=>{
             const pct=totalGas>0?Math.round(tot/totalGas*100):0;
             const max=catSorted[0][1];
             const barW=Math.round(tot/max*100);
             const col=CAT_COLORS[cat]||'#888';
             return `<div class="inf-cat-row">
-              <div class="inf-cat-name-with-icon">${catIconHtml(cat, 'inf-cat-icon')}<span>${cat}</span></div>
+              <div class="inf-cat-name-with-icon">${catIconHtml(cat, 'inf-cat-icon')}<span>${catLabel(cat)}</span></div>
               <div class="inf-cat-bar-bg">
                 <div class="inf-cat-fill" style="width:${barW}%;background:${col}"></div>
               </div>
@@ -3117,7 +3157,7 @@ renderInforme = function() {
     </div>
 
     <!-- DONUT INGRESOS -->
-    <div class="inf-section-title">Ingresos por persona</div>
+    <div class="inf-section-title">${L('incomeByPerson')}</div>
     <div class="inf-chart-card">
       <canvas id="cIngresos" height="140"></canvas>
       <div class="inf-legend">
@@ -3141,7 +3181,7 @@ renderInforme = function() {
     const incColors=pInc.map(p=>p.color);
     const incLabels=pInc.map(p=>p.nombre);
     drawDonut('cIngresos',incLabels,incData,incColors);
-    drawDonut('cTipos',['Fijos','Variables'],[fijos,variables],['#6c63ff','#ff7a59']);
+    drawDonut('cTipos',[L('balFijos'), L('sumVariables').replace('📊 ','')],[fijos,variables],['#6c63ff','#ff7a59']);
   },60);
 };
 
@@ -3959,7 +3999,7 @@ function updatePersonaNames() {
       ? ['Todos', ...personas]
       : personas;
     sel.innerHTML = options.map(p =>
-      `<option value="${p}">${p}</option>`
+      `<option value="${p}">${optionLabel(p)}</option>`
     ).join('');
     if (options.includes(current)) sel.value = current;
   });
@@ -3968,7 +4008,7 @@ function updatePersonaNames() {
   const tit = document.getElementById('t_titular');
   if (tit) {
     tit.innerHTML = [...personas, 'Compartida'].map(p =>
-      `<option value="${p}">${p}</option>`
+      `<option value="${p}">${optionLabel(p)}</option>`
     ).join('');
   }
 
@@ -4203,7 +4243,7 @@ function activarModoGrupo() {
   var grupo = loadGroup();
   var nombreGrupo = grupo ? grupo.nombre : 'Grupo';
   var gmGrupo = document.getElementById('greetingMonth');
-  if (gmGrupo) gmGrupo.textContent = 'el grupo';
+  if (gmGrupo) gmGrupo.textContent = L('groupGreeting');
 
   // Banner de modo grupo en el header
   if (!document.getElementById('modoGrupoBanner')) {
@@ -4211,7 +4251,7 @@ function activarModoGrupo() {
     banner.id = 'modoGrupoBanner';
     banner.style.cssText = 'background:linear-gradient(135deg,#1a2b5e,var(--secondary));padding:8px 18px;display:flex;justify-content:space-between;align-items:center';
     banner.innerHTML = '<span style="font-size:12px;font-weight:700;color:white">👥 ' + nombreGrupo + '</span>' +
-      '<span style="font-size:11px;color:rgba(255,255,255,.65)">Modo grupo de gastos</span>';
+      '<span style="font-size:11px;color:rgba(255,255,255,.65)">' + L('groupMode') + '</span>';
     var hdr = document.querySelector('.hdr');
     if (hdr) hdr.insertAdjacentElement('afterend', banner);
   }
@@ -4311,9 +4351,9 @@ function mostrarBalanceGrupo() {
 
   // Resumen del grupo
   html += '<div style="background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow)">';
-  html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">TOTAL DEL GRUPO</div>';
+  html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">' + L('groupBalance') + '</div>';
   html += '<div style="font-size:32px;font-weight:800;letter-spacing:-1px;color:#fff">' + fmt(totalGrupo) + '</div>';
-  html += '<div style="font-size:12px;opacity:.6;margin-top:2px">' + participantes.length + ' participantes · ' + fmt(parteIgual) + ' c/u</div>';
+  html += '<div style="font-size:12px;opacity:.6;margin-top:2px">' + participantes.length + ' ' + L('groupParticipants') + ' · ' + fmt(parteIgual) + ' ' + L('groupEach') + '</div>';
   html += '<div style="height:1px;background:rgba(255,255,255,.15);margin:12px 0"></div>';
   html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
   participantes.forEach(function(p) {
@@ -4333,7 +4373,7 @@ function mostrarBalanceGrupo() {
       html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
       html += '<div style="display:flex;align-items:center;gap:8px">';
       html += '<span style="font-size:13px;font-weight:600;color:var(--danger)">' + d.de + '</span>';
-      html += '<span style="font-size:11px;color:var(--muted)">le debe a</span>';
+      html += '<span style="font-size:11px;color:var(--muted)">' + L('groupOwesTo') + '</span>';
       html += '<span style="font-size:13px;font-weight:600;color:var(--success)">' + d.a + '</span>';
       html += '</div>';
       html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span>';
@@ -4343,8 +4383,8 @@ function mostrarBalanceGrupo() {
   } else if (participantes.length > 1) {
     html += '<div style="background:rgba(30,201,143,.08);border:1px solid rgba(30,201,143,.2);border-radius:14px;padding:14px;text-align:center;margin-bottom:14px">';
     html += '<div style="font-size:1.4rem">✅</div>';
-    html += '<div style="font-size:13px;font-weight:700;color:var(--success);margin-top:6px">¡Todos están al día!</div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">No hay deudas pendientes</div>';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--success);margin-top:6px">' + L('grupoAlDia') + '</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">' + L('groupNoDebts') + '</div>';
     html += '</div>';
   }
 
@@ -4401,15 +4441,15 @@ function renderGruposPanel() {
       <div style="display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer" onclick="switchToGrupo('${g.id}')">
         <div style="width:42px;height:42px;border-radius:13px;background:${color};color:${textColor};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700">${g.nombre || 'Sin nombre'}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${ps.join(' · ')}${isActivo?' · <span style="color:var(--primary)">Activo</span>':''}</div>
+          <div style="font-size:14px;font-weight:700">${g.nombre || L('groupNoName')}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${ps.join(' · ')}${isActivo ? ` · <span style="color:var(--primary)">${L('groupActive')}</span>` : ''}</div>
         </div>
-        ${isActivo ? '<span style="background:rgba(18,199,183,.15);color:var(--primary);font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px">Activo</span>' : '<span style="font-size:18px;color:var(--muted)">›</span>'}
+        ${isActivo ? `<span style="background:rgba(18,199,183,.15);color:var(--primary);font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px">${L('groupActive')}</span>` : '<span style="font-size:18px;color:var(--muted)">›</span>'}
       </div>
       ${!isHogar ? `<div style="display:flex;border-top:1px solid rgba(255,255,255,.06)">
-        <div style="flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--primary)" onclick="invitarAlGrupo('${g.id}','${g.codigo}','${g.nombre||''}')">📨 Invitar</div>
+        <div style="flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--primary)" onclick="invitarAlGrupo('${g.id}','${g.codigo}','${g.nombre||''}')">${'📨 ' + L('groupInvite')}</div>
         <div style="width:1px;background:rgba(255,255,255,.06)"></div>
-        <div style="flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--danger)" onclick="eliminarGrupo('${g.id}')">🗑 Eliminar</div>
+        <div style="flex:1;padding:10px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--danger)" onclick="eliminarGrupo('${g.id}')">${'🗑 ' + L('groupDelete')}</div>
       </div>` : ''}
     </div>`;
   }
@@ -4428,25 +4468,25 @@ function renderGruposPanel() {
   const gruposDeGastos = todosConActual.filter(function(g){ return g.id !== (hogar && hogar.id); });
 
   let html = '';
-  html += '<div style="padding:8px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Mi hogar</div>';
+  html += '<div style="padding:8px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">' + L('groupMyHome') + '</div>';
   if (hogar) html += grupoCard(hogar, grupoActual && grupoActual.id === hogar.id);
 
   if (gruposDeGastos.length > 0) {
     html += '<div class="grupo-divider"></div>';
-    html += '<div style="padding:8px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Grupos de gastos</div>';
+    html += '<div style="padding:8px 18px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">' + L('groupExpenses') + '</div>';
     gruposDeGastos.forEach(function(g) { html += grupoCard(g, grupoActual && grupoActual.id === g.id); });
   }
 
   html += '<div class="grupo-divider"></div>';
   html += `<div class="grupo-add-btn" onclick="crearGrupoDesdeApp()">
     <div style="width:40px;height:40px;border-radius:13px;background:rgba(108,99,255,.12);display:flex;align-items:center;justify-content:center;font-size:16px">＋</div>
-    <div><div style="font-size:14px;font-weight:700;color:var(--primary)">Crear grupo de gastos</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:1px">Amigos, viajes, casa compartida</div></div>
+    <div><div style="font-size:14px;font-weight:700;color:var(--primary)">${L('groupCreate')}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:1px">${L('groupCreateSub')}</div></div>
   </div>`;
   html += `<div class="grupo-add-btn" onclick="unirseGrupoDesdeApp()">
     <div style="width:40px;height:40px;border-radius:13px;background:rgba(247,201,72,.1);display:flex;align-items:center;justify-content:center;font-size:16px">🔑</div>
-    <div><div style="font-size:14px;font-weight:700;color:#f7c948">Unirse con código</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:1px">Tengo un código de invitación</div></div>
+    <div><div style="font-size:14px;font-weight:700;color:#f7c948">${L('groupJoin')}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:1px">${L('groupJoinSub')}</div></div>
   </div>`;
   // Botón volver al hogar (solo si no estamos en el hogar)
   var hogarId = getHogarId();
@@ -4455,8 +4495,8 @@ function renderGruposPanel() {
     html += '<div class="grupo-divider"></div>';
     html += '<div style="margin:0 12px 16px;background:rgba(18,199,183,.08);border:1.5px solid rgba(18,199,183,.2);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="volverAlHogar()">';
     html += '<div style="font-size:22px">🏠</div>';
-    html += '<div><div style="font-size:14px;font-weight:700;color:var(--primary)">Volver a Mi Hogar</div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">Salir del grupo de gastos</div></div></div>';
+    html += '<div><div style="font-size:14px;font-weight:700;color:var(--primary)">' + L('groupBackHome') + '</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + L('groupLeave') + '</div></div></div>';
   }
   html += '<div style="height:16px"></div>';
   body.innerHTML = html;
@@ -4686,7 +4726,7 @@ function renderCatList() {
     var color = localCatColors[cat]||'#12c7b7';
     var pct = Math.round(tot/max*100);
     return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">' +
-      '<div style="font-size:13px;font-weight:600;min-width:140px;flex-shrink:0;display:flex;align-items:center;gap:8px">' + catIconHtml(cat) + '<span>' + cat + '</span></div>' +
+      '<div style="font-size:13px;font-weight:600;min-width:140px;flex-shrink:0;display:flex;align-items:center;gap:8px">' + catIconHtml(cat) + '<span>' + catLabel(cat) + '</span></div>' +
       '<div style="flex:1;background:rgba(255,255,255,.08);border-radius:999px;height:8px;overflow:hidden">' +
         '<div style="height:100%;border-radius:999px;width:' + pct + '%;background:' + color + ';transition:width .6s"></div>' +
       '</div>' +
@@ -4734,28 +4774,28 @@ function renderFlujo() {
   var html = '';
   // HERO
   html += '<div style="background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:20px 18px;margin-bottom:14px;box-shadow:var(--shadow)">';
-  html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:8px">FLUJO DEL MES</div>';
+  html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:8px">'+L('flujoTitulo')+'</div>';
   html += '<div style="font-size:36px;font-weight:800;letter-spacing:-1.5px;color:'+(sl>=0?'#7effd4':'#ffb3a0')+'">'+fmt(sl)+'</div>';
-  html += '<div style="font-size:12px;opacity:.65;margin-top:2px">'+(sl>=0?'disponible':'déficit')+' este mes</div>';
+  html += '<div style="font-size:12px;opacity:.65;margin-top:2px">'+(sl>=0?L('balDisponible'):L('balDeficit'))+'</div>';
   html += '<div style="height:1px;background:rgba(255,255,255,.15);margin:14px 0"></div>';
   html += '<div style="display:flex;justify-content:space-between">';
-  html += '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Ingresos</div><div style="font-size:15px;font-weight:800;color:#fff">'+fmt(tI)+'</div></div>';
-  html += '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Gastos</div><div style="font-size:15px;font-weight:800;color:#ffb3a0">'+fmt(tG)+'</div><div style="font-size:10px;opacity:.55">'+pctG+'% del ingreso</div></div>';
-  html += '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">Fijos</div><div style="font-size:15px;font-weight:800;color:#c4b5fd">'+fmt(fj)+'</div><div style="font-size:10px;opacity:.55">'+pctF+'% de gastos</div></div>';
+  html += '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">'+L('balIngresos')+'</div><div style="font-size:15px;font-weight:800;color:#fff">'+fmt(tI)+'</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">'+L('balGastos')+'</div><div style="font-size:15px;font-weight:800;color:#ffb3a0">'+fmt(tG)+'</div><div style="font-size:10px;opacity:.55">'+pctIncomeText(pctG)+'</div></div>';
+  html += '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">'+L('balFijos')+'</div><div style="font-size:15px;font-weight:800;color:#c4b5fd">'+fmt(fj)+'</div><div style="font-size:10px;opacity:.55">'+pctExpensesText(pctF)+'</div></div>';
   html += '</div></div>';
   // DESGLOSE
-  html += '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Desglose</div>';
+  html += '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">'+L('flujoDesglose')+'</div>';
   html += '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
   pInc.forEach(function(p){if(p.inc>0)html+=fRow(p.nombre,fmt(p.inc),p.color,false);});
   var ambosI=inc.filter(function(i){return i.quien==='Ambos';}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
-  if(ambosI>0)html+=fRow('Compartido',fmt(ambosI),'#f7c948',false);
-  html+=fRow('Total ingresos',fmt(tI),'#1ec98f',true);
+  if(ambosI>0)html+=fRow(L('optCompartido'),fmt(ambosI),'#f7c948',false);
+  html+=fRow(L('flujoTotalIngresos'),fmt(tI),'#1ec98f',true);
   html+='<div style="height:6px"></div>';
-  html+=fRow('Gastos fijos',fmt(fj),'#6c63ff',false,pctF+'% del total');
-  html+=fRow('Flujo tras fijos',fmt(tI-fj),(tI-fj>=0?'var(--text)':'#ff7a59'),false);
-  html+=fRow('Gastos variables',fmt(vr),'#ff7a59',false,(tG>0?(100-pctF):'0')+'% del total');
-  if(eT>0)html+=fRow('En tarjeta',fmt(eT),'#f7c948',false);
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px"><div style="font-size:15px;font-weight:800">💰 Flujo libre</div><div style="font-size:22px;font-weight:800;color:'+(sl>=0?'#1ec98f':'#ff7a59')+'">'+fmt(sl)+'</div></div>';
+  html+=fRow(L('flujoFijos'),fmt(fj),'#6c63ff',false,pctTotalText(pctF));
+  html+=fRow(L('flujoTrasFijos'),fmt(tI-fj),(tI-fj>=0?'var(--text)':'#ff7a59'),false);
+  html+=fRow(L('flujoVariables'),fmt(vr),'#ff7a59',false,pctTotalText(tG>0?(100-pctF):0));
+  if(eT>0)html+=fRow(L('flujoEnTarjeta'),fmt(eT),'#f7c948',false);
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px"><div style="font-size:15px;font-weight:800">'+L('flujoLibre')+'</div><div style="font-size:22px;font-weight:800;color:'+(sl>=0?'#1ec98f':'#ff7a59')+'">'+fmt(sl)+'</div></div>';
   html+='</div>';
   // BARRA DE PROGRESO
   if(tI>0){
@@ -4763,27 +4803,27 @@ function renderFlujo() {
     var pctVrBar=Math.min(100-pctFjBar,Math.round(vr/tI*100));
     var pctSlBar=Math.max(0,100-pctFjBar-pctVrBar);
     html+='<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
-    html+='<div style="font-size:13px;font-weight:700;margin-bottom:12px">📊 Uso del ingreso</div>';
+    html+='<div style="font-size:13px;font-weight:700;margin-bottom:12px">'+L('flujoUsoIngreso')+'</div>';
     html+='<div style="display:flex;height:12px;border-radius:999px;overflow:hidden;gap:2px;margin-bottom:10px">';
     html+='<div style="width:'+pctFjBar+'%;background:#6c63ff;border-radius:999px 0 0 999px"></div>';
     html+='<div style="width:'+pctVrBar+'%;background:#ff7a59"></div>';
     html+='<div style="width:'+pctSlBar+'%;background:#1ec98f;border-radius:0 999px 999px 0"></div>';
     html+='</div><div style="display:flex;gap:14px;flex-wrap:wrap">';
-    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#6c63ff"></div><span style="font-size:11px;color:var(--muted)">Fijos '+pctFjBar+'%</span></div>';
-    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#ff7a59"></div><span style="font-size:11px;color:var(--muted)">Variables '+pctVrBar+'%</span></div>';
-    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#1ec98f"></div><span style="font-size:11px;color:var(--muted)">Libre '+pctSlBar+'%</span></div>';
+    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#6c63ff"></div><span style="font-size:11px;color:var(--muted)">'+L('balFijos')+' '+pctFjBar+'%</span></div>';
+    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#ff7a59"></div><span style="font-size:11px;color:var(--muted)">'+L('sumVariables').replace('📊 ','')+' '+pctVrBar+'%</span></div>';
+    html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:#1ec98f"></div><span style="font-size:11px;color:var(--muted)">'+L('flujoLibreCorto')+' '+pctSlBar+'%</span></div>';
     html+='</div></div>';
   }
   // METAS
-  html+='<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🎯 Metas de ahorro</div>';
+  html+='<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">'+L('flujoMetas')+'</div>';
   if(tI===0){
-    html+='<div style="text-align:center;padding:20px;color:var(--muted)">Agregá ingresos para ver las metas</div>';
+    html+='<div style="text-align:center;padding:20px;color:var(--muted)">'+L('flujoSinIngresos')+'</div>';
   } else {
     html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
-    function gc2(lbl,val,color){var p=tI>0?Math.round(val/tI*100):0;return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px">'+lbl+'</div><div style="font-size:15px;font-weight:800;color:'+color+';letter-spacing:-.5px">'+fmt(val)+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+p+'% del ingreso</div></div>';}
-    html+=gc2('Ahorro 10%',tI*.1,'#12c7b7');
-    html+=gc2('Ahorro 20%',tI*.2,'#6c63ff');
-    html+=gc2('Real',Math.max(0,sl),sl>=0?'#1ec98f':'#ff7a59');
+    function gc2(lbl,val,color){var p=tI>0?Math.round(val/tI*100):0;return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px">'+lbl+'</div><div style="font-size:15px;font-weight:800;color:'+color+';letter-spacing:-.5px">'+fmt(val)+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+pctIncomeText(p)+'</div></div>';}
+    html+=gc2(L('flujoAhorro10'),tI*.1,'#12c7b7');
+    html+=gc2(L('flujoAhorro20'),tI*.2,'#6c63ff');
+    html+=gc2(L('flujoReal'),Math.max(0,sl),sl>=0?'#1ec98f':'#ff7a59');
     html+='</div>';
   }
   el.innerHTML = html;
