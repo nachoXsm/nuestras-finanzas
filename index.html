@@ -1250,7 +1250,7 @@ function fmtCurrency(n, code){
   var c = txCurrencyMeta(code || getDefaultCurrency());
   var num = Math.round((n||0) * 100) / 100;
   var val = num % 1 === 0 ? num.toLocaleString('es-AR') : num.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  return c.symbol + val + (c.code==='ARS' ? '' : ' ' + c.code);
+  return c.symbol + val;
 }
 function currencyStoreKey(table){ return 'nf_currency_' + table; }
 function getCurrencyStore(table){ try { return JSON.parse(localStorage.getItem(currencyStoreKey(table)) || '{}'); } catch(e) { return {}; } }
@@ -3044,16 +3044,15 @@ function renderAllGrupo() {
         const dateHead = key !== lastDate ? '<div style="font-size:16px;font-weight:800;color:var(--text);margin:20px 4px 10px;text-transform:capitalize">' + fechaGastoTitulo(g) + '</div>' : '';
         lastDate = key;
         var pagador = g.quien === 'Todos' ? L('pagoDividido') : L('pagadoPor') + ' ' + (g.quien || L('sinDefinir'));
-        return dateHead + '<div class="item">' +
+        return dateHead + '<div class="item" style="align-items:flex-start">' +
           '<div class="item-cat-icon" style="background:'+catColor+'22">'+catIcon+'</div>' +
           '<div class="item-info">' +
             '<div class="item-name">'+(g.descripcion||g.desc||L('sinDescripcion'))+'</div>' +
             '<div class="item-tags">' +
               '<span class="tag tag-quien">👤 '+pagador+'</span>' +
-              '<span class="tag tag-cat">'+catLabel(g.cat)+'</span>' +
             '</div>' +
           '</div>' +
-          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">' +
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-left:auto;padding-top:2px;flex-shrink:0">' +
             '<span class="item-amount exp">'+fmtCurrency(parseFloat(g.monto), g.moneda)+'</span>' +
             '<div style="display:flex;gap:6px">' +
               '<button class="action-btn edit" onclick="editGasto(&quot;'+g.id+'&quot;)">✏️</button>' +
@@ -4976,3 +4975,7 @@ function renderFlujo() {
 </script>
 </body>
 </html>
+
+
+
+
