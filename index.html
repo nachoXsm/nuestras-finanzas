@@ -1422,6 +1422,52 @@ function fmtCurrency(n, code){
   var val = num % 1 === 0 ? num.toLocaleString('es-AR') : num.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
   return c.symbol + val;
 }
+
+function getActiveBaseCurrency(){
+  try {
+    var g = (typeof loadGroup === 'function') ? loadGroup() : null;
+    if (g && g.moneda) return g.moneda;
+  } catch(e) {}
+  return (typeof getDefaultCurrency === 'function' ? getDefaultCurrency() : 'ARS') || 'ARS';
+}
+var nfMoneyRatesRequested = false;
+function ensureMoneyRatesLoaded(){
+  if (nfMoneyRatesRequested) return;
+  if (typeof convRates !== 'undefined' && convRates && convRates.USD) return;
+  if (typeof fetchRates !== 'function') return;
+  nfMoneyRatesRequested = true;
+  fetchRates().then(function(){
+    setTimeout(function(){ try { renderAll(); } catch(e) {} }, 80);
+  }).catch(function(){});
+}
+function usdRateForCurrency(code){
+  code = code || getActiveBaseCurrency();
+  if (code === 'USD') return 1;
+  if (code === 'ARS') {
+    var oficial = (typeof arsSpecial !== 'undefined' && arsSpecial && arsSpecial.oficial && arsSpecial.oficial.venta) ? arsSpecial.oficial.venta : 0;
+    if (oficial) return oficial;
+  }
+  if (typeof convRates !== 'undefined' && convRates && convRates[code]) return convRates[code];
+  return null;
+}
+function moneyConvertAmount(amount, fromCode, toCode){
+  amount = parseFloat(amount || 0) || 0;
+  fromCode = fromCode || getActiveBaseCurrency();
+  toCode = toCode || getActiveBaseCurrency();
+  if (fromCode === toCode) return amount;
+  var fromRate = usdRateForCurrency(fromCode);
+  var toRate = usdRateForCurrency(toCode);
+  if (!fromRate || !toRate) {
+    ensureMoneyRatesLoaded();
+    return amount;
+  }
+  return (amount / fromRate) * toRate;
+}
+function moneyValue(record, baseCode){
+  if (!record) return 0;
+  return moneyConvertAmount(record.monto, record.moneda || baseCode || getActiveBaseCurrency(), baseCode || getActiveBaseCurrency());
+}
+
 function currencyStoreKey(table){ return 'nf_currency_' + table; }
 function getCurrencyStore(table){ try { return JSON.parse(localStorage.getItem(currencyStoreKey(table)) || '{}'); } catch(e) { return {}; } }
 function rememberRecordCurrency(table, id, code){ if(!id || !code) return; var m=getCurrencyStore(table); m[id]=code; localStorage.setItem(currencyStoreKey(table), JSON.stringify(m)); }
@@ -2355,7 +2401,7 @@ function renderAll() {
 
   // CATEGORIAS
   const catTotals={};
-  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+parseFloat(g.monto);});
+  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+moneyValue(g, getActiveBaseCurrency());});
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const catMax=catSorted[0]?.[1]||1;
   document.getElementById('catList').innerHTML = catSorted.length===0
@@ -2395,7 +2441,7 @@ function renderInforme() {
   const variables=gastos.filter(g=>g.tipo==='variable').reduce((a,g)=>a+parseFloat(g.monto),0);
   const saldo=totalInc-totalGas;
   const catTotals={};
-  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+parseFloat(g.monto);});
+  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+moneyValue(g, getActiveBaseCurrency());});
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
   const personaIngresos = personas.map(p => ({
@@ -2536,7 +2582,7 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb,ws3,'Gastos');
 
   const catTotals={};
-  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+parseFloat(g.monto);});
+  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+moneyValue(g, getActiveBaseCurrency());});
   const ws4=XLSX.utils.aoa_to_sheet([['Categoría','Monto','% del total'],
     ...Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([cat,m])=>[cat,m,totalGas>0?Math.round(m/totalGas*100)+'%':'—'])]);
   XLSX.utils.book_append_sheet(wb,ws4,'Por Categoría');
@@ -3025,7 +3071,7 @@ renderAll = function() {
 
   // CATEGORIAS
   const catTotals={};
-  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+parseFloat(g.monto);});
+  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+moneyValue(g, getActiveBaseCurrency());});
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const catMax=catSorted[0]?.[1]||1;
   document.getElementById('catList').innerHTML = catSorted.length===0
@@ -3075,7 +3121,8 @@ renderAll = function() {
 function calcularLiquidacionGrupo() {
   const gs = state.gastos || [];
   const personas = state.personas || [];
-  const totalGrupo = gs.reduce(function(a,g){ return a + parseFloat(g.monto || 0); }, 0);
+  const baseCurrency = getActiveBaseCurrency();
+  const totalGrupo = gs.reduce(function(a,g){ return a + moneyValue(g, baseCurrency); }, 0);
 
   var participantes = personas.length ? personas.slice() : [];
   gs.forEach(function(g) {
@@ -3157,6 +3204,7 @@ function calcularLiquidacionGrupo() {
     aportes: aportes,
     balances: balance,
     deudas: deudas,
+    baseCurrency: baseCurrency,
     teDebenTotal: participantes.reduce(function(a,p){ return a + Math.max(0, balance[p] || 0); }, 0),
     debesTotal: participantes.reduce(function(a,p){ return a + Math.max(0, -(balance[p] || 0)); }, 0)
   };
@@ -3310,7 +3358,7 @@ renderInforme = function() {
   const pctFij=totalGas>0?Math.round(fijos/totalGas*100):0;
 
   const catTotals={};
-  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+parseFloat(g.monto);});
+  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+moneyValue(g, getActiveBaseCurrency());});
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
 
   const personas=state.personas||[state.persona1||'Nacho',state.persona2||'Celi'];
@@ -4470,8 +4518,9 @@ function getPersonaPrincipal() {
   return ps[0] || (state && state.persona1) || 'Yo';
 }
 
-function calcularLiquidacionPara(gastos, personas) {
+function calcularLiquidacionPara(gastos, personas, baseCurrency) {
   var gs = gastos || [];
+  baseCurrency = baseCurrency || getActiveBaseCurrency();
   var participantes = (personas || []).slice();
   gs.forEach(function(g) {
     var q = g.quien;
@@ -4484,18 +4533,18 @@ function calcularLiquidacionPara(gastos, personas) {
       } catch(e) {}
     }
   });
-  var totalGrupo = gs.reduce(function(a,g){ return a + parseFloat(g.monto || 0); }, 0);
+  var totalGrupo = gs.reduce(function(a,g){ return a + moneyValue(g, baseCurrency); }, 0);
   var aportes = {}, balance = {};
   participantes.forEach(function(p){ aportes[p]=0; balance[p]=0; });
   gs.forEach(function(g) {
-    var monto = parseFloat(g.monto || 0);
+    var monto = moneyValue(g, baseCurrency);
     var pagador = g.quien || 'Todos';
     var n = participantes.length || 1;
     if (g.division) {
       var divObj = {};
       try { divObj = typeof g.division === 'string' ? JSON.parse(g.division) : g.division; } catch(e) {}
       Object.keys(divObj).forEach(function(p) {
-        var puso = parseFloat(divObj[p] || 0);
+        var puso = moneyConvertAmount(parseFloat(divObj[p] || 0), g.moneda || baseCurrency, baseCurrency);
         if (!balance.hasOwnProperty(p)) { participantes.push(p); aportes[p]=0; balance[p]=0; }
         aportes[p] += puso;
       });
@@ -4566,7 +4615,7 @@ async function openFriendsPanel() {
       if (state && state.grupoId === g.id) gastos = state.gastos || [];
       else gastos = await dbGet('gastos', 'grupo_id=eq.' + g.id);
       gastos = applyRecordCurrencies('gastos', gastos || []);
-      var liq = calcularLiquidacionPara(gastos, personas);
+      var liq = calcularLiquidacionPara(gastos, personas, g.moneda || getActiveBaseCurrency());
       liq.deudas.forEach(function(d) {
         var amigo = null, delta = 0;
         if (d.de === yo) { amigo = d.a; delta = -d.monto; }
