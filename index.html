@@ -560,6 +560,16 @@
       .inf-cat-bar-bg{width:90px!important;min-width:90px!important}
     }
 
+
+
+    /* Context switch v2 + compact report category rows */
+    .inf-chart-card{max-width:100%;overflow:hidden}
+    .inf-cat-row{display:grid!important;grid-template-columns:minmax(0,1.2fr) minmax(42px,.62fr) minmax(70px,.78fr)!important;align-items:center!important;gap:8px!important;width:100%!important;box-sizing:border-box!important}
+    .inf-cat-name-with-icon{min-width:0!important;width:100%!important;display:grid!important;grid-template-columns:28px minmax(0,1fr)!important;align-items:center!important;gap:8px!important}
+    .inf-cat-name-with-icon span{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+    .inf-cat-bar-bg{width:100%!important;min-width:0!important;flex:none!important}
+    .inf-cat-val{width:auto!important;min-width:0!important;text-align:right!important;font-size:clamp(9px,2.65vw,12px)!important;white-space:nowrap!important;overflow:visible!important}
+
 </style>
 </head>
 <body>
@@ -3391,7 +3401,7 @@ renderInforme = function() {
                 <div class="inf-cat-bar-bg">
                   <div class="inf-cat-fill" style="width:${barW}%;background:${col}"></div>
                 </div>
-                <div class="inf-cat-val">${fmt(tot)}</div>
+                <div class="inf-cat-val">${fmtInt(tot)}</div>
               </div>`;
             }).join('')
         }
@@ -3503,7 +3513,7 @@ renderInforme = function() {
               <div class="inf-cat-bar-bg">
                 <div class="inf-cat-fill" style="width:${barW}%;background:${col}"></div>
               </div>
-              <div class="inf-cat-val">${fmt(tot)}</div>
+              <div class="inf-cat-val">${fmtInt(tot)}</div>
             </div>`;
           }).join('')
       }
@@ -4732,6 +4742,12 @@ function resetVistaCompartida() {
   if (grupoPanel) grupoPanel.remove();
   var banner = document.getElementById('modoGrupoBanner');
   if (banner) banner.remove();
+
+  // clear stale mode analysis
+  var informe = document.getElementById('informeContent');
+  if (informe) informe.innerHTML = '';
+  var flujo = document.getElementById('flujoContent');
+  if (flujo) flujo.innerHTML = '';
 }
 
 rememberHomeBalanceCard();
@@ -4751,7 +4767,7 @@ function activarModoHogar() {
   // Nav completo
   var navItems = document.querySelectorAll('.nav-item');
   navItems.forEach(function(n){ n.style.display=''; });
-  if (typeof syncModeChrome === 'function') syncModeChrome('hogar', currentAllowedTabForMode(false));
+  if (typeof syncModeChrome === 'function') syncModeChrome('hogar', 'gastos');
   // Ocultar banner de modo grupo si existe
   var banner = document.getElementById('modoGrupoBanner');
   if (banner) banner.remove();
@@ -4762,7 +4778,7 @@ function activarModoHogar() {
 
 function activarModoGrupo() {
   document.getElementById('appMain').setAttribute('data-modo', 'grupo');
-  if (typeof syncModeChrome === 'function') syncModeChrome('grupo', currentAllowedTabForMode(true));
+  if (typeof syncModeChrome === 'function') syncModeChrome('grupo', 'gastos');
   var grupo = loadGroup();
   var nombreGrupo = grupo ? grupo.nombre : 'Grupo';
   var gmGrupo = document.getElementById('greetingMonth');
