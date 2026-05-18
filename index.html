@@ -274,6 +274,13 @@
     .category-select-wrap select{flex:1;min-width:0}
     .cat-select-preview{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px;flex-shrink:0;border:1px solid var(--border);background:rgba(18,199,183,.08)}
     .cat-select-preview img{width:100%;height:100%;object-fit:contain;display:block}
+    .group-expense-item{display:grid;grid-template-columns:52px minmax(0,1fr) max-content;align-items:start;column-gap:12px;row-gap:4px;margin-bottom:18px;padding:0 0 4px 0}
+    .group-expense-main{min-width:0;padding-top:2px}
+    .group-expense-title{font-size:14px;font-weight:800;line-height:1.2;color:var(--text);margin-bottom:10px}
+    .group-expense-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .group-expense-side{display:flex;flex-direction:column;align-items:flex-end;gap:9px;align-self:start;padding-top:2px;white-space:nowrap}
+    .group-expense-amount{font-size:16px;font-weight:900;line-height:1.2;color:var(--danger);letter-spacing:-.2px}
+    .group-expense-actions{display:flex;gap:6px;justify-content:flex-end}
     .item-info{flex:1;min-width:0}.item-name{font-size:14px;font-weight:700}
     .item-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
     .item-right{text-align:right;flex-shrink:0}
@@ -3044,17 +3051,17 @@ function renderAllGrupo() {
         const dateHead = key !== lastDate ? '<div style="font-size:16px;font-weight:800;color:var(--text);margin:20px 4px 10px;text-transform:capitalize">' + fechaGastoTitulo(g) + '</div>' : '';
         lastDate = key;
         var pagador = g.quien === 'Todos' ? L('pagoDividido') : L('pagadoPor') + ' ' + (g.quien || L('sinDefinir'));
-        return dateHead + '<div class="item" style="align-items:flex-start">' +
+        return dateHead + '<div class="group-expense-item">' +
           '<div class="item-cat-icon" style="background:'+catColor+'22">'+catIcon+'</div>' +
-          '<div class="item-info">' +
-            '<div class="item-name">'+(g.descripcion||g.desc||L('sinDescripcion'))+'</div>' +
-            '<div class="item-tags">' +
+          '<div class="group-expense-main">' +
+            '<div class="group-expense-title">'+(g.descripcion||g.desc||L('sinDescripcion'))+'</div>' +
+            '<div class="group-expense-tags">' +
               '<span class="tag tag-quien">👤 '+pagador+'</span>' +
             '</div>' +
           '</div>' +
-          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-left:auto;padding-top:2px;flex-shrink:0">' +
-            '<span class="item-amount exp">'+fmtCurrency(parseFloat(g.monto), g.moneda)+'</span>' +
-            '<div style="display:flex;gap:6px">' +
+          '<div class="group-expense-side">' +
+            '<span class="group-expense-amount">'+fmtCurrency(parseFloat(g.monto), g.moneda)+'</span>' +
+            '<div class="group-expense-actions">' +
               '<button class="action-btn edit" onclick="editGasto(&quot;'+g.id+'&quot;)">✏️</button>' +
               '<button class="action-btn del" onclick="deleteGasto(&quot;'+g.id+'&quot;)">🗑</button>' +
             '</div>' +
