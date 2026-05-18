@@ -182,6 +182,14 @@
     .balance-stat-value.neg{color:#ffb3a0}
     .balance-stat-value.neu{color:rgba(255,255,255,.9)}
     .balance-stat-sub{font-size:10px;opacity:.55;font-weight:500}
+    .balance-card.home-balance-only{padding:22px 22px 24px;min-height:158px;display:flex;flex-direction:column;justify-content:center}
+    .balance-card.home-balance-only .balance-sub{margin-bottom:0;max-width:68%;position:relative;z-index:1}
+    .balance-card.home-balance-only h2{max-width:72%;position:relative;z-index:1}
+    .balance-card.home-balance-only small{position:relative;z-index:1}
+    .balance-privacy-btn{position:absolute;right:18px;top:18px;z-index:4;width:38px;height:38px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(10px);box-shadow:0 10px 24px rgba(0,0,0,.12);transition:transform .18s,background .18s,border-color .18s}
+    .balance-privacy-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28)}
+    .balance-privacy-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .balance-card.privacy-hidden #balanceTotal{letter-spacing:.08em}
 
     /* SUMMARY */
     #summary{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 18px;margin-bottom:20px}
@@ -2910,6 +2918,52 @@ function buildManifest(){
 init();
 
 
+function nfEyeIcon(hidden) {
+  if (hidden) {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a3 3 0 0 0 4.2 4.2"/><path d="M9.9 5.2A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18.4 18.4 0 0 1-3.1 4.1"/><path d="M6.6 6.6A18.1 18.1 0 0 0 2 12s3.5 7 10 7a10.8 10.8 0 0 0 4.2-.8"/></svg>';
+  }
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/></svg>';
+}
+
+function isBalanceHidden() {
+  return localStorage.getItem('nf_hide_balance') === '1';
+}
+
+function ensureHomeBalanceHeroClean() {
+  const card = document.querySelector('.balance-card');
+  if (!card || !document.getElementById('balanceTotal')) return;
+  card.classList.add('home-balance-only');
+  const divider = card.querySelector('.balance-divider');
+  if (divider) divider.remove();
+  const row = card.querySelector('.balance-row');
+  if (row) row.remove();
+  if (!document.getElementById('balancePrivacyBtn')) {
+    card.insertAdjacentHTML('beforeend', '<button type="button" id="balancePrivacyBtn" class="balance-privacy-btn" onclick="toggleBalancePrivacy()"></button>');
+  }
+  setBalancePrivacyUI();
+}
+
+function setBalancePrivacyUI() {
+  const card = document.querySelector('.balance-card');
+  const total = document.getElementById('balanceTotal');
+  const btn = document.getElementById('balancePrivacyBtn');
+  if (!card || !total) return;
+  const hidden = isBalanceHidden();
+  const realValue = total.getAttribute('data-real-value') || total.textContent || '$0';
+  card.classList.toggle('privacy-hidden', hidden);
+  total.textContent = hidden ? '••••••' : realValue;
+  if (btn) {
+    btn.innerHTML = nfEyeIcon(hidden);
+    btn.setAttribute('aria-label', hidden ? 'Mostrar saldo' : 'Ocultar saldo');
+    btn.title = hidden ? 'Mostrar saldo' : 'Ocultar saldo';
+  }
+}
+
+function toggleBalancePrivacy() {
+  localStorage.setItem('nf_hide_balance', isBalanceHidden() ? '0' : '1');
+  setBalancePrivacyUI();
+}
+
 // Override renderAll to use new CSS classes
 const _origRenderAll = renderAll;
 renderAll = function() {
@@ -2928,6 +2982,7 @@ renderAll = function() {
   const pct = totalInc>0?Math.min(100,Math.round(totalGas/totalInc*100)):0;
 
   // BALANCE CARD — actualizar con datos reales
+  ensureHomeBalanceHeroClean();
   const bTotal = document.getElementById('balanceTotal');
   const bSub   = document.getElementById('balanceSub');
   const bsI    = document.getElementById('bsIngresos');
@@ -2935,7 +2990,10 @@ renderAll = function() {
   const bsP    = document.getElementById('bsPct');
   const bsF    = document.getElementById('bsFijos');
   const bsFP   = document.getElementById('bsFijosPct');
-  if(bTotal) bTotal.textContent = fmtInt(saldo);
+  if(bTotal) {
+    bTotal.setAttribute('data-real-value', fmtInt(saldo));
+    bTotal.textContent = fmtInt(saldo);
+  }
   if(bTotal) bTotal.style.color = saldo>=0?'#ffffff':'#ffb3a0';
   if(bSub)   bSub.textContent  = saldo>=0?L('balDisponible'):L('balDeficit');
   if(bsI)    bsI.textContent   = fmtInt(totalInc);
@@ -2943,6 +3001,9 @@ renderAll = function() {
   if(bsP)    bsP.textContent   = pct+L('sumDelIngreso');
   if(bsF)    bsF.textContent   = fmtInt(fijos);
   if(bsFP)   bsFP.textContent  = (totalGas>0?Math.round(fijos/totalGas*100):0)+L('balDeGastos');
+  setBalancePrivacyUI();
+  const cleanHomeBalance = document.querySelector('.balance-card');
+  if (cleanHomeBalance && cleanHomeBalance.querySelector('#balanceTotal')) nfHomeBalanceHTML = cleanHomeBalance.innerHTML;
 
   // SUMMARY — 3 cards: Ingresos / Gastos / Fijos
   const personas = state.personas||[state.persona1||'Nacho',state.persona2||'Celi'];
@@ -3269,6 +3330,7 @@ function renderAllGrupo() {
   var balCard = document.querySelector('.balance-card');
   if (balCard) {
     balCard.style.display = '';
+    balCard.classList.remove('home-balance-only', 'privacy-hidden');
     balCard.innerHTML =
       '<small style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65">' + L('groupBalance') + '</small>' +
       '<h2 style="font-size:32px;font-weight:800;margin:8px 0 2px;letter-spacing:-1px">' + fmt(totalGrupo) + '</h2>' +
