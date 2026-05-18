@@ -499,6 +499,23 @@
     border-radius:18px;
   }
 
+
+
+  /* FIT FIX - rounded totals and narrow-screen amount alignment */
+  #summary{gap:12px!important;padding-left:18px!important;padding-right:18px!important}
+  .sum-card{min-width:0!important;overflow:hidden!important;padding:14px!important}
+  .sum-val{font-size:clamp(18px,5.2vw,22px)!important;line-height:1.08!important;white-space:nowrap!important;letter-spacing:-.65px!important}
+  .balance-row{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;align-items:start!important}
+  .balance-stat{min-width:0!important}
+  .balance-stat-value{font-size:clamp(12px,3.8vw,15px)!important;line-height:1.08!important;white-space:nowrap!important;letter-spacing:-.55px!important}
+  .balance-stat-label{font-size:8px!important;letter-spacing:1.6px!important}
+  .balance-stat-sub{font-size:9px!important;line-height:1.15!important}
+  @media (max-width:380px){
+    #summary{gap:10px!important;padding-left:14px!important;padding-right:14px!important}
+    .sum-card{padding:13px!important}
+    .sum-val{font-size:clamp(17px,5vw,20px)!important}
+  }
+
 </style>
 </head>
 <body>
@@ -2340,7 +2357,7 @@ function renderInforme() {
         <canvas id="cTipos" height="130"></canvas>
         <div style="margin-top:8px;font-size:0.72rem">
           ${fijos>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#3b82f6">● Fijos</span><span>${fmtInt(fijos)}</span></div>`:''}
-          ${variables>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#ef4444">● Var.</span><span>${fmt(variables)}</span></div>`:''}
+          ${variables>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#ef4444">● Var.</span><span>${fmtInt(variables)}</span></div>`:''}
         </div>
       </div>
     </div>
@@ -2910,9 +2927,9 @@ renderAll = function() {
       ${compIncF>0?`<div class="frow"><span class="frow-label">${L('optCompartido')}</span><span class="frow-val" style="color:var(--green)">${fmt(compIncF)}</span></div>`:''}
       <div class="frow"><span class="frow-label" style="font-weight:700;color:var(--text)">${L('flujoTotalIngresos')}</span><span class="frow-val" style="color:var(--green)">${fmtInt(totalInc)}</span></div>
       <div class="frow"><span class="frow-label">${L('flujoFijos')}</span><span class="frow-val" style="color:var(--lavender)">${fmtInt(fijos)}</span></div>
-      <div class="frow"><span class="frow-label">${L('flujoTrasFijos')}</span><span class="frow-val">${fmt(totalInc-fijos)}</span></div>
-      <div class="frow"><span class="frow-label">${L('flujoVariables')}</span><span class="frow-val" style="color:var(--text3)">${fmt(variables)}</span></div>
-      <div class="frow"><span class="frow-label">${L('flujoEnTarjeta')}</span><span class="frow-val" style="color:var(--teal)">${fmt(enTarjeta)}</span></div>
+      <div class="frow"><span class="frow-label">${L('flujoTrasFijos')}</span><span class="frow-val">${fmtInt(totalInc-fijos)}</span></div>
+      <div class="frow"><span class="frow-label">${L('flujoVariables')}</span><span class="frow-val" style="color:var(--text3)">${fmtInt(variables)}</span></div>
+      <div class="frow"><span class="frow-label">${L('flujoEnTarjeta')}</span><span class="frow-val" style="color:var(--teal)">${fmtInt(enTarjeta)}</span></div>
       <div class="frow hl"><span class="frow-label">${L('flujoLibre')}</span><span class="frow-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmtInt(saldo)}</span></div>
     </div>
     <div class="sec-head"><div class="sec-title">${L('flujoMetas')}</div></div>
@@ -2920,7 +2937,7 @@ renderAll = function() {
     <div class="meta-grid">
       <div class="meta-c"><div class="meta-label">10%</div><div class="meta-val">${fmt(totalInc*.1)}</div></div>
       <div class="meta-c"><div class="meta-label">20%</div><div class="meta-val">${fmt(totalInc*.2)}</div></div>
-      <div class="meta-c"><div class="meta-label">${L('flujoReal')}</div><div class="meta-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmt(Math.max(0,saldo))}</div></div>
+      <div class="meta-c"><div class="meta-label">${L('flujoReal')}</div><div class="meta-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${fmtInt(Math.max(0,saldo))}</div></div>
     </div>`}`;
 };
 
@@ -4998,13 +5015,13 @@ function renderFlujo() {
   // HERO
   html += '<div style="background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:20px 18px;margin-bottom:14px;box-shadow:var(--shadow)">';
   html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:8px">'+L('flujoTitulo')+'</div>';
-  html += '<div style="font-size:36px;font-weight:800;letter-spacing:-1.5px;color:'+(sl>=0?'#7effd4':'#ffb3a0')+'">'+fmt(sl)+'</div>';
+  html += '<div style="font-size:clamp(32px,9vw,36px);font-weight:800;letter-spacing:-1.5px;color:'+(sl>=0?'#7effd4':'#ffb3a0')+';white-space:nowrap;line-height:1.02">'+fmtInt(sl)+'</div>';
   html += '<div style="font-size:12px;opacity:.65;margin-top:2px">'+(sl>=0?L('balDisponible'):L('balDeficit'))+'</div>';
   html += '<div style="height:1px;background:rgba(255,255,255,.15);margin:14px 0"></div>';
-  html += '<div style="display:flex;justify-content:space-between">';
-  html += '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">'+L('balIngresos')+'</div><div style="font-size:15px;font-weight:800;color:#fff">'+fmt(tI)+'</div></div>';
-  html += '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">'+L('balGastos')+'</div><div style="font-size:15px;font-weight:800;color:#ffb3a0">'+fmt(tG)+'</div><div style="font-size:10px;opacity:.55">'+pctIncomeText(pctG)+'</div></div>';
-  html += '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">'+L('balFijos')+'</div><div style="font-size:15px;font-weight:800;color:#c4b5fd">'+fmt(fj)+'</div><div style="font-size:10px;opacity:.55">'+pctExpensesText(pctF)+'</div></div>';
+  html += '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:8px">';
+  html += '<div style="min-width:0"><div style="font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;opacity:.6">'+L('balIngresos')+'</div><div style="font-size:clamp(12px,3.7vw,15px);font-weight:800;color:#fff;white-space:nowrap;line-height:1.08">'+fmtInt(tI)+'</div></div>';
+  html += '<div style="min-width:0;text-align:center"><div style="font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;opacity:.6">'+L('balGastos')+'</div><div style="font-size:clamp(12px,3.7vw,15px);font-weight:800;color:#ffb3a0;white-space:nowrap;line-height:1.08">'+fmtInt(tG)+'</div><div style="font-size:9px;opacity:.55;line-height:1.15">'+pctIncomeText(pctG)+'</div></div>';
+  html += '<div style="min-width:0;text-align:right"><div style="font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;opacity:.6">'+L('balFijos')+'</div><div style="font-size:clamp(12px,3.7vw,15px);font-weight:800;color:#c4b5fd;white-space:nowrap;line-height:1.08">'+fmtInt(fj)+'</div><div style="font-size:9px;opacity:.55;line-height:1.15">'+pctExpensesText(pctF)+'</div></div>';
   html += '</div></div>';
   // DESGLOSE
   html += '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">'+L('flujoDesglose')+'</div>';
@@ -5012,13 +5029,13 @@ function renderFlujo() {
   pInc.forEach(function(p){if(p.inc>0)html+=fRow(p.nombre,fmt(p.inc),p.color,false);});
   var ambosI=inc.filter(function(i){return i.quien==='Ambos';}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
   if(ambosI>0)html+=fRow(L('optCompartido'),fmt(ambosI),'#f7c948',false);
-  html+=fRow(L('flujoTotalIngresos'),fmt(tI),'#1ec98f',true);
+  html+=fRow(L('flujoTotalIngresos'),fmtInt(tI),'#1ec98f',true);
   html+='<div style="height:6px"></div>';
-  html+=fRow(L('flujoFijos'),fmt(fj),'#6c63ff',false,pctTotalText(pctF));
-  html+=fRow(L('flujoTrasFijos'),fmt(tI-fj),(tI-fj>=0?'var(--text)':'#ff7a59'),false);
-  html+=fRow(L('flujoVariables'),fmt(vr),'#ff7a59',false,pctTotalText(tG>0?(100-pctF):0));
-  if(eT>0)html+=fRow(L('flujoEnTarjeta'),fmt(eT),'#f7c948',false);
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px"><div style="font-size:15px;font-weight:800">'+L('flujoLibre')+'</div><div style="font-size:22px;font-weight:800;color:'+(sl>=0?'#1ec98f':'#ff7a59')+'">'+fmt(sl)+'</div></div>';
+  html+=fRow(L('flujoFijos'),fmtInt(fj),'#6c63ff',false,pctTotalText(pctF));
+  html+=fRow(L('flujoTrasFijos'),fmtInt(tI-fj),(tI-fj>=0?'var(--text)':'#ff7a59'),false);
+  html+=fRow(L('flujoVariables'),fmtInt(vr),'#ff7a59',false,pctTotalText(tG>0?(100-pctF):0));
+  if(eT>0)html+=fRow(L('flujoEnTarjeta'),fmtInt(eT),'#f7c948',false);
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px"><div style="font-size:15px;font-weight:800">'+L('flujoLibre')+'</div><div style="font-size:22px;font-weight:800;color:'+(sl>=0?'#1ec98f':'#ff7a59')+'">'+fmtInt(sl)+'</div></div>';
   html+='</div>';
   // BARRA DE PROGRESO
   if(tI>0){
@@ -5043,7 +5060,7 @@ function renderFlujo() {
     html+='<div style="text-align:center;padding:20px;color:var(--muted)">'+L('flujoSinIngresos')+'</div>';
   } else {
     html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
-    function gc2(lbl,val,color){var p=tI>0?Math.round(val/tI*100):0;return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px">'+lbl+'</div><div style="font-size:15px;font-weight:800;color:'+color+';letter-spacing:-.5px">'+fmt(val)+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+pctIncomeText(p)+'</div></div>';}
+    function gc2(lbl,val,color){var p=tI>0?Math.round(val/tI*100):0;return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px">'+lbl+'</div><div style="font-size:15px;font-weight:800;color:'+color+';letter-spacing:-.5px">'+fmtInt(val)+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+pctIncomeText(p)+'</div></div>';}
     html+=gc2(L('flujoAhorro10'),tI*.1,'#12c7b7');
     html+=gc2(L('flujoAhorro20'),tI*.2,'#6c63ff');
     html+=gc2(L('flujoReal'),Math.max(0,sl),sl>=0?'#1ec98f':'#ff7a59');
