@@ -538,6 +538,28 @@
   body:not(.dark) .friends-panel{background:rgba(247,249,255,.98);border-color:rgba(20,33,61,.08)}
   body:not(.dark) .friend-card{background:white;border-color:rgba(20,33,61,.08);box-shadow:0 12px 28px rgba(20,33,61,.08)}
 
+
+
+    /* Mode switch + report category alignment fix */
+    .bottom-nav{display:grid!important;grid-template-columns:repeat(2,minmax(54px,1fr)) 74px repeat(2,minmax(54px,1fr));justify-items:center;align-items:center}
+    .bottom-nav .fab{grid-column:3;justify-self:center;flex-shrink:0;aspect-ratio:1/1;width:62px!important;height:62px!important;border-radius:50%!important}
+    #nav-gastos{grid-column:1}
+    #nav-amigos,#nav-tarjetas{grid-column:2}
+    #nav-analisis{grid-column:4}
+    #nav-cuenta{grid-column:5}
+    #appMain[data-modo="hogar"] #nav-amigos{display:none!important}
+    #appMain[data-modo="grupo"] #nav-tarjetas{display:none!important}
+    #appMain[data-modo="grupo"] #nav-amigos{display:flex!important}
+    .inf-cat-row{display:grid!important;grid-template-columns:minmax(176px,1fr) 112px minmax(92px,112px)!important;align-items:center!important;gap:12px!important}
+    .inf-cat-name-with-icon{min-width:0!important;width:100%!important;display:grid!important;grid-template-columns:30px minmax(0,1fr)!important;align-items:center!important;gap:10px!important}
+    .inf-cat-name-with-icon span{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+    .inf-cat-bar-bg{width:112px!important;min-width:112px!important;flex:none!important}
+    .inf-cat-val{width:auto!important;text-align:right!important;font-size:clamp(11px,3vw,13px)!important;white-space:nowrap!important}
+    @media (max-width:380px){
+      .inf-cat-row{grid-template-columns:minmax(150px,1fr) 90px minmax(82px,96px)!important;gap:8px!important}
+      .inf-cat-bar-bg{width:90px!important;min-width:90px!important}
+    }
+
 </style>
 </head>
 <body>
@@ -2516,12 +2538,67 @@ function exportExcel() {
 // ============================================
 // TABS
 // ============================================
+function getModeTabs(isGroup) {
+  return isGroup ? ['gastos','categorias','informe','conversor'] : ['gastos','tarjetas','categorias','flujo','informe','conversor'];
+}
+
+function getTabNameFromButton(btn) {
+  var oc = (btn && btn.getAttribute('onclick')) || '';
+  var all = ['gastos','tarjetas','categorias','flujo','informe','conversor'];
+  return all.find(function(name){
+    return oc.indexOf("'" + name + "'") !== -1 || oc.indexOf('"' + name + '"') !== -1 || oc.indexOf(name) !== -1;
+  }) || '';
+}
+
+function syncModeChrome(mode, preferredTab) {
+  var isGroup = mode === 'grupo';
+  var app = document.getElementById('appMain');
+  if (app) app.setAttribute('data-modo', isGroup ? 'grupo' : 'hogar');
+
+  var navTarjetas = document.getElementById('nav-tarjetas');
+  var navAmigos = document.getElementById('nav-amigos');
+  if (navTarjetas) navTarjetas.style.display = isGroup ? 'none' : '';
+  if (navAmigos) navAmigos.style.display = isGroup ? '' : 'none';
+
+  var allowed = getModeTabs(isGroup);
+  var tabsWrap = document.getElementById('tabsWrap');
+  if (tabsWrap) {
+    tabsWrap.querySelectorAll('.tab').forEach(function(tab) {
+      var tabName = getTabNameFromButton(tab);
+      tab.dataset.tabName = tabName;
+      tab.style.display = allowed.indexOf(tabName) !== -1 ? '' : 'none';
+      tab.classList.remove('active');
+    });
+  }
+
+  var target = allowed.indexOf(preferredTab) !== -1 ? preferredTab : 'gastos';
+  document.querySelectorAll('.tab-content').forEach(function(tab){ tab.classList.remove('active'); });
+  var btn = tabsWrap ? Array.from(tabsWrap.querySelectorAll('.tab')).find(function(tab){
+    return tab.dataset.tabName === target;
+  }) : null;
+  if (btn) btn.classList.add('active');
+  var pane = document.getElementById('tab-' + target);
+  if (pane) pane.classList.add('active');
+
+  if (typeof setNavActive === 'function') {
+    if (target === 'tarjetas') setNavActive('nav-tarjetas');
+    else if (target === 'flujo' || target === 'informe' || target === 'conversor') setNavActive('nav-analisis');
+    else setNavActive('nav-gastos');
+  }
+}
+
+function currentAllowedTabForMode(isGroup) {
+  var active = document.querySelector('.tab-content.active');
+  var name = active ? (active.id || '').replace('tab-', '') : '';
+  var allowed = getModeTabs(isGroup);
+  return allowed.indexOf(name) !== -1 ? name : 'gastos';
+}
+
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  const tabs=['gastos','tarjetas','categorias','flujo','informe','conversor'];
-  document.querySelectorAll('.tab')[tabs.indexOf(name)].classList.add('active');
-  document.getElementById('tab-'+name).classList.add('active');
+  var isGroup = (typeof esModoGrupo === 'function') && esModoGrupo();
+  var allowed = getModeTabs(isGroup);
+  if (allowed.indexOf(name) === -1) name = 'gastos';
+  syncModeChrome(isGroup ? 'grupo' : 'hogar', name);
   if(name==='informe') renderInforme();
   if(name==='conversor') initConversor();
   if(name==='flujo') renderFlujo();
@@ -3122,9 +3199,13 @@ function renderAllGrupo() {
     });
   }
 
-  // NAV: ocultar Tarjetas
+  // NAV: grupo usa Amigos en lugar de Tarjetas
   var navT = document.getElementById('nav-tarjetas');
   if (navT) navT.style.display = 'none';
+  var navA = document.getElementById('nav-amigos');
+  if (navA) navA.style.display = '';
+  if (typeof syncModeChrome === 'function') syncModeChrome('grupo', currentAllowedTabForMode(true));
+
 
   // RECUADRO AZUL PARA GRUPO
   var balCard = document.querySelector('.balance-card');
@@ -4624,6 +4705,8 @@ function resetVistaCompartida() {
 
   var navItems = document.querySelectorAll('.nav-item');
   navItems.forEach(function(n){ n.style.display = ''; });
+  var navAmiReset = document.getElementById('nav-amigos');
+  if (navAmiReset) navAmiReset.style.display = 'none';
 
   var tabsWrap = document.getElementById('tabsWrap');
   if (tabsWrap) tabsWrap.querySelectorAll('.tab').forEach(function(t){ t.style.display = ''; });
@@ -4668,6 +4751,7 @@ function activarModoHogar() {
   // Nav completo
   var navItems = document.querySelectorAll('.nav-item');
   navItems.forEach(function(n){ n.style.display=''; });
+  if (typeof syncModeChrome === 'function') syncModeChrome('hogar', currentAllowedTabForMode(false));
   // Ocultar banner de modo grupo si existe
   var banner = document.getElementById('modoGrupoBanner');
   if (banner) banner.remove();
@@ -4678,6 +4762,7 @@ function activarModoHogar() {
 
 function activarModoGrupo() {
   document.getElementById('appMain').setAttribute('data-modo', 'grupo');
+  if (typeof syncModeChrome === 'function') syncModeChrome('grupo', currentAllowedTabForMode(true));
   var grupo = loadGroup();
   var nombreGrupo = grupo ? grupo.nombre : 'Grupo';
   var gmGrupo = document.getElementById('greetingMonth');
@@ -4698,7 +4783,7 @@ function activarModoGrupo() {
   var tabsWrap = document.getElementById('tabsWrap');
   if (tabsWrap) {
     var tabs = tabsWrap.querySelectorAll('.tab');
-    var visibles = ['gastos', 'categorias'];
+    var visibles = ['gastos', 'categorias', 'informe', 'conversor'];
     tabs.forEach(function(t) {
       var onclick = t.getAttribute('onclick') || '';
       var visible = visibles.some(function(v){ return onclick.includes(v); });
