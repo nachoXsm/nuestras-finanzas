@@ -571,6 +571,21 @@
       <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600">Pareja / conviviente <span style="opacity:.5;font-weight:400;text-transform:none">(opcional)</span></label>
       <input class="gs-input" id="gh_nombre2" type="text" placeholder="Ej: Celi">
     </div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600">País / moneda</label>
+      <select class="gs-input" id="gh_pais_moneda">
+        <option value="ARS">🇦🇷 Argentina · ARS</option>
+        <option value="USD">🇺🇸 Estados Unidos · USD</option>
+        <option value="EUR">🇪🇺 Eurozona · EUR</option>
+        <option value="BRL">🇧🇷 Brasil · BRL</option>
+        <option value="CLP">🇨🇱 Chile · CLP</option>
+        <option value="COP">🇨🇴 Colombia · COP</option>
+        <option value="MXN">🇲🇽 México · MXN</option>
+        <option value="UYU">🇺🇾 Uruguay · UYU</option>
+        <option value="PYG">🇵🇾 Paraguay · PYG</option>
+        <option value="PEN">🇵🇪 Perú · PEN</option>
+      </select>
+    </div>
     <div class="gs-error" id="ghError"></div>
     <button class="gs-btn gs-btn-primary" onclick="crearHogar()" id="btnCrearHogar">Crear →</button>
   </div>
@@ -583,6 +598,21 @@
     <div style="display:flex;flex-direction:column;gap:5px">
       <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:500">Nombre del grupo</label>
       <input class="gs-input" id="gc_nombre" type="text" placeholder="Ej: Familia García, Casa…">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:500">País / moneda</label>
+      <select class="gs-input" id="gc_pais_moneda">
+        <option value="ARS">🇦🇷 Argentina · ARS</option>
+        <option value="USD">🇺🇸 Estados Unidos · USD</option>
+        <option value="EUR">🇪🇺 Eurozona · EUR</option>
+        <option value="BRL">🇧🇷 Brasil · BRL</option>
+        <option value="CLP">🇨🇱 Chile · CLP</option>
+        <option value="COP">🇨🇴 Colombia · COP</option>
+        <option value="MXN">🇲🇽 México · MXN</option>
+        <option value="UYU">🇺🇾 Uruguay · UYU</option>
+        <option value="PYG">🇵🇾 Paraguay · PYG</option>
+        <option value="PEN">🇵🇪 Perú · PEN</option>
+      </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -705,7 +735,7 @@
       <div class="form-panel" id="fIngreso">
         <div class="form-grid">
           <div class="field" style="grid-column:1/-1"><label>Descripción</label><input type="text" id="i_desc" placeholder="Sueldo, Freelance…"></div>
-          <div class="field"><label>Monto</label><input type="number" id="i_monto" placeholder="0"></div>
+          <div class="field"><label id="i_monto_label">Monto</label><div class="amount-currency-row"><select id="i_moneda" class="currency-select-mini"></select><input type="number" id="i_monto" placeholder="0"></div></div>
           <div class="field"><label>¿Quién?</label><select id="i_quien"></select></div>
           <div class="field"><label>Tipo</label><select id="i_tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select></div>
           <div class="field"><label>Mes</label><select id="i_mes"><option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option></select></div>
@@ -729,7 +759,7 @@
             </div>
             <input type="file" id="ocrInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
           </div>
-          <div class="field"><label id="g_monto_label">Monto</label><input type="number" id="g_monto" placeholder="0"></div>
+          <div class="field"><label id="g_monto_label">Monto</label><div class="amount-currency-row"><select id="g_moneda" class="currency-select-mini"></select><input type="number" id="g_monto" placeholder="0"></div></div>
           <div class="field"><label id="g_cat_label">Categoría</label>
             <div class="category-select-wrap">
               <span id="g_cat_preview" class="cat-select-preview"></span>
@@ -1160,6 +1190,100 @@ function pctIncomeText(pct){ return pct + L('pctIngreso'); }
 function pctTotalText(pct){ return pct + L('sumDelTotal'); }
 function pctExpensesText(pct){ return pct + L('pctGastos'); }
 
+
+const TX_CURRENCIES = [
+  { code:'USD', symbol:'US$', flag:'🇺🇸', name:'Dólar estadounidense' },
+  { code:'EUR', symbol:'€', flag:'🇪🇺', name:'Euro' },
+  { code:'ARS', symbol:'$', flag:'🇦🇷', name:'Peso argentino' },
+  { code:'BRL', symbol:'R$', flag:'🇧🇷', name:'Real brasileño' },
+  { code:'CLP', symbol:'CLP$', flag:'🇨🇱', name:'Peso chileno' },
+  { code:'COP', symbol:'COP$', flag:'🇨🇴', name:'Peso colombiano' },
+  { code:'MXN', symbol:'MX$', flag:'🇲🇽', name:'Peso mexicano' },
+  { code:'UYU', symbol:'UYU$', flag:'🇺🇾', name:'Peso uruguayo' },
+  { code:'PYG', symbol:'₲', flag:'🇵🇾', name:'Guaraní paraguayo' },
+  { code:'PEN', symbol:'S/', flag:'🇵🇪', name:'Sol peruano' },
+  { code:'BOB', symbol:'Bs', flag:'🇧🇴', name:'Boliviano' },
+  { code:'CAD', symbol:'CA$', flag:'🇨🇦', name:'Dólar canadiense' },
+  { code:'GBP', symbol:'£', flag:'🇬🇧', name:'Libra esterlina' },
+  { code:'JPY', symbol:'¥', flag:'🇯🇵', name:'Yen japonés' },
+  { code:'CHF', symbol:'CHF', flag:'🇨🇭', name:'Franco suizo' }
+];
+const COUNTRY_CURRENCY_BY_TZ = {
+  'America/Argentina/Buenos_Aires':'ARS','America/Sao_Paulo':'BRL','America/Santiago':'CLP',
+  'America/Bogota':'COP','America/Mexico_City':'MXN','America/Montevideo':'UYU',
+  'America/Asuncion':'PYG','America/Lima':'PEN','America/La_Paz':'BOB','America/New_York':'USD'
+};
+function txCurrencyMeta(code){ return TX_CURRENCIES.find(c=>c.code===code) || TX_CURRENCIES[0]; }
+function inferDefaultCurrency(){
+  try { var tz = Intl.DateTimeFormat().resolvedOptions().timeZone; if (COUNTRY_CURRENCY_BY_TZ[tz]) return COUNTRY_CURRENCY_BY_TZ[tz]; } catch(e) {}
+  return 'ARS';
+}
+function getDefaultCurrency(){
+  var saved = localStorage.getItem('nf_default_currency');
+  if (saved) return saved;
+  try { var g = loadGroup && loadGroup(); if (g && g.moneda) return g.moneda; } catch(e) {}
+  return inferDefaultCurrency();
+}
+function setDefaultCurrency(code){
+  var c = txCurrencyMeta(code).code;
+  localStorage.setItem('nf_default_currency', c);
+  try { var g = loadGroup && loadGroup(); if (g) { g.moneda = c; saveGroupLocal(g); } } catch(e) {}
+  populateCurrencySelects();
+}
+function currencyOptionsHtml(selected){
+  var sel = selected || getDefaultCurrency();
+  return TX_CURRENCIES.map(function(c){
+    return '<option value="'+c.code+'" '+(c.code===sel?'selected':'')+'>'+c.flag+' '+c.code+'</option>';
+  }).join('');
+}
+function populateCurrencySelects(){
+  ['i_moneda','g_moneda'].forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    var cur = el.value || getDefaultCurrency();
+    el.innerHTML = currencyOptionsHtml(cur);
+    el.value = cur;
+  });
+}
+function selectedCurrency(id){ var el=document.getElementById(id); return (el && el.value) || getDefaultCurrency(); }
+function fmtCurrency(n, code){
+  if (isNaN(n) || n === null || n === undefined) n = 0;
+  var c = txCurrencyMeta(code || getDefaultCurrency());
+  var num = Math.round((n||0) * 100) / 100;
+  var val = num % 1 === 0 ? num.toLocaleString('es-AR') : num.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  return c.symbol + val + (c.code==='ARS' ? '' : ' ' + c.code);
+}
+function currencyStoreKey(table){ return 'nf_currency_' + table; }
+function getCurrencyStore(table){ try { return JSON.parse(localStorage.getItem(currencyStoreKey(table)) || '{}'); } catch(e) { return {}; } }
+function rememberRecordCurrency(table, id, code){ if(!id || !code) return; var m=getCurrencyStore(table); m[id]=code; localStorage.setItem(currencyStoreKey(table), JSON.stringify(m)); }
+function applyRecordCurrencies(table, rows){
+  var m=getCurrencyStore(table);
+  (rows||[]).forEach(function(r){ if(r && !r.moneda && m[r.id]) r.moneda = m[r.id]; });
+  return rows;
+}
+function isUnknownColumnError(e){ var msg=String((e&&e.message)||e||''); return msg.includes('moneda') && (msg.includes('column') || msg.includes('schema') || msg.includes('PGRST')); }
+async function dbPostMoney(table, body){
+  try { return await dbPost(table, body); }
+  catch(e) {
+    if(!isUnknownColumnError(e)) throw e;
+    var moneda = body.moneda;
+    var clean = Object.assign({}, body); delete clean.moneda;
+    var res = await dbPost(table, clean);
+    if(res && res[0]) { res[0].moneda = moneda; rememberRecordCurrency(table, res[0].id, moneda); }
+    return res;
+  }
+}
+async function dbPatchMoney(table, id, body){
+  try { return await dbPatch(table, id, body); }
+  catch(e) {
+    if(!isUnknownColumnError(e)) throw e;
+    var moneda = body.moneda;
+    var clean = Object.assign({}, body); delete clean.moneda;
+    var res = await dbPatch(table, id, clean);
+    if(res && res[0]) { res[0].moneda = moneda; rememberRecordCurrency(table, res[0].id, moneda); }
+    return res;
+  }
+}
+
 function getHogarId() {
   return localStorage.getItem('nf_hogar_id');
 }
@@ -1285,6 +1409,7 @@ function nfSetLang(c){
   T('g_quien_label', LD.fQuienPaga);
   T('g_division_label', LD.fCuantoPuso);
   T('g_fecha_label', LD.fFecha);
+  populateCurrencySelects();
 
   // Placeholders
   var iDesc = document.getElementById('i_desc'); if(iDesc) iDesc.placeholder = LD.fPlaceholderDesc;
@@ -1522,7 +1647,7 @@ async function loadAll() {
       modoGrupo ? dbGet('gastos', `grupo_id=eq.${gid}`) : dbGet('gastos', `grupo_id=eq.${gid}&mes=eq.${mes}&anio=eq.${anio}`)
     ]);
     if (state.grupoId !== gid || (!modoGrupo && (state.mes !== mes || state.anio !== anio))) return;
-    state.tarjetas=tarjetas; state.ingresos=ingresos; state.gastos=gastos;
+    state.tarjetas=tarjetas; state.ingresos=applyRecordCurrencies('ingresos', ingresos); state.gastos=applyRecordCurrencies('gastos', gastos);
     setSyncing('ok');
     setTimeout(checkTarjetasVencimiento, 1500); // Verificar vencimientos
   } catch(e) {
@@ -1548,6 +1673,7 @@ function toggleForm(id) {
     setTimeout(function() { toggleDivision(); }, 50);
   }
   updatePersonaNames();
+  populateCurrencySelects();
   if (!wasOpen) {
     // Set default month/year to currently selected
     if (id==='fIngreso') {
@@ -1652,28 +1778,30 @@ async function saveIngreso() {
   if (!desc||!monto) return toast('Completá descripción y monto');
   const iMes = parseInt(document.getElementById('i_mes').value)||state.mes;
   const iAnio = parseInt(document.getElementById('i_anio').value)||state.anio;
-  const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, descripcion:desc, monto,
+  const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, descripcion:desc, monto, moneda:selectedCurrency('i_moneda'),
     quien:document.getElementById('i_quien').value, tipo:document.getElementById('i_tipo').value };
   setSyncing('syncing');
   try {
     if (editingIngresoId) {
-      const res = await dbPatch('ingresos', editingIngresoId, body);
+      const res = await dbPatchMoney('ingresos', editingIngresoId, body);
       state.ingresos = state.ingresos.map(i=>i.id===editingIngresoId?res[0]:i);
       editingIngresoId=null; toast('✅ Ingreso actualizado');
     } else {
-      const res = await dbPost('ingresos', body);
+      const res = await dbPostMoney('ingresos', body);
       state.ingresos.push(res[0]); toast('✅ Ingreso guardado');
     }
-    document.getElementById('i_desc').value=''; document.getElementById('i_monto').value='';
+    document.getElementById('i_desc').value=''; document.getElementById('i_monto').value=''; document.getElementById('i_moneda').value=getDefaultCurrency();
     document.getElementById('fIngreso').classList.remove('open');
     setSyncing('ok'); renderAll();
   } catch(e) { setSyncing('error'); toast('❌ Error al guardar'); }
 }
 function editIngreso(id) {
+  populateCurrencySelects();
   const i = state.ingresos.find(x=>x.id===id); if(!i) return;
   editingIngresoId = id;
   document.getElementById('i_desc').value = i.descripcion||'';
   document.getElementById('i_monto').value = i.monto;
+  document.getElementById('i_moneda').value = i.moneda || getDefaultCurrency();
   document.getElementById('i_quien').value = i.quien;
   document.getElementById('i_tipo').value = i.tipo;
   document.getElementById('i_mes').value = i.mes||state.mes;
@@ -1698,6 +1826,7 @@ function cancelGasto() {
 async function saveGasto() {
   const desc = document.getElementById('g_desc').value.trim();
   const monto = parseFloat(document.getElementById('g_monto').value);
+  const moneda = selectedCurrency('g_moneda');
   if (!desc || !monto) return toast('Completá descripción y monto');
 
   const medio = document.getElementById('g_medio').value;
@@ -1720,6 +1849,7 @@ async function saveGasto() {
       const editBody = {
         descripcion: desc,
         monto: monto, // use full monto when editing, not divided
+        moneda: moneda,
         cat: document.getElementById('g_cat').value,
         tipo: document.getElementById('g_tipo').value,
         medio: medio,
@@ -1743,7 +1873,7 @@ async function saveGasto() {
       } else {
         editBody.division = null;
       }
-      const res = await dbPatch('gastos', editingGastoId, editBody);
+      const res = await dbPatchMoney('gastos', editingGastoId, editBody);
       state.gastos = state.gastos.map(g=>g.id===editingGastoId?res[0]:g);
       editingGastoId=null; toast('✅ Gasto actualizado');
     } else {
@@ -1771,13 +1901,14 @@ async function saveGasto() {
           mes: gMes, anio: gAnio,
           descripcion: desc,
           monto: cuotaMonto,
+          moneda: moneda,
           cat: cat, tipo: tipo, medio: medio, tarjeta_id: tarjeta_id,
           quien: 'Todos',
           dia: diaVal,
           cuotas: 1, cuota_actual: 1, gasto_origen_id: null,
           division: divStr
         };
-        const resDiv = await dbPost('gastos', bodyDiv);
+        const resDiv = await dbPostMoney('gastos', bodyDiv);
         if (resDiv && resDiv[0]) {
           resDiv[0].division = divStr;
           state.gastos.push(resDiv[0]);
@@ -1790,12 +1921,13 @@ async function saveGasto() {
         mes: gMes, anio: gAnio,
         descripcion: desc,
         monto: cuotaMonto,
+        moneda: moneda,
         cat, tipo, medio, tarjeta_id,
         quien: quienVal,
         dia: diaVal,
         cuotas, cuota_actual: 1, gasto_origen_id: null
       };
-      const res = await dbPost('gastos', body);
+      const res = await dbPostMoney('gastos', body);
       const origen = res[0];
       state.gastos.push(origen);
       // Create remaining cuotas in future months
@@ -1807,12 +1939,12 @@ async function saveGasto() {
           futures.push({...body, mes:m, anio:y, cuota_actual:c, gasto_origen_id:origen.id});
         }
         // Fire and forget future cuotas
-        for (const f of futures) { dbPost('gastos', f).catch(()=>{}); }
+        for (const f of futures) { dbPostMoney('gastos', f).catch(()=>{}); }
         toast(`✅ Gasto en ${cuotas} cuotas creado`);
       } else { toast('\u2705 Gasto guardado'); }
       } // cierre else (sin división)
     }
-    document.getElementById('g_desc').value=''; document.getElementById('g_monto').value='';
+    document.getElementById('g_desc').value=''; document.getElementById('g_monto').value=''; document.getElementById('g_moneda').value=getDefaultCurrency();
     document.getElementById('fGasto').classList.remove('open');
     document.getElementById('btnSaveGasto').textContent='Guardar';
     setSyncing('ok');
@@ -1820,12 +1952,14 @@ async function saveGasto() {
   try { renderAll(); } catch(e) { console.error('renderAll:', e); }
 }
 function editGasto(id) {
+  populateCurrencySelects();
   const g = state.gastos.find(x=>x.id===id); if(!g) return;
   editingGastoId=id;
   // First populate card select, then set values
   updateCardSelects();
   document.getElementById('g_desc').value=g.descripcion||'';
   document.getElementById('g_monto').value=g.monto;
+  document.getElementById('g_moneda').value=g.moneda || getDefaultCurrency();
   const _ef = document.getElementById('g_fecha'); if(_ef) { const _em=String(g.mes||state.mes).padStart(2,'0'); const _ed=String(g.dia||1).padStart(2,'0'); _ef.value=(g.anio||state.anio)+'-'+_em+'-'+_ed; }
   // g_mes y g_anio ya no existen
   document.getElementById('g_cat').value=g.cat||'Otros';
@@ -1976,7 +2110,7 @@ function renderAll() {
               <div class="item-name">${i.descripcion||''}</div>
               <div class="item-meta"><span class="chip chip-${i.tipo==='fijo'?'fixed':'var'}">${i.tipo.toUpperCase()}</span></div>
             </div>
-            <div class="item-amount" style="color:var(--green)">${fmt(i.monto)}</div>
+            <div class="item-amount" style="color:var(--green)">${fmtCurrency(i.monto, i.moneda)}</div>
             <div class="item-actions">
               <button class="btn-icon edit" onclick="editIngreso('${i.id}')" title="Editar">✏️</button>
               <button class="btn-icon del" onclick="deleteIngreso('${i.id}')" title="Eliminar">✕</button>
@@ -2009,7 +2143,7 @@ function renderAll() {
             ${g.dia?`<span style="font-size:0.7rem;color:var(--text3)">día ${g.dia}</span>`:''}
           </div>
         </div>
-        <div class="item-amount">${fmt(g.monto)}</div>
+        <div class="item-amount">${fmtCurrency(g.monto, g.moneda)}</div>
         <div class="item-actions">
           <button class="btn-icon edit" onclick="editGasto('${g.id}')" title="Editar">✏️</button>
           <button class="btn-icon del" onclick="deleteGasto('${g.id}')" title="Eliminar">✕</button>
@@ -2042,7 +2176,7 @@ function renderAll() {
         ${tG.length===0?`<div style="font-size:0.8rem;color:var(--text3)">Sin gastos en esta tarjeta</div>`:
           tG.map(g=>`<div class="card-item">
             <span>${g.descripcion||''} ${g.cuotas>1?`<span style="color:var(--text3);font-size:0.72rem">(${g.cuota_actual}/${g.cuotas})</span>`:''}</span>
-            <span style="font-family:var(--mono);font-size:0.82rem">${fmt(g.monto)}</span>
+            <span style="font-family:var(--mono);font-size:0.82rem">${fmtCurrency(g.monto, g.moneda)}</span>
           </div>`).join('')}
       </div>`;
     }).join('');
@@ -2578,7 +2712,7 @@ renderAll = function() {
           <div class="nf-item-body">
             <div class="nf-item-top">
               <div class="nf-item-name">${i.descripcion||''}</div>
-              <div class="nf-item-amount inc">${fmt(i.monto)}</div>
+              <div class="nf-item-amount inc">${fmtCurrency(i.monto, i.moneda)}</div>
             </div>
             <div class="nf-item-tags">
               <span class="tag ${i.tipo==='fijo'?'tag-fijo':'tag-var'}">${i.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
@@ -2611,7 +2745,7 @@ renderAll = function() {
               ${g.descripcion||''}
               ${isCuota?`<span class="nf-item-cuota">(${g.cuota_actual}/${g.cuotas})</span>`:''}
             </div>
-            <div class="nf-item-amount exp">${fmt(g.monto)}</div>
+            <div class="nf-item-amount exp">${fmtCurrency(g.monto, g.moneda)}</div>
           </div>
           <div class="nf-item-tags">
             <span class="tag ${g.tipo==='fijo'?'tag-fijo':'tag-var'}">${g.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
@@ -2657,7 +2791,7 @@ renderAll = function() {
         ${!tG.length?`<div style="font-size:0.8rem;color:var(--text3)">Sin gastos en esta tarjeta</div>`:
           tG.map(g=>`<div class="tcard-item">
             <span>${g.descripcion||''} ${g.cuotas>1?`<span style="color:var(--text3);font-size:0.7rem">(${g.cuota_actual}/${g.cuotas})</span>`:''}</span>
-            <span class="tcard-item-amount">${fmt(g.monto)}</span>
+            <span class="tcard-item-amount">${fmtCurrency(g.monto, g.moneda)}</span>
           </div>`).join('')}
       </div>`;
     }).join('');
@@ -2920,7 +3054,7 @@ function renderAllGrupo() {
             '</div>' +
           '</div>' +
           '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">' +
-            '<span class="item-amount exp">'+fmt(parseFloat(g.monto))+'</span>' +
+            '<span class="item-amount exp">'+fmtCurrency(parseFloat(g.monto), g.moneda)+'</span>' +
             '<div style="display:flex;gap:6px">' +
               '<button class="action-btn edit" onclick="editGasto(&quot;'+g.id+'&quot;)">✏️</button>' +
               '<button class="action-btn del" onclick="deleteGasto(&quot;'+g.id+'&quot;)">🗑</button>' +
@@ -3711,6 +3845,7 @@ function showHogarCodigo() {
 
 function showHogarNuevo() {
   hideAllGsScreens();
+  var sel = document.getElementById('gh_pais_moneda'); if (sel) sel.value = getDefaultCurrency();
   document.getElementById('gsHogarNuevo').style.display = 'flex';
 }
 
@@ -3743,6 +3878,7 @@ async function ingresarConCodigo() {
     grupo.tipo = 'hogar';
     grupo.esHogar = true;
     saveGroupLocal(grupo);
+    if (grupo.moneda) setDefaultCurrency(grupo.moneda);
     setHogarId(grupo.id); // Guardar como hogar permanentemente
     toast('✅ ¡Bienvenido/a de vuelta!');
     enterApp();
@@ -3761,6 +3897,8 @@ async function crearHogar() {
   if (!nombre1) { err.textContent = 'Ingresá tu nombre'; return; }
   const personas = nombre2 ? [nombre1, nombre2] : [nombre1];
   const nombre = nombre2 ? (nombre1 + ' & ' + nombre2) : ('Hogar de ' + nombre1);
+  const moneda = document.getElementById('gh_pais_moneda')?.value || inferDefaultCurrency();
+  setDefaultCurrency(moneda);
   const codigo = generateCode();
   btn.textContent = 'Creando…';
   try {
@@ -3774,6 +3912,7 @@ async function crearHogar() {
     grupo.personasArray = personas;
     grupo.esHogar = true;
     grupo.tipo = 'hogar';
+    grupo.moneda = moneda;
     saveGroupLocal(grupo);
     setHogarId(grupo.id);
     setModoHogar();
@@ -3822,6 +3961,7 @@ async function enviarInvitacion() {
 
 function showCreateGroup() {
   document.getElementById('gsWelcome').style.display = 'none';
+  var sel = document.getElementById('gc_pais_moneda'); if (sel) sel.value = getDefaultCurrency();
   document.getElementById('gsCreate').style.display = 'flex';
 }
 
@@ -3874,6 +4014,8 @@ async function createGroup() {
   if (personas.length < 1) { err.textContent = 'Ingresá al menos tu nombre'; return; }
   if (personas.length > 10) { err.textContent = 'Máximo 10 integrantes'; return; }
 
+  const moneda = document.getElementById('gc_pais_moneda')?.value || getDefaultCurrency();
+  setDefaultCurrency(moneda);
   document.getElementById('btnCreateGroup').textContent = 'Creando…';
   const codigo = generateCode();
 
@@ -3889,6 +4031,7 @@ async function createGroup() {
     grupo.personasArray = personas;
     grupo.esGrupo = true;
     grupo.tipo = 'grupo';
+    grupo.moneda = moneda;
     saveGroupLocal(grupo);
     _tipoCreado = 'grupo'; // Marcar que se creó un grupo de gastos
     document.getElementById('gsCreate').style.display = 'none';
