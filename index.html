@@ -3916,7 +3916,7 @@ async function processOCR(input) {
 
 function parseTicketText(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const result = { descripcion: '', monto: '', categoria: 'Otros', dia: '' };
+  const result = { descripcion: '', monto: '', categoria: 'Otros', dia: '', fecha: '' };
 
   // ---- FIND TOTAL ----
   // Look for patterns like: TOTAL $1.234,56 | Total: 1234.56 | IMPORTE TOTAL 5000
@@ -3990,29 +3990,47 @@ function parseTicketText(text) {
   // ---- FIND DATE ----
   const dateMatch = text.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
   if (dateMatch) {
-    result.dia = parseInt(dateMatch[1]);
+    const dd = parseInt(dateMatch[1], 10);
+    const mm = parseInt(dateMatch[2], 10);
+    let yy = parseInt(dateMatch[3], 10);
+    if (yy < 100) yy += 2000;
+    result.dia = dd;
+    if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
+      result.fecha = yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+    }
   }
 
   return result;
 }
 
 function fillGastoForm(parsed) {
-  if (parsed.descripcion) {
-    document.getElementById('g_desc').value = parsed.descripcion;
+  const descEl = document.getElementById('g_desc');
+  const montoEl = document.getElementById('g_monto');
+  const fechaEl = document.getElementById('g_fecha');
+
+  if (parsed.descripcion && descEl) {
+    descEl.value = parsed.descripcion;
   }
-  if (parsed.monto) {
-    document.getElementById('g_monto').value = parsed.monto;
+  if (parsed.monto && montoEl) {
+    montoEl.value = parsed.monto;
   }
   if (parsed.categoria) {
     const catSel = document.getElementById('g_cat');
     if (catSel) {
-      // Find matching option
       const opt = Array.from(catSel.options).find(o => o.value === parsed.categoria);
       if (opt) { catSel.value = parsed.categoria; updateCategoryPreview(); }
     }
   }
-  if (parsed.dia) {
-    document.getElementById('g_dia').value = parsed.dia;
+  if (fechaEl) {
+    if (parsed.fecha) {
+      fechaEl.value = parsed.fecha;
+    } else if (parsed.dia) {
+      const current = fechaEl.value ? new Date(fechaEl.value + 'T12:00:00') : new Date();
+      const yyyy = current.getFullYear();
+      const mm = String(current.getMonth() + 1).padStart(2, '0');
+      const dd = String(parsed.dia).padStart(2, '0');
+      fechaEl.value = yyyy + '-' + mm + '-' + dd;
+    }
   }
 }
 
