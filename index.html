@@ -3736,6 +3736,8 @@ async function fileToBase64Content(file) {
   return arrayBufferToBase64(buffer);
 }
 
+let lastOCRVisionData = null;
+
 function getGoogleVisionTextFromImageResponse(data) {
   const response = data && data.responses ? data.responses[0] : data;
   if (!response) return '';
@@ -3765,11 +3767,13 @@ async function callGoogleVisionImagesAnnotate(file) {
     body: JSON.stringify({
       requests: [{
         image: { content: content },
-        features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+        features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }]
       }]
     })
   });
   const data = await res.json();
+  lastOCRVisionData = data;
+  window.lastOCRVisionData = data;
   if (!res.ok) throw new Error((data.error && data.error.message) || 'Error de Google Vision.');
   return getGoogleVisionTextFromImageResponse(data);
 }
@@ -3809,6 +3813,8 @@ async function callGoogleVisionFilesAnnotate(file) {
     })
   });
   const data = await res.json();
+  lastOCRVisionData = data;
+  window.lastOCRVisionData = data;
   if (!res.ok) throw new Error((data.error && data.error.message) || 'Error de Google Vision.');
   return getGoogleVisionTextFromFileResponse(data);
 }
@@ -3849,25 +3855,7 @@ async function extractTextFromOCRFile(file, onProgress) {
     if (visionText) return visionText;
   }
 
-  if (isImageOCRFile(file)) {
-    if (typeof Tesseract === 'undefined') {
-      throw new Error('No está disponible el lector de imágenes.');
-    }
-    const { createWorker } = Tesseract;
-    const worker = await createWorker('spa', 1, {
-      logger: function(m) {
-        if (m.status === 'recognizing text' && onProgress) {
-          const pct = Math.round(m.progress * 100);
-          onProgress(pct, 'Leyendo imagen… ' + pct + '%', '🔍');
-        }
-      }
-    });
-    const result = await worker.recognize(file);
-    await worker.terminate();
-    return result.data.text || '';
-  }
-
-  throw new Error('Google Vision solo procesa imágenes, PDF, GIF y TIFF. Para Word o Excel se usa lectura local cuando el archivo trae texto.');
+  throw new Error('Google Vision no pudo leer texto del archivo. Probá subir el PDF original o una imagen más nítida.');
 }
 
 function parseOCRMoney(raw) {
@@ -3957,6 +3945,83 @@ function looksLikeCardStatement(text) {
   const t = String(text || '').toLowerCase();
   return (/fecha/.test(t) && /descripci[oó]n|descripcion/.test(t) && /(cup[oó]n|cupon|pesos|d[oó]lares|dolares)/.test(t))
     || (/bbva/.test(t) && /(consumos|saldo actual|total consumos)/.test(t));
+}
+
+function getVisionResponseList(data) {
+  if (!data || !data.responses) return [];
+  const first = data.responses[0];
+  if (first && Array.isArray(first.responses)) return first.responses;
+  return data.responses;
+}
+
+function getVisionWordText(word) {
+  return ((word && word.symbols) || []).map(function(s) { return s.text || ''; }).join('');
+}
+
+function getVisionBox(word) {
+  const vertices = word && word.boundingBox && word.boundingBox.vertices ? word.boundingBox.vertices : [];
+  const xs = vertices.map(v => typeof v.x === 'number' ? v.x : 0);
+  const ys = vertices.map(v => typeof v.y === 'number' ? v.y : 0);
+  if (!xs.length || !ys.length) return null;
+  const minX = Math.min.apply(null, xs);
+  const maxX = Math.max.apply(null, xs);
+  const minY = Math.min.apply(null, ys);
+  const maxY = Math.max.apply(null, ys);
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, cy: (minY + maxY) / 2 };
+}
+
+function extractVisionLines(data) {
+  const responses = getVisionResponseList(data);
+  const allLines = [];
+
+  responses.forEach(function(response, pageIndex) {
+    const pages = response && response.fullTextAnnotation && response.fullTextAnnotation.pages
+      ? response.fullTextAnnotation.pages
+      : [];
+    pages.forEach(function(page, localPageIndex) {
+      const words = [];
+      (page.blocks || []).forEach(function(block) {
+        (block.paragraphs || []).forEach(function(paragraph) {
+          (paragraph.words || []).forEach(function(word) {
+            const text = getVisionWordText(word);
+            const box = getVisionBox(word);
+            if (text && box) words.push({ text, ...box });
+          });
+        });
+      });
+      words.sort((a, b) => (a.cy - b.cy) || (a.x - b.x));
+      const medianH = words.length
+        ? words.map(w => w.h).sort((a, b) => a - b)[Math.floor(words.length / 2)] || 12
+        : 12;
+      const tolerance = Math.max(6, medianH * 0.75);
+      const groups = [];
+      words.forEach(function(word) {
+        let group = groups.find(g => Math.abs(g.cy - word.cy) <= tolerance);
+        if (!group) {
+          group = { cy: word.cy, words: [] };
+          groups.push(group);
+        }
+        group.words.push(word);
+        group.cy = group.words.reduce((sum, w) => sum + w.cy, 0) / group.words.length;
+      });
+      groups.sort((a, b) => a.cy - b.cy);
+      groups.forEach(function(group) {
+        group.words.sort((a, b) => a.x - b.x);
+        const line = group.words.map(w => w.text).join(' ').replace(/\s+/g, ' ').trim();
+        if (line) allLines.push({ page: pageIndex + localPageIndex, y: group.cy, line });
+      });
+    });
+  });
+
+  return allLines
+    .sort((a, b) => (a.page - b.page) || (a.y - b.y))
+    .map(x => x.line);
+}
+
+function parseCardStatementRowsFromVision(data) {
+  const lines = extractVisionLines(data);
+  if (!lines.length) return [];
+  return parseCardStatementRows(lines.join('\n'));
 }
 
 function parseCardStatementRows(text) {
@@ -4145,7 +4210,8 @@ async function processOCR(input) {
 
     setProgress(60, 'Archivo leído, detectando consumos…', '✅');
     const isStatement = looksLikeCardStatement(text);
-    const statementItems = parseCardStatementRows(text);
+    const visionStatementItems = parseCardStatementRowsFromVision(lastOCRVisionData || window.lastOCRVisionData);
+    const statementItems = visionStatementItems.length ? visionStatementItems : parseCardStatementRows(text);
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
