@@ -4523,6 +4523,8 @@ function normalizeStatementMatchText(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\bc\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
     .replace(/\b\d{1,2}\s*[-\/]\s*[a-z]{3,}\.?\s*[-\/]\s*\d{2,4}\b/gi, ' ')
+    .replace(/mercado\s*pago/g, 'merpago')
+    .replace(/mercadopago/g, 'merpago')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\b(c|cuota|cuotas)\b/g, ' ')
     .replace(/\s+/g, ' ')
@@ -4593,26 +4595,29 @@ function enrichStatementRowsWithInstallments(primaryRows, candidateRows) {
   if (!primary.length || !candidates.length) return primary;
 
   primary.forEach(function(row) {
-    if (Number(row.cuotas || 1) > 1) return;
-
     const scored = candidates.map(function(candidate) {
       const sameCurrency = String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS');
       const hasAmount = Number(candidate.monto || 0) > 0;
       const sameAmount = hasAmount && Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
       const overlap = statementTextOverlap(row.descripcion, candidate.descripcion);
       let score = overlap;
-      if (sameAmount && sameCurrency) score += 1.2;
+      if (sameAmount && sameCurrency) score += 1.4;
+      if (candidate._hint) score += 0.15;
       if (!sameCurrency) score -= 0.5;
       return { candidate, score, sameAmount, hasAmount, overlap };
     }).sort((a, b) => b.score - a.score);
 
     const best = scored[0];
     if (!best) return;
+    const currentCuota = Number(row.cuotas || 1);
     const strongAmountMatch = best.sameAmount && best.overlap >= 0.15;
     const strongTextMatch = !best.hasAmount && best.overlap >= 0.55;
     const hintTextMatch = best.candidate._hint && best.overlap >= 0.55;
     if (!strongAmountMatch && !strongTextMatch && !hintTextMatch) return;
 
+    // Una pista por monto+comercio del resumen tiene prioridad incluso si la IA
+    // ya asignó una cuota distinta por error.
+    if (currentCuota > 1 && !best.candidate._hint && !strongAmountMatch) return;
     row.cuotas = Number(best.candidate.cuotas || 1);
     row.cuota_actual = Number(best.candidate.cuota_actual || 1);
   });
@@ -4761,14 +4766,23 @@ function parseCardStatementRows(text) {
 
 
 function findDuplicateStatementExpense(item) {
-  return (state.gastos || []).find(function(g) {
+  const sameBasics = (state.gastos || []).filter(function(g) {
     return Number(g.dia) === Number(item.dia)
       && Number(g.mes) === Number(item.mes)
       && Number(g.anio) === Number(item.anio)
-      && String(g.descripcion || '').trim().toLowerCase() === String(item.descripcion || '').trim().toLowerCase()
       && Math.abs(Number(g.monto || 0) - Number(item.monto || 0)) < 0.01
       && String(g.moneda || getDefaultCurrency()) === String(item.moneda || getDefaultCurrency());
-  }) || null;
+  });
+  if (!sameBasics.length) return null;
+  const exact = sameBasics.find(function(g) {
+    return String(g.descripcion || '').trim().toLowerCase() === String(item.descripcion || '').trim().toLowerCase();
+  });
+  if (exact) return exact;
+  if (sameBasics.length === 1) return sameBasics[0];
+  const best = sameBasics
+    .map(g => ({ row: g, score: statementTextOverlap(g.descripcion, item.descripcion) }))
+    .sort((a, b) => b.score - a.score)[0];
+  return best && best.score >= 0.25 ? best.row : null;
 }
 
 function isDuplicateStatementExpense(item) {
