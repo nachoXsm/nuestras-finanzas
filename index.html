@@ -4441,7 +4441,7 @@ function rescueMissingStatementRows(rows, text) {
 function getAIStatementExtractorEndpoint() {
   return window.NF_AI_EXTRACT_ENDPOINT ||
     localStorage.getItem('nf_ai_extract_endpoint') ||
-    '';
+    'http://localhost:8787/api/extract-statement';
 }
 
 function parseAIDateParts(value) {
