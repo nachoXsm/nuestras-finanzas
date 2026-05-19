@@ -4125,7 +4125,7 @@ function getStatementDetailText(text) {
   );
   const start = consumoIdx >= 0 ? consumoIdx : 0;
   let section = raw.slice(start);
-  const stopMatch = section.search(/\b(sobre|p[aá]gina|iva responsable|tasas|otros per[ií]odos)\b/i);
+  const stopMatch = section.search(/\b(iva responsable|tasas|otros per[ií]odos)\b/i);
   if (stopMatch > 120) section = section.slice(0, stopMatch);
   return section;
 }
@@ -4198,7 +4198,7 @@ function parseCardStatementRowsByColumns(text) {
       return;
     }
     if (/[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/.test(line)
-      && !/saldo|total|su pago|l[ií]mite|cierre|vencimiento|actual|anterior|m[ií]nimo|cuotas a vencer/i.test(line)) {
+      && !/saldo|total|su pago|l[ií]mite|cierre|vencimiento|actual|anterior|m[ií]nimo|cuotas a vencer|^sobre\b|p[aá]gina/i.test(line)) {
       const cleaned = cleanupStatementDescription(line);
       if (cleaned) {
         descriptions.push(cleaned);
