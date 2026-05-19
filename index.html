@@ -3737,7 +3737,7 @@ async function fileToBase64Content(file) {
 }
 
 function getGoogleVisionTextFromImageResponse(data) {
-  const response = data && data.responses && data.responses[0];
+  const response = data && data.responses ? data.responses[0] : data;
   if (!response) return '';
   if (response.error) throw new Error(response.error.message || 'Google Vision no pudo leer el archivo.');
   return (response.fullTextAnnotation && response.fullTextAnnotation.text) ||
@@ -3776,16 +3776,18 @@ async function callGoogleVisionImagesAnnotate(file) {
 
 function getVisionFileMimeType(file) {
   const name = (file.name || '').toLowerCase();
-  if (file.type) return file.type;
   if (name.endsWith('.pdf')) return 'application/pdf';
   if (name.endsWith('.tif') || name.endsWith('.tiff')) return 'image/tiff';
   if (name.endsWith('.gif')) return 'image/gif';
-  return '';
+  if (file.type && file.type !== 'application/octet-stream') return file.type;
+  return file.type || '';
 }
 
 function isGoogleVisionFile(file) {
+  const name = (file.name || '').toLowerCase();
   const mime = getVisionFileMimeType(file);
-  return mime === 'application/pdf' || mime === 'image/tiff' || mime === 'image/gif';
+  return mime === 'application/pdf' || mime === 'image/tiff' || mime === 'image/gif' ||
+    /\.(pdf|tif|tiff|gif)$/i.test(name);
 }
 
 async function callGoogleVisionFilesAnnotate(file) {
@@ -3801,7 +3803,7 @@ async function callGoogleVisionFilesAnnotate(file) {
     body: JSON.stringify({
       requests: [{
         inputConfig: { content: content, mimeType: mimeType },
-        features: [{ type: 'TEXT_DETECTION', maxResults: 1 }],
+        features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }],
         pages: [1, 2, 3, 4, 5]
       }]
     })
@@ -3823,16 +3825,6 @@ async function extractTextFromSpreadsheet(file) {
   }).join('\n');
 }
 
-async function extractTextWithVisionEndpoint(file) {
-  const endpoint = getVisionEndpoint();
-  if (!endpoint) return '';
-  const form = new FormData();
-  form.append('file', file, file.name || 'documento');
-  const res = await fetch(endpoint, { method: 'POST', body: form });
-  if (!res.ok) throw new Error('Vision endpoint error');
-  const data = await res.json();
-  return data.text || data.fullText || data.description || '';
-}
 
 async function extractTextFromOCRFile(file, onProgress) {
   if (isPlainTextOCRFile(file)) {
