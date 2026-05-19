@@ -4538,33 +4538,83 @@ function statementTextOverlap(a, b) {
   return hits / Math.max(aa.length, bb.size);
 }
 
+function extractStatementInstallmentHints(text) {
+  const section = getStatementDetailText(text);
+  const normalized = String(section || '')
+    .replace(/\r/g, '\n')
+    .replace(/[·•|]+/g, ' ')
+    .replace(/([\s\n]|^)(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/g, '\n$2')
+    .replace(/\s+/g, ' ');
+  const chunks = normalized
+    .split(/(?=\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b)/g)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const hints = [];
+
+  chunks.forEach(function(chunk) {
+    const cuotaMatches = [...chunk.matchAll(/\bC\.?\s*(\d{1,2})\s*\/\s*(\d{1,2})\b/gi)];
+    if (!cuotaMatches.length) return;
+    const cuotasInfo = parseInstallmentInfo(chunk);
+    if (Number(cuotasInfo.cuotas || 1) <= 1) return;
+
+    const amountMatches = [...chunk.matchAll(/(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi)]
+      .filter(m => /,\d{2}\b|\d{1,3}(?:\.\d{3})+\b/.test(m[0]));
+    const amountRaw = amountMatches.length ? amountMatches[amountMatches.length - 1][0] : '';
+    const monto = parseOCRMoney(amountRaw);
+
+    let desc = chunk
+      .replace(/\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
+      .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
+      .replace(/(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi, ' ')
+      .replace(/\b\d{5,8}\b/g, ' ')
+      .replace(/\b(fecha|descripcion|descripci[oó]n|nro|cup[oó]n|cupon|pesos|d[oó]lares|dolares)\b/gi, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    if (!desc) return;
+    hints.push({
+      descripcion: desc.slice(0, 80),
+      monto: monto || null,
+      moneda: /(?:US\$|U\$S|USD)/i.test(amountRaw || chunk) ? 'USD' : 'ARS',
+      cuotas: cuotasInfo.cuotas,
+      cuota_actual: cuotasInfo.cuotaActual,
+      _hint: true
+    });
+  });
+
+  return hints;
+}
+
 function enrichStatementRowsWithInstallments(primaryRows, candidateRows) {
   const primary = (primaryRows || []).filter(Boolean).map(row => ({ ...row }));
   const candidates = (candidateRows || []).filter(function(row) {
-    return row && Number(row.cuotas || 1) > 1 && Number(row.monto || 0) > 0;
+    return row && Number(row.cuotas || 1) > 1;
   });
   if (!primary.length || !candidates.length) return primary;
 
   primary.forEach(function(row) {
     if (Number(row.cuotas || 1) > 1) return;
-    const sameAmount = candidates.filter(function(candidate) {
-      return String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS')
-        && Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
-    });
-    if (!sameAmount.length) return;
 
-    let match = null;
-    if (sameAmount.length === 1) {
-      match = sameAmount[0];
-    } else {
-      match = sameAmount
-        .map(candidate => ({ candidate, score: statementTextOverlap(row.descripcion, candidate.descripcion) }))
-        .sort((a, b) => b.score - a.score)[0];
-      match = match && match.score >= 0.25 ? match.candidate : null;
-    }
-    if (!match) return;
-    row.cuotas = Number(match.cuotas || 1);
-    row.cuota_actual = Number(match.cuota_actual || 1);
+    const scored = candidates.map(function(candidate) {
+      const sameCurrency = String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS');
+      const hasAmount = Number(candidate.monto || 0) > 0;
+      const sameAmount = hasAmount && Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
+      const overlap = statementTextOverlap(row.descripcion, candidate.descripcion);
+      let score = overlap;
+      if (sameAmount && sameCurrency) score += 1.2;
+      if (!sameCurrency) score -= 0.5;
+      return { candidate, score, sameAmount, hasAmount, overlap };
+    }).sort((a, b) => b.score - a.score);
+
+    const best = scored[0];
+    if (!best) return;
+    const strongAmountMatch = best.sameAmount && best.overlap >= 0.15;
+    const strongTextMatch = !best.hasAmount && best.overlap >= 0.55;
+    const hintTextMatch = best.candidate._hint && best.overlap >= 0.55;
+    if (!strongAmountMatch && !strongTextMatch && !hintTextMatch) return;
+
+    row.cuotas = Number(best.candidate.cuotas || 1);
+    row.cuota_actual = Number(best.candidate.cuota_actual || 1);
   });
 
   return primary;
@@ -4710,15 +4760,19 @@ function parseCardStatementRows(text) {
 
 
 
-function isDuplicateStatementExpense(item) {
-  return (state.gastos || []).some(function(g) {
+function findDuplicateStatementExpense(item) {
+  return (state.gastos || []).find(function(g) {
     return Number(g.dia) === Number(item.dia)
       && Number(g.mes) === Number(item.mes)
       && Number(g.anio) === Number(item.anio)
       && String(g.descripcion || '').trim().toLowerCase() === String(item.descripcion || '').trim().toLowerCase()
       && Math.abs(Number(g.monto || 0) - Number(item.monto || 0)) < 0.01
       && String(g.moneda || getDefaultCurrency()) === String(item.moneda || getDefaultCurrency());
-  });
+  }) || null;
+}
+
+function isDuplicateStatementExpense(item) {
+  return !!findDuplicateStatementExpense(item);
 }
 
 async function importCardStatementExpenses(items, setProgress) {
@@ -4727,7 +4781,9 @@ async function importCardStatementExpenses(items, setProgress) {
 
   const quienEl = document.getElementById('g_quien');
   const tarjetaEl = document.getElementById('g_tarjeta');
-  const quien = quienEl && quienEl.value ? quienEl.value : 'Todos';
+  const selectedQuien = quienEl && quienEl.value ? quienEl.value : '';
+  const activePayer = (state.personas && state.personas[0]) || state.persona1 || selectedQuien || 'Persona 1';
+  const quien = selectedQuien && selectedQuien !== 'Todos' ? selectedQuien : activePayer;
   const tarjeta_id = tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null;
   const medio = 'tarjeta';
   let imported = 0;
@@ -4740,11 +4796,6 @@ async function importCardStatementExpenses(items, setProgress) {
       const pct = 65 + Math.round(((i + 1) / list.length) * 30);
       setProgress(pct, 'Cargando consumo ' + (i + 1) + ' de ' + list.length + '…', '💳');
     }
-    if (isDuplicateStatementExpense(item)) {
-      skipped++;
-      continue;
-    }
-
     const body = {
       grupo_id: state.grupoId,
       mes: item.mes,
@@ -4763,6 +4814,26 @@ async function importCardStatementExpenses(items, setProgress) {
       gasto_origen_id: null,
       division: null
     };
+
+    const duplicate = findDuplicateStatementExpense(item);
+    if (duplicate) {
+      const needsPatch =
+        duplicate.quien !== body.quien ||
+        duplicate.cat !== body.cat ||
+        duplicate.medio !== body.medio ||
+        Number(duplicate.cuotas || 1) !== Number(body.cuotas || 1) ||
+        Number(duplicate.cuota_actual || 1) !== Number(body.cuota_actual || 1) ||
+        duplicate.division != null ||
+        duplicate.tarjeta_id !== body.tarjeta_id;
+      if (needsPatch && duplicate.id) {
+        const resDup = await dbPatchMoney('gastos', duplicate.id, body);
+        if (resDup && resDup[0]) {
+          state.gastos = state.gastos.map(g => g.id === duplicate.id ? resDup[0] : g);
+        }
+      }
+      skipped++;
+      continue;
+    }
 
     const res = await dbPostMoney('gastos', body);
     const origen = res && res[0];
@@ -4815,10 +4886,12 @@ async function processOCR(input) {
     }
     const visionStatementItems = parseCardStatementRowsFromVision(lastOCRVisionData || window.lastOCRVisionData);
     const textStatementItems = parseCardStatementRows(text);
+    const installmentHints = extractStatementInstallmentHints(text);
     const deterministicItems = visionStatementItems.length ? visionStatementItems : textStatementItems;
+    const installmentCandidates = deterministicItems.concat(textStatementItems, installmentHints);
     const statementItems = aiStatementItems.length
-      ? enrichStatementRowsWithInstallments(aiStatementItems, deterministicItems.concat(textStatementItems))
-      : enrichStatementRowsWithInstallments(deterministicItems, textStatementItems);
+      ? enrichStatementRowsWithInstallments(aiStatementItems, installmentCandidates)
+      : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates);
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
