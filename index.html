@@ -3870,6 +3870,260 @@ async function extractTextFromOCRFile(file, onProgress) {
   throw new Error('Google Vision solo procesa imágenes, PDF, GIF y TIFF. Para Word o Excel se usa lectura local cuando el archivo trae texto.');
 }
 
+function parseOCRMoney(raw) {
+  let s = String(raw || '').replace(/[^\d,.-]/g, '').trim();
+  if (!s) return 0;
+  const hasComma = s.includes(',');
+  const hasDot = s.includes('.');
+  if (hasComma && hasDot) {
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      s = s.replace(/,/g, '');
+    }
+  } else if (hasComma) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    s = s.replace(/,/g, '');
+  }
+  return parseFloat(s) || 0;
+}
+
+function parseStatementDate(raw) {
+  const months = {
+    ene: 1, enero: 1,
+    feb: 2, febrero: 2,
+    mar: 3, marzo: 3,
+    abr: 4, abril: 4,
+    may: 5, mayo: 5,
+    jun: 6, junio: 6,
+    jul: 7, julio: 7,
+    ago: 8, agosto: 8,
+    sep: 9, set: 9, septiembre: 9, setiembre: 9,
+    oct: 10, octubre: 10,
+    nov: 11, noviembre: 11,
+    dic: 12, diciembre: 12
+  };
+  const m = String(raw || '').trim().match(/^(\d{1,2})[-\/\s]+([A-Za-zÁÉÍÓÚáéíóúÑñ]{3,})[-\/\s]+(\d{2,4})$/);
+  if (!m) return null;
+  const dia = parseInt(m[1], 10);
+  const key = m[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 3);
+  const mes = months[key] || months[m[2].toLowerCase()];
+  let anio = parseInt(m[3], 10);
+  if (anio < 100) anio += 2000;
+  if (!dia || !mes || !anio) return null;
+  return {
+    dia,
+    mes,
+    anio,
+    fecha: anio + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0')
+  };
+}
+
+function parseInstallmentInfo(desc) {
+  const text = String(desc || '');
+  const m = text.match(/\bC\.?\s*(\d{1,2})\s*\/\s*(\d{1,2})\b/i);
+  if (!m) return { descripcion: text.trim(), cuotaActual: 1, cuotas: 1 };
+  const cuotaActual = Math.max(1, parseInt(m[1], 10) || 1);
+  const cuotas = Math.max(cuotaActual, parseInt(m[2], 10) || cuotaActual);
+  return {
+    descripcion: text.replace(m[0], '').replace(/\s{2,}/g, ' ').trim(),
+    cuotaActual,
+    cuotas
+  };
+}
+
+function guessOCRCategory(text) {
+  const t = String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const rules = [
+    ['Salud', ['farmacia', 'medico', 'clinica', 'hospital', 'laboratorio', 'drogueria']],
+    ['Transporte', ['uber', 'cabify', 'taxi', 'remis', 'shell', 'ypf', 'axion', 'nafta', 'combustible', 'peaje', 'autopista', 'subte', 'tren', 'bus', 'colectivo']],
+    ['Alimentación', ['super', 'mercado', 'mercadolibre', 'mercado pago', 'merpago', 'coto', 'jumbo', 'carrefour', 'dia', 'verduleria', 'panaderia', 'carniceria', 'restaurant', 'bar', 'cafe', 'delivery', 'rappi', 'pedidos']],
+    ['Servicios', ['edenor', 'edesur', 'metrogas', 'aysa', 'telecom', 'personal', 'claro', 'movistar', 'fibertel', 'internet', 'luz', 'gas']],
+    ['Entretenimiento', ['cine', 'teatro', 'spotify', 'netflix', 'disney', 'hbo', 'amazon', 'juego', 'rock']],
+    ['Ropa', ['ropa', 'remera', 'zara', 'hym', 'kosiuko', 'legacy', 'indumentaria', 'calzado']],
+    ['Educación', ['universidad', 'colegio', 'instituto', 'libreria', 'curso', 'udemy']],
+    ['Vivienda', ['alquiler', 'expensas', 'inmobiliaria', 'ferreteria', 'sodimac', 'easy']],
+    ['Mascota', ['veterinaria', 'petshop', 'balanceado']],
+    ['Suscripciones', ['suscripcion', 'subscripcion', 'mensualidad']]
+  ];
+  for (const [cat, words] of rules) {
+    if (words.some(w => t.includes(w))) return cat;
+  }
+  return 'Otros';
+}
+
+function looksLikeCardStatement(text) {
+  const t = String(text || '').toLowerCase();
+  return /fecha/.test(t) && /descripci[oó]n/.test(t) && /(cup[oó]n|pesos|d[oó]lares|dolares)/.test(t);
+}
+
+function parseCardStatementRows(text) {
+  const rawLines = String(text || '').replace(/\r/g, '\n').split('\n');
+  const headerLine = rawLines.find(function(l) {
+    return /pesos/i.test(l) && /d[oó]lares|dolares/i.test(l);
+  }) || '';
+  const columnStarts = {
+    pesos: headerLine.search(/pesos/i),
+    dolares: headerLine.search(/d[oó]lares|dolares/i)
+  };
+  const lines = rawLines
+    .map(function(raw) {
+      return {
+        raw,
+        line: raw.replace(/[·•|]+/g, ' ').replace(/\s+/g, ' ').trim()
+      };
+    })
+    .filter(entry => entry.line);
+  const rows = [];
+  const dateStart = /^(\d{1,2}[-\/\s]+[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}[-\/\s]+\d{2,4})\s+(.+)$/i;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?\d{1,3}(?:\.\d{3})*(?:,\d{2})|-?\d+,\d{2}/gi;
+
+  for (const entry of lines) {
+    const line = entry.line;
+    if (/^(fecha|descripci[oó]n|nro\.?|cup[oó]n|pesos|d[oó]lares|dolares)\b/i.test(line)) continue;
+    const match = line.match(dateStart);
+    if (!match) continue;
+
+    const dateInfo = parseStatementDate(match[1]);
+    if (!dateInfo) continue;
+
+    let rest = match[2].trim();
+    const amountMatches = [...rest.matchAll(amountRx)]
+      .filter(m => /[,.]\d{2}\b/.test(m[0]));
+    if (!amountMatches.length) continue;
+
+    const amountMatch = amountMatches[amountMatches.length - 1];
+    const amountRaw = amountMatch[0];
+    const monto = parseOCRMoney(amountRaw);
+    if (!monto) continue;
+
+    let moneda = /(?:US\$|U\$S|USD|D[OÓ]LARES|DOLARES)/i.test(rest) ? 'USD' : 'ARS';
+    if (amountMatches.length >= 2 && /(?:US\$|U\$S|USD)/i.test(amountRaw)) moneda = 'USD';
+
+    if (columnStarts.dolares >= 0) {
+      const rawMatch = entry.raw.match(dateStart);
+      if (rawMatch) {
+        const rawRest = rawMatch[2];
+        const rawAmountMatches = [...rawRest.matchAll(amountRx)].filter(m => /[,.]\d{2}\b/.test(m[0]));
+        const rawAmountMatch = rawAmountMatches[rawAmountMatches.length - 1];
+        const restStart = entry.raw.indexOf(rawRest);
+        if (rawAmountMatch && restStart >= 0) {
+          const absoluteAmountIndex = restStart + rawAmountMatch.index;
+          if (columnStarts.pesos >= 0) {
+            const usdBoundary = Math.floor((columnStarts.pesos + columnStarts.dolares) / 2);
+            moneda = absoluteAmountIndex >= usdBoundary ? 'USD' : 'ARS';
+          } else if (absoluteAmountIndex >= columnStarts.dolares - 8) {
+            moneda = 'USD';
+          }
+        }
+      }
+    }
+
+    let descPart = rest.slice(0, amountMatch.index).trim();
+    descPart = descPart
+      .replace(/\s+\d{5,8}\s*$/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    const cuotasInfo = parseInstallmentInfo(descPart);
+    const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
+
+    rows.push({
+      ...dateInfo,
+      descripcion,
+      monto,
+      moneda,
+      cat: guessOCRCategory(descripcion),
+      cuotas: cuotasInfo.cuotas,
+      cuota_actual: cuotasInfo.cuotaActual
+    });
+  }
+
+  const seen = new Set();
+  return rows.filter(function(row) {
+    const key = [row.fecha, row.descripcion.toLowerCase(), row.monto, row.moneda, row.cuota_actual, row.cuotas].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function isDuplicateStatementExpense(item) {
+  return (state.gastos || []).some(function(g) {
+    return Number(g.dia) === Number(item.dia)
+      && Number(g.mes) === Number(item.mes)
+      && Number(g.anio) === Number(item.anio)
+      && String(g.descripcion || '').trim().toLowerCase() === String(item.descripcion || '').trim().toLowerCase()
+      && Math.abs(Number(g.monto || 0) - Number(item.monto || 0)) < 0.01
+      && String(g.moneda || getDefaultCurrency()) === String(item.moneda || getDefaultCurrency());
+  });
+}
+
+async function importCardStatementExpenses(items, setProgress) {
+  const list = (items || []).filter(Boolean);
+  if (!list.length) return { imported: 0, skipped: 0 };
+
+  const quienEl = document.getElementById('g_quien');
+  const tarjetaEl = document.getElementById('g_tarjeta');
+  const quien = quienEl && quienEl.value ? quienEl.value : 'Todos';
+  const tarjeta_id = tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null;
+  const medio = 'tarjeta';
+  let imported = 0;
+  let skipped = 0;
+
+  setSyncing('syncing');
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+    if (setProgress) {
+      const pct = 65 + Math.round(((i + 1) / list.length) * 30);
+      setProgress(pct, 'Cargando consumo ' + (i + 1) + ' de ' + list.length + '…', '💳');
+    }
+    if (isDuplicateStatementExpense(item)) {
+      skipped++;
+      continue;
+    }
+
+    const body = {
+      grupo_id: state.grupoId,
+      mes: item.mes,
+      anio: item.anio,
+      descripcion: item.descripcion,
+      monto: item.monto,
+      moneda: item.moneda || getDefaultCurrency(),
+      cat: item.cat || 'Otros',
+      tipo: 'variable',
+      medio,
+      tarjeta_id,
+      quien,
+      dia: item.dia,
+      cuotas: item.cuotas || 1,
+      cuota_actual: item.cuota_actual || 1,
+      gasto_origen_id: null,
+      division: null
+    };
+
+    const res = await dbPostMoney('gastos', body);
+    const origen = res && res[0];
+    if (origen) {
+      state.gastos.push(origen);
+      imported++;
+      if ((item.cuotas || 1) > (item.cuota_actual || 1)) {
+        for (let c = (item.cuota_actual || 1) + 1; c <= item.cuotas; c++) {
+          let m = item.mes + (c - (item.cuota_actual || 1));
+          let y = item.anio;
+          while (m > 12) { m -= 12; y++; }
+          const future = { ...body, mes: m, anio: y, cuota_actual: c, gasto_origen_id: origen.id };
+          dbPostMoney('gastos', future).catch(function(err) { console.error('future cuota import:', err); });
+        }
+      }
+    }
+  }
+
+  setSyncing('ok');
+  try { renderAll(); } catch(e) { console.error('renderAll:', e); }
+  return { imported, skipped };
+}
+
 async function processOCR(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
@@ -3893,6 +4147,21 @@ async function processOCR(input) {
   try {
     const text = await extractTextFromOCRFile(file, setProgress);
     if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
+
+    setProgress(60, 'Archivo leído, detectando consumos…', '✅');
+    const statementItems = parseCardStatementRows(text);
+    if ((looksLikeCardStatement(text) && statementItems.length) || statementItems.length >= 3) {
+      const result = await importCardStatementExpenses(statementItems, setProgress);
+      setProgress(100, 'Resumen importado', '✅');
+      setTimeout(function() {
+        if (prog) prog.style.display = 'none';
+        const extra = result.skipped ? ' (' + result.skipped + ' duplicados omitidos)' : '';
+        toast('✅ ' + result.imported + ' consumos cargados' + extra);
+      }, 800);
+      if (btn) btn.disabled = false;
+      input.value = '';
+      return;
+    }
 
     setProgress(100, 'Archivo leído, extrayendo datos…', '✅');
     const parsed = parseTicketText(text);
