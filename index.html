@@ -3904,10 +3904,10 @@ function parseStatementDate(raw) {
     nov: 11, noviembre: 11,
     dic: 12, diciembre: 12
   };
-  const m = String(raw || '').trim().match(/^(\d{1,2})[-\/\s]+([A-Za-zÁÉÍÓÚáéíóúÑñ]{3,})[-\/\s]+(\d{2,4})$/);
+  const m = String(raw || '').trim().match(/^(\d{1,2})\s*[-\/]\s*([A-Za-zÁÉÍÓÚáéíóúÑñ]{3,})\.?\s*[-\/]\s*(\d{2,4})$/);
   if (!m) return null;
   const dia = parseInt(m[1], 10);
-  const key = m[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 3);
+  const key = m[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zñ]/g, '').slice(0, 3);
   const mes = months[key] || months[m[2].toLowerCase()];
   let anio = parseInt(m[3], 10);
   if (anio < 100) anio += 2000;
@@ -3955,7 +3955,8 @@ function guessOCRCategory(text) {
 
 function looksLikeCardStatement(text) {
   const t = String(text || '').toLowerCase();
-  return /fecha/.test(t) && /descripci[oó]n/.test(t) && /(cup[oó]n|pesos|d[oó]lares|dolares)/.test(t);
+  return (/fecha/.test(t) && /descripci[oó]n|descripcion/.test(t) && /(cup[oó]n|cupon|pesos|d[oó]lares|dolares)/.test(t))
+    || (/bbva/.test(t) && /(consumos|saldo actual|total consumos)/.test(t));
 }
 
 function parseCardStatementRows(text) {
@@ -3976,13 +3977,14 @@ function parseCardStatementRows(text) {
     })
     .filter(entry => entry.line);
   const rows = [];
-  const dateStart = /^(\d{1,2}[-\/\s]+[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}[-\/\s]+\d{2,4})\s+(.+)$/i;
+  const dateStart = /^(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
+  const dateAnywhere = /(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
   const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?\d{1,3}(?:\.\d{3})*(?:,\d{2})|-?\d+,\d{2}/gi;
 
   for (const entry of lines) {
     const line = entry.line;
-    if (/^(fecha|descripci[oó]n|nro\.?|cup[oó]n|pesos|d[oó]lares|dolares)\b/i.test(line)) continue;
-    const match = line.match(dateStart);
+    if (/^(fecha|descripci[oó]n|descripcion|nro\.?|cup[oó]n|cupon|pesos|d[oó]lares|dolares)\b/i.test(line)) continue;
+    const match = line.match(dateAnywhere);
     if (!match) continue;
 
     const dateInfo = parseStatementDate(match[1]);
@@ -4001,8 +4003,8 @@ function parseCardStatementRows(text) {
     let moneda = /(?:US\$|U\$S|USD|D[OÓ]LARES|DOLARES)/i.test(rest) ? 'USD' : 'ARS';
     if (amountMatches.length >= 2 && /(?:US\$|U\$S|USD)/i.test(amountRaw)) moneda = 'USD';
 
-    if (columnStarts.dolares >= 0) {
-      const rawMatch = entry.raw.match(dateStart);
+    if (columnStarts.dolares >= 0 && columnStarts.pesos >= 0 && (columnStarts.dolares - columnStarts.pesos) > 12) {
+      const rawMatch = entry.raw.match(dateAnywhere);
       if (rawMatch) {
         const rawRest = rawMatch[2];
         const rawAmountMatches = [...rawRest.matchAll(amountRx)].filter(m => /[,.]\d{2}\b/.test(m[0]));
@@ -4107,15 +4109,8 @@ async function importCardStatementExpenses(items, setProgress) {
     if (origen) {
       state.gastos.push(origen);
       imported++;
-      if ((item.cuotas || 1) > (item.cuota_actual || 1)) {
-        for (let c = (item.cuota_actual || 1) + 1; c <= item.cuotas; c++) {
-          let m = item.mes + (c - (item.cuota_actual || 1));
-          let y = item.anio;
-          while (m > 12) { m -= 12; y++; }
-          const future = { ...body, mes: m, anio: y, cuota_actual: c, gasto_origen_id: origen.id };
-          dbPostMoney('gastos', future).catch(function(err) { console.error('future cuota import:', err); });
-        }
-      }
+      // Los resúmenes importados ya traen la cuota del período. No se generan cuotas futuras
+      // para evitar duplicar cargos cuando se importen los próximos resúmenes.
     }
   }
 
@@ -4149,8 +4144,9 @@ async function processOCR(input) {
     if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
 
     setProgress(60, 'Archivo leído, detectando consumos…', '✅');
+    const isStatement = looksLikeCardStatement(text);
     const statementItems = parseCardStatementRows(text);
-    if ((looksLikeCardStatement(text) && statementItems.length) || statementItems.length >= 3) {
+    if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
       setTimeout(function() {
@@ -4161,6 +4157,10 @@ async function processOCR(input) {
       if (btn) btn.disabled = false;
       input.value = '';
       return;
+    }
+
+    if (isStatement) {
+      throw new Error('Detecté un resumen de tarjeta, pero no pude identificar los consumos línea por línea. Probá subir el PDF original o una captura más nítida del detalle.');
     }
 
     setProgress(100, 'Archivo leído, extrayendo datos…', '✅');
