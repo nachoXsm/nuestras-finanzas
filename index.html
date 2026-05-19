@@ -4515,6 +4515,61 @@ function normalizeAIStatementRows(payload, rawText) {
   }).filter(Boolean);
 }
 
+
+function normalizeStatementMatchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\bc\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
+    .replace(/\b\d{1,2}\s*[-\/]\s*[a-z]{3,}\.?\s*[-\/]\s*\d{2,4}\b/gi, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(c|cuota|cuotas)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function statementTextOverlap(a, b) {
+  const aa = normalizeStatementMatchText(a).split(' ').filter(t => t.length >= 3);
+  const bb = new Set(normalizeStatementMatchText(b).split(' ').filter(t => t.length >= 3));
+  if (!aa.length || !bb.size) return 0;
+  let hits = 0;
+  aa.forEach(t => { if (bb.has(t)) hits++; });
+  return hits / Math.max(aa.length, bb.size);
+}
+
+function enrichStatementRowsWithInstallments(primaryRows, candidateRows) {
+  const primary = (primaryRows || []).filter(Boolean).map(row => ({ ...row }));
+  const candidates = (candidateRows || []).filter(function(row) {
+    return row && Number(row.cuotas || 1) > 1 && Number(row.monto || 0) > 0;
+  });
+  if (!primary.length || !candidates.length) return primary;
+
+  primary.forEach(function(row) {
+    if (Number(row.cuotas || 1) > 1) return;
+    const sameAmount = candidates.filter(function(candidate) {
+      return String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS')
+        && Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
+    });
+    if (!sameAmount.length) return;
+
+    let match = null;
+    if (sameAmount.length === 1) {
+      match = sameAmount[0];
+    } else {
+      match = sameAmount
+        .map(candidate => ({ candidate, score: statementTextOverlap(row.descripcion, candidate.descripcion) }))
+        .sort((a, b) => b.score - a.score)[0];
+      match = match && match.score >= 0.25 ? match.candidate : null;
+    }
+    if (!match) return;
+    row.cuotas = Number(match.cuotas || 1);
+    row.cuota_actual = Number(match.cuota_actual || 1);
+  });
+
+  return primary;
+}
+
 async function extractCardStatementRowsWithAI(rawText, file, onProgress) {
   const endpoint = getAIStatementExtractorEndpoint();
   if (!endpoint) return [];
@@ -4759,8 +4814,11 @@ async function processOCR(input) {
       }
     }
     const visionStatementItems = parseCardStatementRowsFromVision(lastOCRVisionData || window.lastOCRVisionData);
-    const deterministicItems = visionStatementItems.length ? visionStatementItems : parseCardStatementRows(text);
-    const statementItems = aiStatementItems.length ? aiStatementItems : deterministicItems;
+    const textStatementItems = parseCardStatementRows(text);
+    const deterministicItems = visionStatementItems.length ? visionStatementItems : textStatementItems;
+    const statementItems = aiStatementItems.length
+      ? enrichStatementRowsWithInstallments(aiStatementItems, deterministicItems.concat(textStatementItems))
+      : enrichStatementRowsWithInstallments(deterministicItems, textStatementItems);
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
