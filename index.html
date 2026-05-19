@@ -4022,10 +4022,121 @@ function extractVisionLines(data) {
     .map(x => x.line);
 }
 
+
+function extractVisionWords(data) {
+  const responses = getVisionResponseList(data);
+  const words = [];
+
+  responses.forEach(function(response, responseIndex) {
+    const pages = response && response.fullTextAnnotation && response.fullTextAnnotation.pages
+      ? response.fullTextAnnotation.pages
+      : [];
+    pages.forEach(function(page, pageIndex) {
+      (page.blocks || []).forEach(function(block) {
+        (block.paragraphs || []).forEach(function(paragraph) {
+          (paragraph.words || []).forEach(function(word) {
+            const text = getVisionWordText(word);
+            const box = getVisionBox(word);
+            if (text && box) words.push({ text, page: responseIndex + pageIndex, ...box });
+          });
+        });
+      });
+    });
+  });
+
+  return words.sort((a, b) => (a.page - b.page) || (a.cy - b.cy) || (a.x - b.x));
+}
+
+function looksLikeStatementDateToken(text) {
+  return /^\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}$/.test(String(text || '').trim());
+}
+
+function looksLikeStatementMoneyToken(text) {
+  const raw = String(text || '').trim();
+  return /^(?:US\$|U\$S|USD|\$)?\s*-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})$/.test(raw);
+}
+
 function parseCardStatementRowsFromVision(data) {
-  const lines = extractVisionLines(data);
-  if (!lines.length) return [];
-  return parseCardStatementRows(lines.join('\n'));
+  const words = extractVisionWords(data);
+  if (!words.length) return [];
+
+  const medianH = words.map(w => w.h).sort((a, b) => a - b)[Math.floor(words.length / 2)] || 12;
+  const rowTolerance = Math.max(8, medianH * 1.25);
+  const dateWords = words.filter(w => looksLikeStatementDateToken(w.text));
+  if (!dateWords.length) return [];
+
+  const rows = [];
+  dateWords.forEach(function(dateWord) {
+    const dateInfo = parseStatementDate(dateWord.text);
+    if (!dateInfo) return;
+
+    const rowWords = words
+      .filter(w => w.page === dateWord.page && Math.abs(w.cy - dateWord.cy) <= rowTolerance)
+      .sort((a, b) => a.x - b.x);
+
+    if (rowWords.length < 4) return;
+
+    const moneyWords = rowWords
+      .filter(w => w.x > dateWord.x + dateWord.w + 40 && looksLikeStatementMoneyToken(w.text))
+      .sort((a, b) => a.x - b.x);
+
+    if (!moneyWords.length) return;
+
+    const amountWord = moneyWords[moneyWords.length - 1];
+    const monto = parseOCRMoney(amountWord.text);
+    if (!monto) return;
+
+    const couponWord = rowWords.find(function(w) {
+      return w.x > dateWord.x + dateWord.w + 40
+        && w.x < amountWord.x
+        && /^\d{5,8}$/.test(String(w.text || '').trim());
+    });
+
+    const descLimitX = couponWord ? couponWord.x : amountWord.x;
+    const descWords = rowWords.filter(function(w) {
+      if (w === dateWord) return false;
+      if (w.x <= dateWord.x + dateWord.w) return false;
+      if (w.x >= descLimitX - 4) return false;
+      const token = String(w.text || '').trim();
+      if (!token) return false;
+      if (/^\d{5,8}$/.test(token)) return false;
+      if (looksLikeStatementMoneyToken(token)) return false;
+      return true;
+    });
+
+    let descPart = descWords.map(w => w.text).join(' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    if (!descPart || /saldo|total|pago|limites|tasas|cierre|vencimiento|actual|anterior/i.test(descPart)) return;
+
+    const cuotasInfo = parseInstallmentInfo(descPart);
+    const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
+    rows.push({
+      ...dateInfo,
+      descripcion,
+      monto,
+      moneda: /(?:US\$|U\$S|USD)/i.test(amountWord.text) ? 'USD' : 'ARS',
+      cat: guessOCRCategory(descripcion),
+      cuotas: cuotasInfo.cuotas,
+      cuota_actual: cuotasInfo.cuotaActual,
+      _sourceY: dateWord.cy,
+      _sourceX: dateWord.x
+    });
+  });
+
+  const deduped = [];
+  const seen = new Set();
+  rows.forEach(function(row) {
+    const key = [row.fecha, row.descripcion.toLowerCase(), row.monto, row.moneda, row.cuota_actual, row.cuotas].join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    const clean = { ...row };
+    delete clean._sourceY;
+    delete clean._sourceX;
+    deduped.push(clean);
+  });
+
+  return applyStatementDueDate(deduped, extractVisionLines(data).join('\n'));
 }
 
 function parseStatementDueDate(text) {
