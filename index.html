@@ -4707,6 +4707,45 @@ function extractInstallmentFromVisionRow(row, data) {
   return best && best.overlap >= 0.15 ? best : null;
 }
 
+
+function findVerifiedStatementInstallment(row, text) {
+  const exactSegment = extractInstallmentFromAmountSegment(row, text);
+  if (exactSegment) return exactSegment;
+
+  const sameAmountHints = extractStatementInstallmentHints(text).filter(function(hint) {
+    return Number(hint.cuotas || 1) > 1
+      && Number(hint.monto || 0) > 0
+      && String(hint.moneda || 'ARS') === String(row.moneda || 'ARS')
+      && Math.abs(Number(hint.monto || 0) - Number(row.monto || 0)) < 0.01;
+  });
+  if (!sameAmountHints.length) return null;
+
+  const best = sameAmountHints
+    .map(hint => ({ hint, score: statementTextOverlap(row.descripcion, hint.descripcion) }))
+    .sort((a, b) => b.score - a.score)[0];
+  if (!best || best.score < 0.15) return null;
+  return {
+    cuotas: Number(best.hint.cuotas || 1),
+    cuota_actual: Number(best.hint.cuota_actual || 1),
+    overlap: best.score,
+    source: 'verified-text'
+  };
+}
+
+function verifyStatementInstallments(rows, text) {
+  return (rows || []).map(function(row) {
+    const verified = findVerifiedStatementInstallment(row, text);
+    if (!verified) {
+      return { ...row, cuotas: 1, cuota_actual: 1 };
+    }
+    return {
+      ...row,
+      cuotas: verified.cuotas,
+      cuota_actual: verified.cuota_actual
+    };
+  });
+}
+
 function overrideInstallmentsFromVisionRows(rows, data) {
   if (!data) return rows || [];
   return (rows || []).map(function(row) {
@@ -5051,10 +5090,7 @@ async function processOCR(input) {
     const mergedStatementItems = aiStatementItems.length
       ? enrichStatementRowsWithInstallments(aiStatementItems, installmentCandidates)
       : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates);
-    const statementItems = overrideInstallmentsFromAmountSegments(
-      overrideInstallmentsFromVisionRows(mergedStatementItems, lastOCRVisionData || window.lastOCRVisionData),
-      text
-    );
+    const statementItems = verifyStatementInstallments(mergedStatementItems, text);
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
