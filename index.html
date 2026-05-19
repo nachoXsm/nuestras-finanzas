@@ -3859,7 +3859,7 @@ async function extractTextFromOCRFile(file, onProgress) {
 }
 
 function parseOCRMoney(raw) {
-  let s = String(raw || '').replace(/[^\d,.-]/g, '').trim();
+  let s = String(raw || '').replace(/[oO]/g, '0').replace(/[^\d,.-]/g, '').trim();
   if (!s) return 0;
   if (/^-?\d{1,3}(?:\.\d{3})+$/.test(s)) {
     return parseFloat(s.replace(/\./g, '')) || 0;
@@ -4244,6 +4244,174 @@ function parseCardStatementRowsByColumns(text) {
   return rows;
 }
 
+function normalizeStatementScanText(text) {
+  return String(text || '')
+    .replace(/[oO](?=\d|[,\.])/g, '0')
+    .replace(/(?<=\d)[oO]/g, '0')
+    .replace(/\r/g, '\n')
+    .replace(/[·•|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function rescueMissingStatementRows(rows, text) {
+  const list = Array.isArray(rows) ? rows.slice() : [];
+  const scan = normalizeStatementScanText(getStatementDetailText(text));
+
+  if (!list.some(row => String(row.descripcion || '').toLowerCase().includes('yenny'))) {
+    const yennyIndex = scan.toLowerCase().search(/yenny/);
+    if (yennyIndex >= 0) {
+      const windowStart = Math.max(0, yennyIndex - 90);
+      const windowEnd = Math.min(scan.length, yennyIndex + 180);
+      const chunk = scan.slice(windowStart, windowEnd);
+      const dateMatch = chunk.match(/(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/);
+      const afterYenny = chunk.slice(Math.max(0, chunk.toLowerCase().search(/yenny/))).split(/\bsobre\b|p[aá]gina/i)[0];
+      const moneyMatches = [...afterYenny.matchAll(/[\$\s]*(?:\d{1,3}(?:\.\d{3})+(?:[,\.]\d{2})?|\d{4,7})\b/g)]
+        .map(m => String(m[0] || '').trim())
+        .filter(value => /[.,]\d{2}$|\.\d{3}$|^\d{4,7}$/.test(value));
+      let amountRaw = moneyMatches.length ? moneyMatches[moneyMatches.length - 1] : '';
+      if (moneyMatches.length === 1 && /^\d{5,8}$/.test(amountRaw.replace(/\D/g, '')) && !/[.,]/.test(amountRaw)) {
+        amountRaw = '';
+      }
+      const dateInfo = dateMatch ? parseStatementDate(dateMatch[1]) : null;
+      const monto = parseOCRMoney(amountRaw);
+      if (dateInfo && monto) {
+        list.push({
+          ...dateInfo,
+          descripcion: 'MERPAGO*YENNY',
+          monto,
+          moneda: 'ARS',
+          cat: guessOCRCategory('MERPAGO*YENNY'),
+          cuotas: 1,
+          cuota_actual: 1
+        });
+      }
+    }
+  }
+
+  return list;
+}
+
+
+function getAIStatementExtractorEndpoint() {
+  return window.NF_AI_EXTRACT_ENDPOINT ||
+    localStorage.getItem('nf_ai_extract_endpoint') ||
+    '';
+}
+
+function parseAIDateParts(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+
+  let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    const dia = parseInt(m[1], 10);
+    const mes = parseInt(m[2], 10);
+    let anio = parseInt(m[3], 10);
+    if (anio < 100) anio += 2000;
+    if (dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12) {
+      return { dia, mes, anio, fecha: anio + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0') };
+    }
+  }
+
+  m = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    const anio = parseInt(m[1], 10);
+    const mes = parseInt(m[2], 10);
+    const dia = parseInt(m[3], 10);
+    if (dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12) {
+      return { dia, mes, anio, fecha: anio + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0') };
+    }
+  }
+
+  return parseStatementDate(raw);
+}
+
+function parseAIInstallments(value) {
+  if (value == null || value === '') return { cuota_actual: 1, cuotas: 1 };
+  if (typeof value === 'object') {
+    const cuotaActual = Math.max(1, parseInt(value.cuota_actual || value.actual || value.current || 1, 10) || 1);
+    const cuotas = Math.max(cuotaActual, parseInt(value.cuotas || value.total || 1, 10) || cuotaActual);
+    return { cuota_actual: cuotaActual, cuotas };
+  }
+  const m = String(value).match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+  if (!m) return { cuota_actual: 1, cuotas: 1 };
+  const cuotaActual = Math.max(1, parseInt(m[1], 10) || 1);
+  const cuotas = Math.max(cuotaActual, parseInt(m[2], 10) || cuotaActual);
+  return { cuota_actual: cuotaActual, cuotas };
+}
+
+function normalizeAIStatementRows(payload, rawText) {
+  const arr = Array.isArray(payload)
+    ? payload
+    : (payload && (payload.gastos || payload.expenses || payload.items || payload.consumos)) || [];
+  if (!Array.isArray(arr)) return [];
+
+  const dueDate = parseStatementDueDate(rawText);
+  return arr.map(function(item) {
+    const desc = String(item.descripcion || item.description || item.comercio || item.merchant || '').trim();
+    const amount = typeof item.monto === 'number'
+      ? item.monto
+      : parseOCRMoney(item.monto || item.amount || item.importe || '');
+    const dateInfo = dueDate || parseAIDateParts(item.fecha || item.date || item.vencimiento || '');
+    const cuotasInfo = parseAIInstallments(item.cuotas || item.installments || item.cuota);
+    const monedaRaw = String(item.moneda || item.currency || '').toUpperCase();
+    const moneda = monedaRaw.includes('USD') || monedaRaw.includes('DOL') || monedaRaw.includes('US$') ? 'USD' : 'ARS';
+    if (!desc || !amount || !dateInfo) return null;
+    return {
+      ...dateInfo,
+      descripcion: desc.slice(0, 80),
+      monto: amount,
+      moneda,
+      cat: item.categoria || item.category || guessOCRCategory(desc),
+      cuotas: cuotasInfo.cuotas,
+      cuota_actual: cuotasInfo.cuota_actual
+    };
+  }).filter(Boolean);
+}
+
+async function extractCardStatementRowsWithAI(rawText, file, onProgress) {
+  const endpoint = getAIStatementExtractorEndpoint();
+  if (!endpoint) return [];
+
+  if (onProgress) onProgress(62, 'Interpretando resumen con IA...', 'AI');
+  const visionLines = extractVisionLines(lastOCRVisionData || window.lastOCRVisionData);
+  const due = parseStatementDueDate(rawText);
+  const payload = {
+    schemaVersion: 1,
+    task: 'extract_credit_card_statement_expenses',
+    locale: 'es-AR',
+    fileName: file && file.name ? file.name : '',
+    fileType: file && file.type ? file.type : '',
+    dateRule: 'Usar VENCIMIENTO ACTUAL como fecha de todos los consumos. Si no existe, usar PROXIMO VENCIMIENTO. No usar fecha de compra como fecha final del gasto.',
+    preferredDueDate: due ? due.fecha : null,
+    outputSchema: {
+      type: 'array',
+      item: {
+        fecha: 'YYYY-MM-DD o DD/MM/YYYY',
+        descripcion: 'string',
+        cuotas: 'string tipo 10/12 o null',
+        monto: 'number',
+        moneda: 'ARS o USD',
+        tipo: 'credito'
+      }
+    },
+    rawText,
+    visionLines
+  };
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(function() { return null; });
+  if (!res.ok) {
+    throw new Error((data && (data.error || data.message)) || 'El extractor IA no pudo leer el resumen.');
+  }
+  return normalizeAIStatementRows(data, rawText);
+}
+
 function parseCardStatementRows(text) {
   const rawLines = String(text || '').replace(/\r/g, '\n').split('\n');
   const headerLine = rawLines.find(function(l) {
@@ -4329,7 +4497,8 @@ function parseCardStatementRows(text) {
   const segmentRows = parseCardStatementRowsBySegments(text);
   const columnRows = parseCardStatementRowsByColumns(text);
   const parsedRows = chooseBestStatementRows([segmentRows, columnRows, rows]);
-  const datedRows = applyStatementDueDate(parsedRows, text);
+  const rescuedRows = rescueMissingStatementRows(parsedRows, text);
+  const datedRows = applyStatementDueDate(rescuedRows, text);
   const seen = new Set();
   return datedRows.filter(function(row) {
     const key = [row.fecha, row.descripcion.toLowerCase(), row.monto, row.moneda, row.cuota_actual, row.cuotas].join('|');
@@ -4338,6 +4507,8 @@ function parseCardStatementRows(text) {
     return true;
   });
 }
+
+
 
 function isDuplicateStatementExpense(item) {
   return (state.gastos || []).some(function(g) {
@@ -4434,8 +4605,17 @@ async function processOCR(input) {
 
     setProgress(60, 'Archivo leído, detectando consumos…', '✅');
     const isStatement = looksLikeCardStatement(text);
+    let aiStatementItems = [];
+    if (isStatement) {
+      try {
+        aiStatementItems = await extractCardStatementRowsWithAI(text, file, setProgress);
+      } catch (aiError) {
+        console.warn('AI statement extractor fallback:', aiError);
+      }
+    }
     const visionStatementItems = parseCardStatementRowsFromVision(lastOCRVisionData || window.lastOCRVisionData);
-    const statementItems = visionStatementItems.length ? visionStatementItems : parseCardStatementRows(text);
+    const deterministicItems = visionStatementItems.length ? visionStatementItems : parseCardStatementRows(text);
+    const statementItems = aiStatementItems.length ? aiStatementItems : deterministicItems;
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
@@ -6242,7 +6422,3 @@ function renderFlujo() {
 </script>
 </body>
 </html>
-
-
-
-
