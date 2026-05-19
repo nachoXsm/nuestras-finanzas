@@ -4597,10 +4597,16 @@ function amountToStatementTokens(amount) {
   const dec = parts[1] || '00';
   const withThousands = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   const noDecimals = dec === '00';
+  const withSpaces = withThousands.replace(/\./g, ' ');
   return Array.from(new Set([
     withThousands + ',' + dec,
+    withSpaces + ',' + dec,
     intRaw + ',' + dec,
+    withThousands + '.' + dec,
+    withSpaces + '.' + dec,
+    intRaw + '.' + dec,
     noDecimals ? withThousands : '',
+    noDecimals ? withSpaces : '',
     noDecimals ? intRaw : ''
   ].filter(Boolean)));
 }
@@ -5045,9 +5051,9 @@ async function processOCR(input) {
     const mergedStatementItems = aiStatementItems.length
       ? enrichStatementRowsWithInstallments(aiStatementItems, installmentCandidates)
       : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates);
-    const statementItems = overrideInstallmentsFromVisionRows(
-      overrideInstallmentsFromAmountSegments(mergedStatementItems, text),
-      lastOCRVisionData || window.lastOCRVisionData
+    const statementItems = overrideInstallmentsFromAmountSegments(
+      overrideInstallmentsFromVisionRows(mergedStatementItems, lastOCRVisionData || window.lastOCRVisionData),
+      text
     );
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
