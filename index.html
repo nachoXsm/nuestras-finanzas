@@ -903,9 +903,9 @@
             <label>Descripción</label>
             <div style="display:flex;gap:8px">
               <input type="text" id="g_desc" placeholder="Alquiler, Supermercado…" style="flex:1">
-              <button onclick="triggerOCR()" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 14px;border-radius:13px;font-size:1.1rem;cursor:pointer" id="btnOCR">📷</button>
+              <button onclick="triggerOCR()" title="Leer factura o subir archivo" aria-label="Leer factura o subir archivo" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 14px;border-radius:13px;font-size:1.1rem;cursor:pointer" id="btnOCR">📷</button>
             </div>
-            <input type="file" id="ocrInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
+            <input type="file" id="ocrInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv" style="display:none" onchange="processOCR(this)">
           </div>
           <div class="field"><label id="g_monto_label">Monto</label><div class="amount-currency-row"><select id="g_moneda" class="currency-select-mini"></select><input type="number" id="g_monto" placeholder="0"></div></div>
           <div class="field"><label id="g_cat_label">Categoría</label>
@@ -3677,59 +3677,142 @@ function triggerOCR() {
   document.getElementById('ocrInput').click();
 }
 
+function getVisionEndpoint() {
+  return window.NF_VISION_ENDPOINT || localStorage.getItem('nf_vision_endpoint') || '';
+}
+
+function isImageOCRFile(file) {
+  return file && /^image\//i.test(file.type || '');
+}
+
+function isSpreadsheetOCRFile(file) {
+  return /\.(xlsx?|xls)$/i.test(file.name || '') ||
+    /spreadsheet|excel/i.test(file.type || '');
+}
+
+function isPlainTextOCRFile(file) {
+  return /\.(csv|txt)$/i.test(file.name || '') ||
+    /text\/(plain|csv)/i.test(file.type || '');
+}
+
+function readOCRFileAsText(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function(e) { resolve(e.target.result || ''); };
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+function readOCRFileAsArrayBuffer(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function(e) { resolve(e.target.result); };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function extractTextFromSpreadsheet(file) {
+  if (typeof XLSX === 'undefined') {
+    throw new Error('No está disponible el lector de Excel.');
+  }
+  const buffer = await readOCRFileAsArrayBuffer(file);
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  return workbook.SheetNames.map(function(name) {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, blankrows: false });
+    return rows.map(function(row) { return row.join(' '); }).join('\n');
+  }).join('\n');
+}
+
+async function extractTextWithVisionEndpoint(file) {
+  const endpoint = getVisionEndpoint();
+  if (!endpoint) return '';
+  const form = new FormData();
+  form.append('file', file, file.name || 'documento');
+  const res = await fetch(endpoint, { method: 'POST', body: form });
+  if (!res.ok) throw new Error('Vision endpoint error');
+  const data = await res.json();
+  return data.text || data.fullText || data.description || '';
+}
+
+async function extractTextFromOCRFile(file, onProgress) {
+  if (isPlainTextOCRFile(file)) {
+    if (onProgress) onProgress(45, 'Leyendo archivo de texto…', '📄');
+    return await readOCRFileAsText(file);
+  }
+
+  if (isSpreadsheetOCRFile(file)) {
+    if (onProgress) onProgress(45, 'Leyendo planilla…', '📊');
+    return await extractTextFromSpreadsheet(file);
+  }
+
+  const visionText = await extractTextWithVisionEndpoint(file);
+  if (visionText) return visionText;
+
+  if (isImageOCRFile(file)) {
+    if (typeof Tesseract === 'undefined') {
+      throw new Error('No está disponible el lector de imágenes.');
+    }
+    const { createWorker } = Tesseract;
+    const worker = await createWorker('spa', 1, {
+      logger: function(m) {
+        if (m.status === 'recognizing text' && onProgress) {
+          const pct = Math.round(m.progress * 100);
+          onProgress(pct, 'Leyendo imagen… ' + pct + '%', '🔍');
+        }
+      }
+    });
+    const result = await worker.recognize(file);
+    await worker.terminate();
+    return result.data.text || '';
+  }
+
+  throw new Error('Para leer PDF, Word o archivos escaneados hace falta configurar un endpoint de Google Vision o Document AI.');
+}
+
 async function processOCR(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
 
-  // Show progress
   const prog = document.getElementById('ocrProgress');
   const bar  = document.getElementById('ocrBar');
   const txt  = document.getElementById('ocrStatusText');
   const emoji = document.getElementById('ocrEmoji');
-  prog.style.display = 'block';
-  bar.style.width = '0%';
-  txt.textContent = 'Procesando imagen…';
-  emoji.textContent = '🔍';
-  document.getElementById('btnOCR').disabled = true;
+  const btn = document.getElementById('btnOCR');
+
+  const setProgress = function(width, message, icon) {
+    if (bar) bar.style.width = Math.max(0, Math.min(100, width)) + '%';
+    if (txt) txt.textContent = message;
+    if (emoji) emoji.textContent = icon || '🔍';
+  };
+
+  if (prog) prog.style.display = 'block';
+  setProgress(5, 'Procesando archivo…', '📎');
+  if (btn) btn.disabled = true;
 
   try {
-    const { createWorker } = Tesseract;
-    const worker = await createWorker('spa', 1, {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          const pct = Math.round(m.progress * 100);
-          bar.style.width = pct + '%';
-          txt.textContent = `Leyendo ticket… ${pct}%`;
-        }
-      }
-    });
+    const text = await extractTextFromOCRFile(file, setProgress);
+    if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
 
-    const { data: { text } } = await worker.recognize(file);
-    await worker.terminate();
-
-    emoji.textContent = '✅';
-    txt.textContent = 'Ticket leído, extrayendo datos…';
-    bar.style.width = '100%';
-
-    // Parse the OCR text
+    setProgress(100, 'Archivo leído, extrayendo datos…', '✅');
     const parsed = parseTicketText(text);
     fillGastoForm(parsed);
 
-    setTimeout(() => {
-      prog.style.display = 'none';
-      toast('✅ Ticket escaneado — revisá y confirmá los datos');
+    setTimeout(function() {
+      if (prog) prog.style.display = 'none';
+      toast('✅ Archivo leído — revisá y confirmá los datos');
     }, 800);
 
   } catch(e) {
-    emoji.textContent = '❌';
-    txt.textContent = 'No se pudo leer. Intentá con mejor iluminación.';
-    bar.style.width = '0%';
+    setProgress(0, e.message || 'No se pudo leer el archivo.', '❌');
     console.error('OCR error:', e);
-    setTimeout(() => { prog.style.display = 'none'; }, 2500);
+    toast(e.message || 'No se pudo leer el archivo');
+    setTimeout(function() { if (prog) prog.style.display = 'none'; }, 3000);
   }
 
-  document.getElementById('btnOCR').disabled = false;
-  input.value = ''; // reset for next scan
+  if (btn) btn.disabled = false;
+  input.value = '';
 }
 
 function parseTicketText(text) {
