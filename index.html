@@ -903,7 +903,7 @@
             <label>Descripción</label>
             <div style="display:flex;gap:8px">
               <input type="text" id="g_desc" placeholder="Alquiler, Supermercado…" style="flex:1">
-              <button onclick="triggerOCR()" title="Leer factura o subir archivo" aria-label="Leer factura o subir archivo" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 14px;border-radius:13px;font-size:1.1rem;cursor:pointer" id="btnOCR">📷</button>
+              <button onclick="triggerOCR()" title="Leer factura o subir archivo" aria-label="Leer factura o subir archivo" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 14px;border-radius:13px;font-size:1.1rem;cursor:pointer" id="btnCamera">📷</button>
             </div>
             <input type="file" id="ocrInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv" style="display:none" onchange="processOCR(this)">
           </div>
@@ -3677,8 +3677,16 @@ function triggerOCR() {
   document.getElementById('ocrInput').click();
 }
 
-function getVisionEndpoint() {
-  return window.NF_VISION_ENDPOINT || localStorage.getItem('nf_vision_endpoint') || '';
+const GOOGLE_VISION_API_KEY = 'AIzaSyDoAGQjSxOnpbokYQ3pv53K0FNAsUN-Gww';
+
+function getGoogleVisionApiKey() {
+  return window.GOOGLE_VISION_API_KEY ||
+    localStorage.getItem('nf_google_vision_api_key') ||
+    GOOGLE_VISION_API_KEY;
+}
+
+function getCameraButton() {
+  return document.getElementById('btnCamera') || document.getElementById('btnOCR');
 }
 
 function isImageOCRFile(file) {
@@ -3711,6 +3719,96 @@ function readOCRFileAsArrayBuffer(file) {
     reader.onerror = reject;
     reader.readAsArrayBuffer(file);
   });
+}
+
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function fileToBase64Content(file) {
+  const buffer = await readOCRFileAsArrayBuffer(file);
+  return arrayBufferToBase64(buffer);
+}
+
+function getGoogleVisionTextFromImageResponse(data) {
+  const response = data && data.responses && data.responses[0];
+  if (!response) return '';
+  if (response.error) throw new Error(response.error.message || 'Google Vision no pudo leer el archivo.');
+  return (response.fullTextAnnotation && response.fullTextAnnotation.text) ||
+    (response.textAnnotations && response.textAnnotations[0] && response.textAnnotations[0].description) ||
+    '';
+}
+
+function getGoogleVisionTextFromFileResponse(data) {
+  const fileResponse = data && data.responses && data.responses[0];
+  if (!fileResponse) return '';
+  if (fileResponse.error) throw new Error(fileResponse.error.message || 'Google Vision no pudo leer el archivo.');
+  const responses = fileResponse.responses || [];
+  return responses.map(getGoogleVisionTextFromImageResponse).filter(Boolean).join('\n');
+}
+
+async function callGoogleVisionImagesAnnotate(file) {
+  const apiKey = getGoogleVisionApiKey();
+  if (!apiKey || apiKey === '[tu key]') {
+    throw new Error('Falta configurar la API Key de Google Vision.');
+  }
+  const content = await fileToBase64Content(file);
+  const res = await fetch('https://vision.googleapis.com/v1/images:annotate?key=' + encodeURIComponent(apiKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: [{
+        image: { content: content },
+        features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+      }]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data.error && data.error.message) || 'Error de Google Vision.');
+  return getGoogleVisionTextFromImageResponse(data);
+}
+
+function getVisionFileMimeType(file) {
+  const name = (file.name || '').toLowerCase();
+  if (file.type) return file.type;
+  if (name.endsWith('.pdf')) return 'application/pdf';
+  if (name.endsWith('.tif') || name.endsWith('.tiff')) return 'image/tiff';
+  if (name.endsWith('.gif')) return 'image/gif';
+  return '';
+}
+
+function isGoogleVisionFile(file) {
+  const mime = getVisionFileMimeType(file);
+  return mime === 'application/pdf' || mime === 'image/tiff' || mime === 'image/gif';
+}
+
+async function callGoogleVisionFilesAnnotate(file) {
+  const apiKey = getGoogleVisionApiKey();
+  if (!apiKey || apiKey === '[tu key]') {
+    throw new Error('Falta configurar la API Key de Google Vision.');
+  }
+  const content = await fileToBase64Content(file);
+  const mimeType = getVisionFileMimeType(file);
+  const res = await fetch('https://vision.googleapis.com/v1/files:annotate?key=' + encodeURIComponent(apiKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: [{
+        inputConfig: { content: content, mimeType: mimeType },
+        features: [{ type: 'TEXT_DETECTION', maxResults: 1 }],
+        pages: [1, 2, 3, 4, 5]
+      }]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data.error && data.error.message) || 'Error de Google Vision.');
+  return getGoogleVisionTextFromFileResponse(data);
 }
 
 async function extractTextFromSpreadsheet(file) {
@@ -3747,8 +3845,17 @@ async function extractTextFromOCRFile(file, onProgress) {
     return await extractTextFromSpreadsheet(file);
   }
 
-  const visionText = await extractTextWithVisionEndpoint(file);
-  if (visionText) return visionText;
+  if (isImageOCRFile(file)) {
+    if (onProgress) onProgress(35, 'Enviando imagen a Google Vision…', '☁️');
+    const visionText = await callGoogleVisionImagesAnnotate(file);
+    if (visionText) return visionText;
+  }
+
+  if (isGoogleVisionFile(file)) {
+    if (onProgress) onProgress(35, 'Enviando archivo a Google Vision…', '☁️');
+    const visionText = await callGoogleVisionFilesAnnotate(file);
+    if (visionText) return visionText;
+  }
 
   if (isImageOCRFile(file)) {
     if (typeof Tesseract === 'undefined') {
@@ -3768,7 +3875,7 @@ async function extractTextFromOCRFile(file, onProgress) {
     return result.data.text || '';
   }
 
-  throw new Error('Para leer PDF, Word o archivos escaneados hace falta configurar un endpoint de Google Vision o Document AI.');
+  throw new Error('Google Vision solo procesa imágenes, PDF, GIF y TIFF. Para Word o Excel se usa lectura local cuando el archivo trae texto.');
 }
 
 async function processOCR(input) {
@@ -3779,7 +3886,7 @@ async function processOCR(input) {
   const bar  = document.getElementById('ocrBar');
   const txt  = document.getElementById('ocrStatusText');
   const emoji = document.getElementById('ocrEmoji');
-  const btn = document.getElementById('btnOCR');
+  const btn = getCameraButton();
 
   const setProgress = function(width, message, icon) {
     if (bar) bar.style.width = Math.max(0, Math.min(100, width)) + '%';
