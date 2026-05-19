@@ -4587,6 +4587,78 @@ function extractStatementInstallmentHints(text) {
   return hints;
 }
 
+
+function amountToStatementTokens(amount) {
+  const n = Number(amount || 0);
+  if (!n) return [];
+  const fixed = n.toFixed(2);
+  const parts = fixed.split('.');
+  const intRaw = parts[0];
+  const dec = parts[1] || '00';
+  const withThousands = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const noDecimals = dec === '00';
+  return Array.from(new Set([
+    withThousands + ',' + dec,
+    intRaw + ',' + dec,
+    noDecimals ? withThousands : '',
+    noDecimals ? intRaw : ''
+  ].filter(Boolean)));
+}
+
+function extractInstallmentFromAmountSegment(row, text) {
+  const section = String(getStatementDetailText(text) || '').replace(/\r/g, '\n').replace(/[·•|]+/g, ' ');
+  const tokens = amountToStatementTokens(row && row.monto);
+  if (!section || !tokens.length) return null;
+
+  let best = null;
+  tokens.forEach(function(token) {
+    let start = 0;
+    while (start < section.length) {
+      const idx = section.indexOf(token, start);
+      if (idx < 0) break;
+      start = idx + token.length;
+
+      const prevDateMatches = [...section.slice(0, idx).matchAll(/\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g)];
+      const segStart = prevDateMatches.length ? prevDateMatches[prevDateMatches.length - 1].index : Math.max(0, idx - 180);
+      const nextDate = section.slice(idx).search(/\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g);
+      const segEnd = nextDate > token.length ? idx + nextDate : Math.min(section.length, idx + token.length + 80);
+      const segment = section.slice(segStart, segEnd);
+      const cuotasMatches = [...segment.matchAll(/\bC\.?\s*(\d{1,2})\s*\/\s*(\d{1,2})\b/gi)];
+      if (!cuotasMatches.length) return;
+
+      const descPart = segment
+        .replace(/\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
+        .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
+        .replace(/\b\d{5,8}\b/g, ' ')
+        .replace(/(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      const overlap = statementTextOverlap(row.descripcion, descPart);
+      const m = cuotasMatches[cuotasMatches.length - 1];
+      const candidate = {
+        cuota_actual: Math.max(1, parseInt(m[1], 10) || 1),
+        cuotas: Math.max(parseInt(m[1], 10) || 1, parseInt(m[2], 10) || 1),
+        overlap
+      };
+      if (!best || candidate.overlap > best.overlap) best = candidate;
+    }
+  });
+
+  return best && best.overlap >= 0.15 ? best : null;
+}
+
+function overrideInstallmentsFromAmountSegments(rows, text) {
+  return (rows || []).map(function(row) {
+    const exact = extractInstallmentFromAmountSegment(row, text);
+    if (!exact) return row;
+    return {
+      ...row,
+      cuotas: exact.cuotas,
+      cuota_actual: exact.cuota_actual
+    };
+  });
+}
+
 function enrichStatementRowsWithInstallments(primaryRows, candidateRows) {
   const primary = (primaryRows || []).filter(Boolean).map(row => ({ ...row }));
   const candidates = (candidateRows || []).filter(function(row) {
@@ -4903,9 +4975,10 @@ async function processOCR(input) {
     const installmentHints = extractStatementInstallmentHints(text);
     const deterministicItems = visionStatementItems.length ? visionStatementItems : textStatementItems;
     const installmentCandidates = deterministicItems.concat(textStatementItems, installmentHints);
-    const statementItems = aiStatementItems.length
+    const mergedStatementItems = aiStatementItems.length
       ? enrichStatementRowsWithInstallments(aiStatementItems, installmentCandidates)
       : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates);
+    const statementItems = overrideInstallmentsFromAmountSegments(mergedStatementItems, text);
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
