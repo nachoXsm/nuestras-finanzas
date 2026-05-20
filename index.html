@@ -3726,6 +3726,10 @@ function getNFApiEndpoints(path) {
   };
 
   if (window.NF_API_BASE_URL) add(window.NF_API_BASE_URL);
+  try {
+    const savedApiBase = localStorage.getItem('NF_API_BASE_URL');
+    if (savedApiBase) add(savedApiBase);
+  } catch (_) {}
   if (isLocal) {
     add('http://localhost:8787');
   } else {
@@ -5335,6 +5339,29 @@ async function processOCR(input) {
     } else {
       statementItems = verifyStatementInstallments(enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates), text);
     }
+    window.lastStatementImportDebug = {
+      isStatement,
+      aiStatementItems,
+      visualLineStatementItems,
+      visionStatementItems,
+      segmentStatementItems,
+      columnStatementItems,
+      textStatementItems,
+      installmentHints,
+      installmentCandidates,
+      statementItems
+    };
+    console.group('NF resumen tarjeta debug');
+    console.table((statementItems || []).map(function(row) {
+      return {
+        desc: row.descripcion,
+        monto: row.monto,
+        cuotas: (row.cuotas || 1) + '/' + (row.cuota_actual || 1),
+        linea: row._sourceLine || ''
+      };
+    }));
+    console.log(window.lastStatementImportDebug);
+    console.groupEnd();
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
