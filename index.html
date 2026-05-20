@@ -3710,10 +3710,24 @@ function triggerOCR() {
 }
 
 function getNFApiEndpoint(path) {
+  const localHostnames = ['localhost', '127.0.0.1', ''];
+  const isLocal = !window.location ||
+    window.location.protocol === 'file:' ||
+    localHostnames.includes(window.location.hostname);
   const base = window.NF_API_BASE_URL ||
     localStorage.getItem('nf_api_base_url') ||
-    (window.location && window.location.protocol === 'file:' ? 'http://localhost:8787' : '');
+    (isLocal ? 'http://localhost:8787' : '');
   return String(base || '').replace(/\/$/, '') + path;
+}
+
+async function readJsonResponse(res, label) {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch (_) {
+    const preview = text.replace(/\s+/g, ' ').slice(0, 140);
+    throw new Error(label + ' no devolvió JSON. Revisá que el backend esté levantado y que la ruta exista. Respuesta: ' + preview);
+  }
 }
 
 function getGoogleVisionEndpoint() {
@@ -3802,7 +3816,7 @@ async function callGoogleVisionImagesAnnotate(file) {
       content: content
     })
   });
-  const data = await res.json();
+  const data = await readJsonResponse(res, 'Google Vision backend');
   lastOCRVisionData = data;
   window.lastOCRVisionData = data;
   if (!res.ok) throw new Error((data.error && data.error.message) || 'Error de Google Vision.');
@@ -3838,7 +3852,7 @@ async function callGoogleVisionFilesAnnotate(file) {
       pages: [1, 2, 3, 4, 5]
     })
   });
-  const data = await res.json();
+  const data = await readJsonResponse(res, 'Google Vision backend');
   lastOCRVisionData = data;
   window.lastOCRVisionData = data;
   if (!res.ok) throw new Error((data.error && data.error.message) || 'Error de Google Vision.');
@@ -4913,7 +4927,7 @@ async function extractCardStatementRowsWithAI(rawText, file, onProgress) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
-  const data = await res.json().catch(function() { return null; });
+  const data = await readJsonResponse(res, 'Extractor IA');
   if (!res.ok) {
     throw new Error((data && (data.error || data.message)) || 'El extractor IA no pudo leer el resumen.');
   }
