@@ -3709,12 +3709,17 @@ function triggerOCR() {
   document.getElementById('ocrInput').click();
 }
 
-const GOOGLE_VISION_API_KEY = 'AIzaSyDoAGQjSxOnpbokYQ3pv53K0FNAsUN-Gww';
+function getNFApiEndpoint(path) {
+  const base = window.NF_API_BASE_URL ||
+    localStorage.getItem('nf_api_base_url') ||
+    (window.location && window.location.protocol === 'file:' ? 'http://localhost:8787' : '');
+  return String(base || '').replace(/\/$/, '') + path;
+}
 
-function getGoogleVisionApiKey() {
-  return window.GOOGLE_VISION_API_KEY ||
-    localStorage.getItem('nf_google_vision_api_key') ||
-    GOOGLE_VISION_API_KEY;
+function getGoogleVisionEndpoint() {
+  return window.NF_VISION_ENDPOINT ||
+    localStorage.getItem('nf_vision_endpoint') ||
+    getNFApiEndpoint('/api/vision');
 }
 
 function getCameraButton() {
@@ -3788,19 +3793,13 @@ function getGoogleVisionTextFromFileResponse(data) {
 }
 
 async function callGoogleVisionImagesAnnotate(file) {
-  const apiKey = getGoogleVisionApiKey();
-  if (!apiKey || apiKey === '[tu key]') {
-    throw new Error('Falta configurar la API Key de Google Vision.');
-  }
   const content = await fileToBase64Content(file);
-  const res = await fetch('https://vision.googleapis.com/v1/images:annotate?key=' + encodeURIComponent(apiKey), {
+  const res = await fetch(getGoogleVisionEndpoint(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      requests: [{
-        image: { content: content },
-        features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }]
-      }]
+      kind: 'image',
+      content: content
     })
   });
   const data = await res.json();
@@ -3827,21 +3826,16 @@ function isGoogleVisionFile(file) {
 }
 
 async function callGoogleVisionFilesAnnotate(file) {
-  const apiKey = getGoogleVisionApiKey();
-  if (!apiKey || apiKey === '[tu key]') {
-    throw new Error('Falta configurar la API Key de Google Vision.');
-  }
   const content = await fileToBase64Content(file);
   const mimeType = getVisionFileMimeType(file);
-  const res = await fetch('https://vision.googleapis.com/v1/files:annotate?key=' + encodeURIComponent(apiKey), {
+  const res = await fetch(getGoogleVisionEndpoint(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      requests: [{
-        inputConfig: { content: content, mimeType: mimeType },
-        features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }],
-        pages: [1, 2, 3, 4, 5]
-      }]
+      kind: 'file',
+      content: content,
+      mimeType: mimeType,
+      pages: [1, 2, 3, 4, 5]
     })
   });
   const data = await res.json();
@@ -4441,7 +4435,7 @@ function rescueMissingStatementRows(rows, text) {
 function getAIStatementExtractorEndpoint() {
   return window.NF_AI_EXTRACT_ENDPOINT ||
     localStorage.getItem('nf_ai_extract_endpoint') ||
-    'http://localhost:8787/api/extract-statement';
+    getNFApiEndpoint('/api/extract-statement');
 }
 
 function readFileAsAIInlineData(file) {
