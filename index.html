@@ -4791,6 +4791,48 @@ function overrideInstallmentsFromAmountSegments(rows, text) {
   });
 }
 
+
+function reconcileAIStatementInstallments(rows, text, candidateRows, visionData) {
+  const candidates = (candidateRows || []).filter(function(candidate) {
+    return candidate
+      && Number(candidate.cuotas || 1) > 1
+      && Number(candidate.monto || 0) > 0;
+  });
+
+  return (rows || []).map(function(row) {
+    const base = { ...row, cuotas: 1, cuota_actual: 1 };
+
+    const verified =
+      extractInstallmentFromVisionRow(row, visionData) ||
+      findVerifiedStatementInstallment(row, text);
+    if (verified && Number(verified.cuotas || 1) > 1) {
+      return {
+        ...base,
+        cuotas: Number(verified.cuotas || 1),
+        cuota_actual: Number(verified.cuota_actual || 1)
+      };
+    }
+
+    const sameRowCandidates = candidates
+      .map(function(candidate) {
+        const sameCurrency = String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS');
+        const sameAmount = Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
+        const overlap = statementTextOverlap(row.descripcion, candidate.descripcion);
+        return { candidate, sameCurrency, sameAmount, overlap };
+      })
+      .filter(match => match.sameCurrency && match.sameAmount && match.overlap >= 0.25)
+      .sort((a, b) => b.overlap - a.overlap);
+
+    const best = sameRowCandidates[0];
+    if (!best) return base;
+    return {
+      ...base,
+      cuotas: Number(best.candidate.cuotas || 1),
+      cuota_actual: Number(best.candidate.cuota_actual || 1)
+    };
+  });
+}
+
 function enrichStatementRowsWithInstallments(primaryRows, candidateRows) {
   const primary = (primaryRows || []).filter(Boolean).map(row => ({ ...row }));
   const candidates = (candidateRows || []).filter(function(row) {
@@ -5110,7 +5152,7 @@ async function processOCR(input) {
     const deterministicItems = visionStatementItems.length ? visionStatementItems : textStatementItems;
     const installmentCandidates = deterministicItems.concat(textStatementItems, installmentHints);
     const statementItems = aiStatementItems.length
-      ? aiStatementItems
+      ? reconcileAIStatementInstallments(aiStatementItems, text, installmentCandidates, lastOCRVisionData || window.lastOCRVisionData)
       : verifyStatementInstallments(enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates), text);
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
