@@ -4444,6 +4444,26 @@ function getAIStatementExtractorEndpoint() {
     'http://localhost:8787/api/extract-statement';
 }
 
+function readFileAsAIInlineData(file) {
+  return new Promise(function(resolve, reject) {
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.onload = function() {
+      const dataUrl = String(reader.result || '');
+      const comma = dataUrl.indexOf(',');
+      resolve({
+        name: file.name || '',
+        mimeType: file.type || 'application/octet-stream',
+        data: comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl
+      });
+    };
+    reader.onerror = function() {
+      reject(reader.error || new Error('No se pudo leer el archivo para IA.'));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function parseAIDateParts(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
@@ -4816,12 +4836,14 @@ async function extractCardStatementRowsWithAI(rawText, file, onProgress) {
   if (onProgress) onProgress(62, 'Interpretando resumen con IA...', 'AI');
   const visionLines = extractVisionLines(lastOCRVisionData || window.lastOCRVisionData);
   const due = parseStatementDueDate(rawText);
+  const inlineFile = await readFileAsAIInlineData(file);
   const payload = {
     schemaVersion: 1,
     task: 'extract_credit_card_statement_expenses',
     locale: 'es-AR',
     fileName: file && file.name ? file.name : '',
     fileType: file && file.type ? file.type : '',
+    file: inlineFile,
     dateRule: 'Usar VENCIMIENTO ACTUAL como fecha de todos los consumos. Si no existe, usar PROXIMO VENCIMIENTO. No usar fecha de compra como fecha final del gasto.',
     preferredDueDate: due ? due.fecha : null,
     outputSchema: {
@@ -5087,10 +5109,9 @@ async function processOCR(input) {
     const installmentHints = extractStatementInstallmentHints(text);
     const deterministicItems = visionStatementItems.length ? visionStatementItems : textStatementItems;
     const installmentCandidates = deterministicItems.concat(textStatementItems, installmentHints);
-    const mergedStatementItems = aiStatementItems.length
-      ? enrichStatementRowsWithInstallments(aiStatementItems, installmentCandidates)
-      : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates);
-    const statementItems = verifyStatementInstallments(mergedStatementItems, text);
+    const statementItems = aiStatementItems.length
+      ? aiStatementItems
+      : verifyStatementInstallments(enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates), text);
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
