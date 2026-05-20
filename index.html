@@ -3795,6 +3795,14 @@ function isPlainTextOCRFile(file) {
     /text\/(plain|csv)/i.test(file.type || '');
 }
 
+function isGeminiStatementFile(file) {
+  const name = (file && file.name || '').toLowerCase();
+  const type = (file && file.type || '').toLowerCase();
+  return /^image\//i.test(type) ||
+    type === 'application/pdf' ||
+    /\.(pdf|png|jpe?g|webp|gif|tiff?|heic)$/i.test(name);
+}
+
 function readOCRFileAsText(file) {
   return new Promise(function(resolve, reject) {
     const reader = new FileReader();
@@ -3914,19 +3922,7 @@ async function extractTextFromOCRFile(file, onProgress) {
     return await extractTextFromSpreadsheet(file);
   }
 
-  if (isImageOCRFile(file)) {
-    if (onProgress) onProgress(35, 'Enviando imagen a Google Vision…', '☁️');
-    const visionText = await callGoogleVisionImagesAnnotate(file);
-    if (visionText) return visionText;
-  }
-
-  if (isGoogleVisionFile(file)) {
-    if (onProgress) onProgress(35, 'Enviando archivo a Google Vision…', '☁️');
-    const visionText = await callGoogleVisionFilesAnnotate(file);
-    if (visionText) return visionText;
-  }
-
-  throw new Error('Google Vision no pudo leer texto del archivo. Probá subir el PDF original o una imagen más nítida.');
+  throw new Error('Este archivo requiere lectura inteligente. Para resúmenes de tarjeta se usa Gemini directo; probá subir el PDF o imagen original desde el botón de cámara.');
 }
 
 function parseOCRMoney(raw) {
@@ -5301,17 +5297,28 @@ async function processOCR(input) {
   if (btn) btn.disabled = true;
 
   try {
-    const text = await extractTextFromOCRFile(file, setProgress);
-    if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
+    lastOCRVisionData = null;
+    window.lastOCRVisionData = null;
 
-    setProgress(60, 'Archivo leído, detectando consumos…', '✅');
-    const isStatement = looksLikeCardStatement(text);
+    let text = '';
+    let isStatement = false;
     let aiStatementItems = [];
-    if (isStatement) {
-      try {
-        aiStatementItems = await extractCardStatementRowsWithAI(text, file, setProgress);
-      } catch (aiError) {
-        console.warn('AI statement extractor fallback:', aiError);
+
+    if (isGeminiStatementFile(file)) {
+      setProgress(35, 'Enviando resumen a Gemini…', '💳');
+      aiStatementItems = await extractCardStatementRowsWithAI('', file, setProgress);
+      isStatement = true;
+    } else {
+      text = await extractTextFromOCRFile(file, setProgress);
+      if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
+      setProgress(60, 'Archivo leído, detectando consumos…', '✅');
+      isStatement = looksLikeCardStatement(text);
+      if (isStatement) {
+        try {
+          aiStatementItems = await extractCardStatementRowsWithAI(text, file, setProgress);
+        } catch (aiError) {
+          console.warn('AI statement extractor fallback:', aiError);
+        }
       }
     }
     const currentVisionData = lastOCRVisionData || window.lastOCRVisionData;
