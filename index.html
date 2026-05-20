@@ -3715,7 +3715,6 @@ function getNFApiEndpoint(path) {
     window.location.protocol === 'file:' ||
     localHostnames.includes(window.location.hostname);
   const base = window.NF_API_BASE_URL ||
-    localStorage.getItem('nf_api_base_url') ||
     (isLocal ? 'http://localhost:8787' : '');
   return String(base || '').replace(/\/$/, '') + path;
 }
@@ -3732,7 +3731,6 @@ async function readJsonResponse(res, label) {
 
 function getGoogleVisionEndpoint() {
   return window.NF_VISION_ENDPOINT ||
-    localStorage.getItem('nf_vision_endpoint') ||
     getNFApiEndpoint('/api/vision');
 }
 
@@ -4448,7 +4446,6 @@ function rescueMissingStatementRows(rows, text) {
 
 function getAIStatementExtractorEndpoint() {
   return window.NF_AI_EXTRACT_ENDPOINT ||
-    localStorage.getItem('nf_ai_extract_endpoint') ||
     getNFApiEndpoint('/api/extract-statement');
 }
 
