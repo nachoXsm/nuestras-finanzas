@@ -4801,6 +4801,33 @@ function reconcileAIStatementInstallments(rows, text, candidateRows, visionData)
 
   return (rows || []).map(function(row) {
     const base = { ...row, cuotas: 1, cuota_actual: 1 };
+    const sourcePriority = {
+      'description-blocks': 50,
+      'vision-row': 40,
+      'text-segments': 30,
+      'text-parser': 20,
+      'hints': 10
+    };
+
+    const sameRowCandidates = candidates
+      .map(function(candidate) {
+        const sameCurrency = String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS');
+        const sameAmount = Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
+        const overlap = statementTextOverlap(row.descripcion, candidate.descripcion);
+        const priority = sourcePriority[candidate._statementSource] || 0;
+        return { candidate, sameCurrency, sameAmount, overlap, priority };
+      })
+      .filter(match => match.sameCurrency && match.sameAmount && match.overlap >= 0.25)
+      .sort((a, b) => (b.priority - a.priority) || (b.overlap - a.overlap));
+
+    const best = sameRowCandidates[0];
+    if (best) {
+      return {
+        ...base,
+        cuotas: Number(best.candidate.cuotas || 1),
+        cuota_actual: Number(best.candidate.cuota_actual || 1)
+      };
+    }
 
     const verified =
       extractInstallmentFromVisionRow(row, visionData) ||
@@ -4813,23 +4840,7 @@ function reconcileAIStatementInstallments(rows, text, candidateRows, visionData)
       };
     }
 
-    const sameRowCandidates = candidates
-      .map(function(candidate) {
-        const sameCurrency = String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS');
-        const sameAmount = Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
-        const overlap = statementTextOverlap(row.descripcion, candidate.descripcion);
-        return { candidate, sameCurrency, sameAmount, overlap };
-      })
-      .filter(match => match.sameCurrency && match.sameAmount && match.overlap >= 0.25)
-      .sort((a, b) => b.overlap - a.overlap);
-
-    const best = sameRowCandidates[0];
-    if (!best) return base;
-    return {
-      ...base,
-      cuotas: Number(best.candidate.cuotas || 1),
-      cuota_actual: Number(best.candidate.cuota_actual || 1)
-    };
+    return base;
   });
 }
 
@@ -5147,10 +5158,22 @@ async function processOCR(input) {
       }
     }
     const visionStatementItems = parseCardStatementRowsFromVision(lastOCRVisionData || window.lastOCRVisionData);
+    const segmentStatementItems = parseCardStatementRowsBySegments(text);
+    const columnStatementItems = parseCardStatementRowsByColumns(text);
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
     const deterministicItems = visionStatementItems.length ? visionStatementItems : textStatementItems;
-    const installmentCandidates = deterministicItems.concat(textStatementItems, installmentHints);
+    const markStatementSource = function(list, source) {
+      return (list || []).map(row => ({ ...row, _statementSource: source }));
+    };
+    const installmentCandidates = []
+      .concat(
+        markStatementSource(columnStatementItems, 'description-blocks'),
+        markStatementSource(visionStatementItems, 'vision-row'),
+        markStatementSource(segmentStatementItems, 'text-segments'),
+        markStatementSource(textStatementItems, 'text-parser'),
+        markStatementSource(installmentHints, 'hints')
+      );
     const statementItems = aiStatementItems.length
       ? reconcileAIStatementInstallments(aiStatementItems, text, installmentCandidates, lastOCRVisionData || window.lastOCRVisionData)
       : verifyStatementInstallments(enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates), text);
