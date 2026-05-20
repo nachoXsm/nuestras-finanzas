@@ -3978,16 +3978,14 @@ function parseStatementDate(raw) {
   };
 }
 
-function parseInstallmentInfo(desc) {
+function parseInstallmentInfo(desc, options) {
   const text = String(desc || '');
   const matches = [...text.matchAll(/\bC\.?\s*(\d{1,2})\s*\/\s*(\d{1,2})\b/gi)];
   if (!matches.length) return { descripcion: text.trim(), cuotaActual: 1, cuotas: 1 };
 
-  // Si el OCR mezcla una cuota de la línea vecina, la cuota real suele ser la última
-  // que quedó pegada a la descripción actual. Limpiamos todos los tokens C.xx/yy.
-  const m = matches[matches.length - 1];
-  const cuotaActual = Math.max(1, parseInt(m[1], 10) || 1);
-  const cuotas = Math.max(cuotaActual, parseInt(m[2], 10) || cuotaActual);
+  const pick = options && options.pick === 'last' ? matches[matches.length - 1] : matches[0];
+  const cuotaActual = Math.max(1, parseInt(pick[1], 10) || 1);
+  const cuotas = Math.max(cuotaActual, parseInt(pick[2], 10) || cuotaActual);
   return {
     descripcion: text.replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g, ' ').trim(),
     cuotaActual,
@@ -4301,6 +4299,76 @@ function parseCardStatementRowsBySegments(text) {
   return rows;
 }
 
+function parseStatementRowLine(line) {
+  const cleanLine = String(line || '').replace(/[·•|]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleanLine || isStatementHeaderLine(cleanLine)) return null;
+
+  const dateMatch = cleanLine.match(/(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i);
+  if (!dateMatch) return null;
+  const dateInfo = parseStatementDate(dateMatch[1]);
+  if (!dateInfo) return null;
+
+  const rest = dateMatch[2].trim();
+  if (/saldo|total|pago minimo|su pago|limites|tasas|cierre|vencimiento|actual|anterior/i.test(rest)) return null;
+
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi;
+  const amountMatches = [...rest.matchAll(amountRx)].filter(m => /,\d{2}\b|\d{1,3}(?:\.\d{3})+\b/.test(m[0]));
+  if (!amountMatches.length) return null;
+
+  const amountMatch = amountMatches[amountMatches.length - 1];
+  const amountRaw = amountMatch[0];
+  const monto = parseOCRMoney(amountRaw);
+  if (!monto || monto < 1) return null;
+
+  let descPart = rest.slice(0, amountMatch.index)
+    .replace(/\s+\d{5,8}\s*$/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (!descPart || /^\d{5,8}$/.test(descPart)) return null;
+
+  const cuotasInfo = parseInstallmentInfo(descPart, { pick: 'first' });
+  const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
+  return {
+    ...dateInfo,
+    descripcion,
+    monto,
+    moneda: /(?:US\$|U\$S|USD|D[OÓ]LARES|DOLARES)/i.test(rest) ? 'USD' : 'ARS',
+    cat: guessOCRCategory(descripcion),
+    cuotas: cuotasInfo.cuotas,
+    cuota_actual: cuotasInfo.cuotaActual,
+    _statementSource: 'visual-lines',
+    _sourceLine: cleanLine
+  };
+}
+
+function parseCardStatementRowsByVisualLines(text, visionData) {
+  const rawLines = [];
+  if (visionData) rawLines.push.apply(rawLines, extractVisionLines(visionData));
+  rawLines.push.apply(rawLines, String(getStatementDetailText(text) || '').replace(/\r/g, '\n').split('\n'));
+
+  const rows = [];
+  rawLines.forEach(function(rawLine, idx) {
+    const line = String(rawLine || '').trim();
+    const direct = parseStatementRowLine(line);
+    if (direct) rows.push(direct);
+
+    const next = rawLines[idx + 1] ? String(rawLines[idx + 1]).trim() : '';
+    if (!direct && next) {
+      const joined = (line + ' ' + next).replace(/\s+/g, ' ').trim();
+      const combined = parseStatementRowLine(joined);
+      if (combined) rows.push(combined);
+    }
+  });
+
+  const seen = new Set();
+  return applyStatementDueDate(rows, text).filter(function(row) {
+    const key = [row.fecha, normalizeStatementMatchText(row.descripcion), row.monto, row.moneda].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function getStatementDetailText(text) {
   const raw = String(text || '');
   const lower = raw.toLowerCase();
@@ -4569,8 +4637,12 @@ function normalizeAIStatementRows(payload, rawText) {
       ? item.monto
       : parseOCRMoney(item.monto || item.amount || item.importe || '');
     const dateInfo = dueDate || parseAIDateParts(item.fecha || item.date || item.vencimiento || '');
+    const rawLine = item.linea_original || item.raw_line || item.texto_fila || item.line || '';
     const rawCuotas = item.cuotas || item.installments || item.cuota || item.cuota_actual_total || null;
-    const cuotasInfo = parseAIInstallments(rawCuotas);
+    const lineCuotas = parseInstallmentInfo(rawLine, { pick: 'first' });
+    const cuotasInfo = Number(lineCuotas.cuotas || 1) > 1
+      ? { cuota_actual: lineCuotas.cuotaActual, cuotas: lineCuotas.cuotas, _hasInstallments: true }
+      : parseAIInstallments(rawCuotas);
 
     if (item.cuota_actual != null && cuotasInfo.cuotas > 1) {
       cuotasInfo.cuota_actual = Math.max(1, parseInt(item.cuota_actual, 10) || 1);
@@ -4587,7 +4659,8 @@ function normalizeAIStatementRows(payload, rawText) {
       cat: item.categoria || item.category || guessOCRCategory(desc),
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuota_actual,
-      _aiHadInstallments: cuotasInfo._hasInstallments
+      _aiHadInstallments: cuotasInfo._hasInstallments,
+      _sourceLine: rawLine
     };
   }).filter(Boolean);
 }
@@ -4849,63 +4922,85 @@ function overrideInstallmentsFromAmountSegments(rows, text) {
 }
 
 
+function getStrictStatementInstallment(row, candidateRows) {
+  const strictSources = new Set(['visual-lines', 'vision-row', 'text-segments']);
+  const rowText = normalizeStatementMatchText(row && row.descripcion);
+  const matches = (candidateRows || [])
+    .filter(function(candidate) {
+      return candidate
+        && strictSources.has(candidate._statementSource)
+        && Number(candidate.monto || 0) > 0
+        && String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS')
+        && Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
+    })
+    .map(function(candidate) {
+      const candText = normalizeStatementMatchText(candidate.descripcion);
+      const overlap = statementTextOverlap(row.descripcion, candidate.descripcion);
+      const contained = rowText && candText && (rowText.includes(candText) || candText.includes(rowText));
+      const hasInstallments = Number(candidate.cuotas || 1) > 1;
+      const sourceScore = candidate._statementSource === 'visual-lines' ? 3
+        : candidate._statementSource === 'vision-row' ? 2
+        : candidate._statementSource === 'text-segments' ? 1
+        : 0;
+      return { candidate, overlap, contained, hasInstallments, sourceScore };
+    })
+    .filter(match => match.overlap >= 0.20 || match.contained)
+    .sort((a, b) => (b.hasInstallments - a.hasInstallments) || (b.sourceScore - a.sourceScore) || (b.overlap - a.overlap));
+
+  const best = matches[0];
+  if (!best) return null;
+  return {
+    cuotas: Number(best.candidate.cuotas || 1),
+    cuota_actual: Number(best.candidate.cuota_actual || 1),
+    source: best.candidate._statementSource
+  };
+}
+
+function getInstallmentFromSourceLine(row) {
+  const info = parseInstallmentInfo(row && row._sourceLine, { pick: 'first' });
+  if (Number(info.cuotas || 1) <= 1) return null;
+  const cleanSource = info.descripcion || row._sourceLine || '';
+  const overlap = statementTextOverlap(row.descripcion, cleanSource);
+  return overlap >= 0.20
+    ? { cuotas: Number(info.cuotas || 1), cuota_actual: Number(info.cuotaActual || 1), source: 'ai-source-line' }
+    : null;
+}
+
 function reconcileAIStatementInstallments(rows, text, candidateRows, visionData) {
-  const candidates = (candidateRows || []).filter(function(candidate) {
-    return candidate
-      && Number(candidate.cuotas || 1) > 1
-      && Number(candidate.monto || 0) > 0;
-  });
+  const candidates = (candidateRows || []).filter(Boolean);
 
   return (rows || []).map(function(row) {
-    if (row._aiHadInstallments && Number(row.cuotas || 1) > 1) {
-      const clean = { ...row };
-      delete clean._aiHadInstallments;
+    const clean = { ...row };
+    delete clean._aiHadInstallments;
+
+    const strict = getStrictStatementInstallment(row, candidates);
+    if (strict && Number(strict.cuotas || 1) > 1) {
+      clean.cuotas = strict.cuotas;
+      clean.cuota_actual = strict.cuota_actual;
       return clean;
     }
 
-    const base = { ...row, cuotas: 1, cuota_actual: 1 };
-    delete base._aiHadInstallments;
-
-    const sourcePriority = {
-      'description-blocks': 50,
-      'vision-row': 40,
-      'text-segments': 30,
-      'text-parser': 20,
-      'hints': 10
-    };
-
-    const sameRowCandidates = candidates
-      .map(function(candidate) {
-        const sameCurrency = String(candidate.moneda || 'ARS') === String(row.moneda || 'ARS');
-        const sameAmount = Math.abs(Number(candidate.monto || 0) - Number(row.monto || 0)) < 0.01;
-        const overlap = statementTextOverlap(row.descripcion, candidate.descripcion);
-        const priority = sourcePriority[candidate._statementSource] || 0;
-        return { candidate, sameCurrency, sameAmount, overlap, priority };
-      })
-      .filter(match => match.sameCurrency && match.sameAmount && match.overlap >= 0.20)
-      .sort((a, b) => (b.priority - a.priority) || (b.overlap - a.overlap));
-
-    const best = sameRowCandidates[0];
-    if (best && Number(best.candidate.cuotas || 1) > 1) {
-      return {
-        ...base,
-        cuotas: Number(best.candidate.cuotas || 1),
-        cuota_actual: Number(best.candidate.cuota_actual || 1)
-      };
+    const fromSourceLine = getInstallmentFromSourceLine(row);
+    if (fromSourceLine) {
+      clean.cuotas = fromSourceLine.cuotas;
+      clean.cuota_actual = fromSourceLine.cuota_actual;
+      return clean;
     }
 
-    const verified =
-      extractInstallmentFromVisionRow(row, visionData) ||
-      findVerifiedStatementInstallment(row, text);
+    if (row._aiHadInstallments && Number(row.cuotas || 1) > 1 && row._sourceLine) {
+      return clean;
+    }
+
+    clean.cuotas = 1;
+    clean.cuota_actual = 1;
+
+    const verified = extractInstallmentFromVisionRow(row, visionData);
     if (verified && Number(verified.cuotas || 1) > 1) {
-      return {
-        ...base,
-        cuotas: Number(verified.cuotas || 1),
-        cuota_actual: Number(verified.cuota_actual || 1)
-      };
+      clean.cuotas = Number(verified.cuotas || 1);
+      clean.cuota_actual = Number(verified.cuota_actual || 1);
     }
 
-    return base;
+    return clean;
   });
 }
 
@@ -5214,17 +5309,20 @@ async function processOCR(input) {
         console.warn('AI statement extractor fallback:', aiError);
       }
     }
-    const visionStatementItems = parseCardStatementRowsFromVision(lastOCRVisionData || window.lastOCRVisionData);
+    const currentVisionData = lastOCRVisionData || window.lastOCRVisionData;
+    const visualLineStatementItems = parseCardStatementRowsByVisualLines(text, currentVisionData);
+    const visionStatementItems = parseCardStatementRowsFromVision(currentVisionData);
     const segmentStatementItems = parseCardStatementRowsBySegments(text);
     const columnStatementItems = parseCardStatementRowsByColumns(text);
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
-    const deterministicItems = visionStatementItems.length ? visionStatementItems : textStatementItems;
+    const deterministicItems = visualLineStatementItems.length ? visualLineStatementItems : (visionStatementItems.length ? visionStatementItems : textStatementItems);
     const markStatementSource = function(list, source) {
       return (list || []).map(row => ({ ...row, _statementSource: source }));
     };
     const installmentCandidates = []
       .concat(
+        markStatementSource(visualLineStatementItems, 'visual-lines'),
         markStatementSource(columnStatementItems, 'description-blocks'),
         markStatementSource(visionStatementItems, 'vision-row'),
         markStatementSource(segmentStatementItems, 'text-segments'),
@@ -5233,7 +5331,7 @@ async function processOCR(input) {
       );
     let statementItems;
     if (aiStatementItems.length) {
-      statementItems = reconcileAIStatementInstallments(aiStatementItems, text, installmentCandidates, lastOCRVisionData || window.lastOCRVisionData);
+      statementItems = reconcileAIStatementInstallments(aiStatementItems, text, installmentCandidates, currentVisionData);
     } else {
       statementItems = verifyStatementInstallments(enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates), text);
     }
