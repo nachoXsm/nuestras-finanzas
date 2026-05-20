@@ -3733,8 +3733,9 @@ function getNFApiEndpoints(path) {
   if (isLocal) {
     add('http://localhost:8787');
   } else {
+    // En Vercel o cualquier dominio real, usar solo APIs del mismo deploy.
+    // No probar localhost: en celular apunta al telefono y oculta el error real.
     add('');
-    add('http://localhost:8787');
   }
   return endpoints;
 }
