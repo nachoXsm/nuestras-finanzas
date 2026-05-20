@@ -3710,13 +3710,29 @@ function triggerOCR() {
 }
 
 function getNFApiEndpoint(path) {
+  return getNFApiEndpoints(path)[0] || path;
+}
+
+function getNFApiEndpoints(path) {
   const localHostnames = ['localhost', '127.0.0.1', ''];
   const isLocal = !window.location ||
     window.location.protocol === 'file:' ||
     localHostnames.includes(window.location.hostname);
-  const base = window.NF_API_BASE_URL ||
-    (isLocal ? 'http://localhost:8787' : '');
-  return String(base || '').replace(/\/$/, '') + path;
+  const endpoints = [];
+  const add = function(base) {
+    if (base == null) return;
+    const endpoint = String(base || '').replace(/\/$/, '') + path;
+    if (!endpoints.includes(endpoint)) endpoints.push(endpoint);
+  };
+
+  if (window.NF_API_BASE_URL) add(window.NF_API_BASE_URL);
+  if (isLocal) {
+    add('http://localhost:8787');
+  } else {
+    add('');
+    add('http://localhost:8787');
+  }
+  return endpoints;
 }
 
 async function readJsonResponse(res, label) {
@@ -3729,9 +3745,31 @@ async function readJsonResponse(res, label) {
   }
 }
 
+async function postJsonWithFallback(path, payload, label) {
+  const endpoints = getNFApiEndpoints(path);
+  let lastError = null;
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await readJsonResponse(res, label);
+      if (!res.ok) {
+        throw new Error((data && (data.error || data.message)) || label + ' devolvió error HTTP ' + res.status);
+      }
+      return { data, endpoint };
+    } catch (err) {
+      lastError = err;
+      console.warn(label + ' fallo en ' + endpoint + ':', err);
+    }
+  }
+  throw lastError || new Error(label + ' no respondió.');
+}
+
 function getGoogleVisionEndpoint() {
-  return window.NF_VISION_ENDPOINT ||
-    getNFApiEndpoint('/api/vision');
+  return getNFApiEndpoint('/api/vision');
 }
 
 function getCameraButton() {
@@ -3806,18 +3844,13 @@ function getGoogleVisionTextFromFileResponse(data) {
 
 async function callGoogleVisionImagesAnnotate(file) {
   const content = await fileToBase64Content(file);
-  const res = await fetch(getGoogleVisionEndpoint(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      kind: 'image',
-      content: content
-    })
-  });
-  const data = await readJsonResponse(res, 'Google Vision backend');
+  const result = await postJsonWithFallback('/api/vision', {
+    kind: 'image',
+    content: content
+  }, 'Google Vision backend');
+  const data = result.data;
   lastOCRVisionData = data;
   window.lastOCRVisionData = data;
-  if (!res.ok) throw new Error((data.error && data.error.message) || 'Error de Google Vision.');
   return getGoogleVisionTextFromImageResponse(data);
 }
 
@@ -3840,20 +3873,15 @@ function isGoogleVisionFile(file) {
 async function callGoogleVisionFilesAnnotate(file) {
   const content = await fileToBase64Content(file);
   const mimeType = getVisionFileMimeType(file);
-  const res = await fetch(getGoogleVisionEndpoint(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      kind: 'file',
-      content: content,
-      mimeType: mimeType,
-      pages: [1, 2, 3, 4, 5]
-    })
-  });
-  const data = await readJsonResponse(res, 'Google Vision backend');
+  const result = await postJsonWithFallback('/api/vision', {
+    kind: 'file',
+    content: content,
+    mimeType: mimeType,
+    pages: [1, 2, 3, 4, 5]
+  }, 'Google Vision backend');
+  const data = result.data;
   lastOCRVisionData = data;
   window.lastOCRVisionData = data;
-  if (!res.ok) throw new Error((data.error && data.error.message) || 'Error de Google Vision.');
   return getGoogleVisionTextFromFileResponse(data);
 }
 
@@ -4951,16 +4979,8 @@ async function extractCardStatementRowsWithAI(rawText, file, onProgress) {
     visionLines
   };
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const data = await readJsonResponse(res, 'Extractor IA');
-  if (!res.ok) {
-    throw new Error((data && (data.error || data.message)) || 'El extractor IA no pudo leer el resumen.');
-  }
-  return normalizeAIStatementRows(data, rawText);
+  const result = await postJsonWithFallback('/api/extract-statement', payload, 'Extractor IA');
+  return normalizeAIStatementRows(result.data, rawText);
 }
 
 function parseCardStatementRows(text) {
