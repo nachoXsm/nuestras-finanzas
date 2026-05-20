@@ -3911,6 +3911,14 @@ async function extractTextFromSpreadsheet(file) {
 }
 
 
+function isVisionOCRFile(file) {
+  const name = (file && file.name || '').toLowerCase();
+  const mime = getVisionFileMimeType(file);
+  return /^image\//i.test(mime) ||
+    mime === 'application/pdf' ||
+    /\.(pdf|png|jpe?g|webp|gif|tiff?|heic)$/i.test(name);
+}
+
 async function extractTextFromOCRFile(file, onProgress) {
   if (isPlainTextOCRFile(file)) {
     if (onProgress) onProgress(45, 'Leyendo archivo de texto…', '📄');
@@ -3922,7 +3930,13 @@ async function extractTextFromOCRFile(file, onProgress) {
     return await extractTextFromSpreadsheet(file);
   }
 
-  throw new Error('Este archivo requiere lectura inteligente. Para resúmenes de tarjeta se usa Gemini directo; probá subir el PDF o imagen original desde el botón de cámara.');
+  if (isVisionOCRFile(file)) {
+    if (onProgress) onProgress(35, 'Leyendo resumen con Google Vision…', '💳');
+    if (isGoogleVisionFile(file)) return await callGoogleVisionFilesAnnotate(file);
+    return await callGoogleVisionImagesAnnotate(file);
+  }
+
+  throw new Error('Formato no soportado. Subí una imagen, PDF, GIF, TIFF, Excel, CSV o texto.');
 }
 
 function parseOCRMoney(raw) {
@@ -4885,6 +4899,20 @@ function findVerifiedStatementInstallment(row, text) {
 
 function verifyStatementInstallments(rows, text) {
   return (rows || []).map(function(row) {
+    const currentCuotas = Number(row && row.cuotas || 1);
+    const currentCuotaActual = Number(row && row.cuota_actual || 1);
+    const strictSource = row && ['visual-lines', 'vision-row', 'text-segments'].includes(row._statementSource);
+
+    // Si la cuota ya salio de la misma fila visual, no se pisa con heuristicas
+    // globales. Esto evita copiar la cuota de la fila de arriba o de abajo.
+    if (currentCuotas > 1 && strictSource) {
+      return {
+        ...row,
+        cuotas: currentCuotas,
+        cuota_actual: currentCuotaActual || 1
+      };
+    }
+
     const verified = findVerifiedStatementInstallment(row, text);
     if (!verified) {
       return { ...row, cuotas: 1, cuota_actual: 1 };
@@ -5300,27 +5328,11 @@ async function processOCR(input) {
     lastOCRVisionData = null;
     window.lastOCRVisionData = null;
 
-    let text = '';
-    let isStatement = false;
-    let aiStatementItems = [];
-
-    if (isGeminiStatementFile(file)) {
-      setProgress(35, 'Enviando resumen a Gemini…', '💳');
-      aiStatementItems = await extractCardStatementRowsWithAI('', file, setProgress);
-      isStatement = true;
-    } else {
-      text = await extractTextFromOCRFile(file, setProgress);
-      if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
-      setProgress(60, 'Archivo leído, detectando consumos…', '✅');
-      isStatement = looksLikeCardStatement(text);
-      if (isStatement) {
-        try {
-          aiStatementItems = await extractCardStatementRowsWithAI(text, file, setProgress);
-        } catch (aiError) {
-          console.warn('AI statement extractor fallback:', aiError);
-        }
-      }
-    }
+    const aiStatementItems = [];
+    const text = await extractTextFromOCRFile(file, setProgress);
+    if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
+    setProgress(60, 'Resumen leído, reconstruyendo filas…', '✅');
+    const isStatement = looksLikeCardStatement(text);
     const currentVisionData = lastOCRVisionData || window.lastOCRVisionData;
     const visualLineStatementItems = parseCardStatementRowsByVisualLines(text, currentVisionData);
     const visionStatementItems = parseCardStatementRowsFromVision(currentVisionData);
@@ -5341,12 +5353,10 @@ async function processOCR(input) {
         markStatementSource(textStatementItems, 'text-parser'),
         markStatementSource(installmentHints, 'hints')
       );
-    let statementItems;
-    if (aiStatementItems.length) {
-      statementItems = reconcileAIStatementInstallments(aiStatementItems, text, installmentCandidates, currentVisionData);
-    } else {
-      statementItems = verifyStatementInstallments(enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates), text);
-    }
+    const statementItems = verifyStatementInstallments(
+      enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
+      text
+    );
     window.lastStatementImportDebug = {
       isStatement,
       aiStatementItems,
