@@ -4498,17 +4498,34 @@ function parseAIDateParts(value) {
 }
 
 function parseAIInstallments(value) {
-  if (value == null || value === '') return { cuota_actual: 1, cuotas: 1 };
-  if (typeof value === 'object') {
-    const cuotaActual = Math.max(1, parseInt(value.cuota_actual || value.actual || value.current || 1, 10) || 1);
-    const cuotas = Math.max(cuotaActual, parseInt(value.cuotas || value.total || 1, 10) || cuotaActual);
-    return { cuota_actual: cuotaActual, cuotas };
+  if (value == null || value === '' || value === 'null') {
+    return { cuota_actual: 1, cuotas: 1, _hasInstallments: false };
   }
-  const m = String(value).match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
-  if (!m) return { cuota_actual: 1, cuotas: 1 };
-  const cuotaActual = Math.max(1, parseInt(m[1], 10) || 1);
-  const cuotas = Math.max(cuotaActual, parseInt(m[2], 10) || cuotaActual);
-  return { cuota_actual: cuotaActual, cuotas };
+
+  if (typeof value === 'object') {
+    const cuotaActual = Math.max(1, parseInt(
+      value.cuota_actual || value.actual || value.current || 1, 10
+    ) || 1);
+    const cuotas = Math.max(cuotaActual, parseInt(
+      value.cuotas || value.cuotas_total || value.total || 1, 10
+    ) || cuotaActual);
+    return { cuota_actual: cuotaActual, cuotas, _hasInstallments: cuotas > 1 };
+  }
+
+  const s = String(value).trim();
+  const m = s.match(/(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})/i);
+  if (m) {
+    const cuotaActual = Math.max(1, parseInt(m[1], 10) || 1);
+    const cuotas = Math.max(cuotaActual, parseInt(m[2], 10) || cuotaActual);
+    return { cuota_actual: cuotaActual, cuotas, _hasInstallments: cuotas > 1 };
+  }
+
+  const single = parseInt(s, 10);
+  if (!isNaN(single) && single > 1) {
+    return { cuota_actual: 1, cuotas: single, _hasInstallments: true };
+  }
+
+  return { cuota_actual: 1, cuotas: 1, _hasInstallments: false };
 }
 
 function normalizeAIStatementRows(payload, rawText) {
@@ -4524,7 +4541,13 @@ function normalizeAIStatementRows(payload, rawText) {
       ? item.monto
       : parseOCRMoney(item.monto || item.amount || item.importe || '');
     const dateInfo = dueDate || parseAIDateParts(item.fecha || item.date || item.vencimiento || '');
-    const cuotasInfo = parseAIInstallments(item.cuotas || item.installments || item.cuota);
+    const rawCuotas = item.cuotas || item.installments || item.cuota || item.cuota_actual_total || null;
+    const cuotasInfo = parseAIInstallments(rawCuotas);
+
+    if (item.cuota_actual != null && cuotasInfo.cuotas > 1) {
+      cuotasInfo.cuota_actual = Math.max(1, parseInt(item.cuota_actual, 10) || 1);
+    }
+
     const monedaRaw = String(item.moneda || item.currency || '').toUpperCase();
     const moneda = monedaRaw.includes('USD') || monedaRaw.includes('DOL') || monedaRaw.includes('US$') ? 'USD' : 'ARS';
     if (!desc || !amount || !dateInfo) return null;
@@ -4535,7 +4558,8 @@ function normalizeAIStatementRows(payload, rawText) {
       moneda,
       cat: item.categoria || item.category || guessOCRCategory(desc),
       cuotas: cuotasInfo.cuotas,
-      cuota_actual: cuotasInfo.cuota_actual
+      cuota_actual: cuotasInfo.cuota_actual,
+      _aiHadInstallments: cuotasInfo._hasInstallments
     };
   }).filter(Boolean);
 }
@@ -4805,7 +4829,15 @@ function reconcileAIStatementInstallments(rows, text, candidateRows, visionData)
   });
 
   return (rows || []).map(function(row) {
+    if (row._aiHadInstallments && Number(row.cuotas || 1) > 1) {
+      const clean = { ...row };
+      delete clean._aiHadInstallments;
+      return clean;
+    }
+
     const base = { ...row, cuotas: 1, cuota_actual: 1 };
+    delete base._aiHadInstallments;
+
     const sourcePriority = {
       'description-blocks': 50,
       'vision-row': 40,
@@ -4822,11 +4854,11 @@ function reconcileAIStatementInstallments(rows, text, candidateRows, visionData)
         const priority = sourcePriority[candidate._statementSource] || 0;
         return { candidate, sameCurrency, sameAmount, overlap, priority };
       })
-      .filter(match => match.sameCurrency && match.sameAmount && match.overlap >= 0.25)
+      .filter(match => match.sameCurrency && match.sameAmount && match.overlap >= 0.20)
       .sort((a, b) => (b.priority - a.priority) || (b.overlap - a.overlap));
 
     const best = sameRowCandidates[0];
-    if (best) {
+    if (best && Number(best.candidate.cuotas || 1) > 1) {
       return {
         ...base,
         cuotas: Number(best.candidate.cuotas || 1),
@@ -5179,9 +5211,12 @@ async function processOCR(input) {
         markStatementSource(textStatementItems, 'text-parser'),
         markStatementSource(installmentHints, 'hints')
       );
-    const statementItems = aiStatementItems.length
-      ? reconcileAIStatementInstallments(aiStatementItems, text, installmentCandidates, lastOCRVisionData || window.lastOCRVisionData)
-      : verifyStatementInstallments(enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates), text);
+    let statementItems;
+    if (aiStatementItems.length) {
+      statementItems = reconcileAIStatementInstallments(aiStatementItems, text, installmentCandidates, lastOCRVisionData || window.lastOCRVisionData);
+    } else {
+      statementItems = verifyStatementInstallments(enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates), text);
+    }
     if ((isStatement && statementItems.length) || statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
