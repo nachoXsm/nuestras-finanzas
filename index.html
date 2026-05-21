@@ -4214,12 +4214,18 @@ function parseCardStatementRowsFromVision(data) {
     if (/saldo|total|pago minimo|su pago|limites|tasas|cierre|vencimiento|actual|anterior/i.test(sourceLine)) return;
 
     const moneyWords = blockWords
-      .filter(w => w.x > dateWord.x + dateWord.w + 40 && looksLikeStatementMoneyToken(w.text))
-      .sort((a, b) => a.x - b.x);
+      .map(function(w) {
+        return { word: w, amountToken: normalizeStatementAmountToken(w.text) };
+      })
+      .filter(function(item) {
+        return item.word.x > dateWord.x + dateWord.w + 40 && item.amountToken;
+      })
+      .sort((a, b) => a.word.x - b.word.x);
     if (!moneyWords.length) return;
 
-    const amountWord = moneyWords[moneyWords.length - 1];
-    const monto = parseOCRMoney(amountWord.text);
+    const amountItem = moneyWords[moneyWords.length - 1];
+    const amountWord = amountItem.word;
+    const monto = parseOCRMoney(amountItem.amountToken);
     if (!monto) return;
 
     const couponWords = blockWords.filter(function(w) {
@@ -4238,7 +4244,7 @@ function parseCardStatementRowsFromVision(data) {
       if (w.x <= dateWord.x + dateWord.w) return false;
       if (w.x >= descLimitX - 4) return false;
       if (/^\d{5,8}$/.test(token)) return false;
-      if (looksLikeStatementMoneyToken(token)) return false;
+      if (normalizeStatementAmountToken(token)) return false;
       return true;
     }).sort((a, b) => (a.cy - b.cy) || (a.x - b.x));
 
@@ -4726,12 +4732,7 @@ function parseCardStatementRowsByColumns(text) {
   }
 
   const columnRows = applyStatementDueDate(rows, text);
-  const chunkRows = parseCardStatementRowsByDateChunks(text);
-  const mergedRows = mergeStatementRowsByIdentity(columnRows, inlineRows, chunkRows);
-  const finalRows = mergedRows.length >= Math.max(columnRows.length, inlineRows.length, chunkRows.length)
-    ? mergedRows
-    : (columnRows.length >= inlineRows.length ? columnRows : applyStatementDueDate(inlineRows, text));
-  return finalRows;
+  return columnRows.length >= inlineRows.length ? columnRows : applyStatementDueDate(inlineRows, text);
 }
 
 function normalizeStatementScanText(text) {
@@ -5572,7 +5573,8 @@ async function processOCR(input) {
     const dateChunkStatementItems = parseCardStatementRowsByDateChunks(text);
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
-    const deterministicItems = columnStatementItems.length >= 3 ? columnStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems));
+    const deterministicItems = mergeStatementRowsByIdentity(columnStatementItems, visionStatementItems, visualLineStatementItems, textStatementItems);
+    const baseStatementItems = deterministicItems.length ? deterministicItems : (columnStatementItems.length >= 3 ? columnStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems)));
     const markStatementSource = function(list, source) {
       return (list || []).map(row => ({ ...row, _statementSource: source }));
     };
@@ -5586,8 +5588,8 @@ async function processOCR(input) {
         markStatementSource(installmentHints, 'hints')
       );
     const statementItems = verifyStatementInstallments(
-      columnStatementItems.length >= 3
-        ? columnStatementItems
+      baseStatementItems.length
+        ? baseStatementItems
         : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
       text
     );
