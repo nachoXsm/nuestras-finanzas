@@ -4384,11 +4384,13 @@ function parseCardStatementRowsFromVision(data) {
 
 function parseStatementDueDate(text) {
   const raw = String(text || '').replace(/\r/g, '\n');
-  const patterns = [
+  const dateRx = /(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/g;
+
+  const directPatterns = [
     /vencimiento\s+actual\s*(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/i,
     /pr[oó]ximo\s+vencimiento\s*(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/i
   ];
-  for (const pattern of patterns) {
+  for (const pattern of directPatterns) {
     const match = raw.match(pattern);
     if (match) {
       const parsed = parseStatementDate(match[1]);
@@ -4396,15 +4398,45 @@ function parseStatementDueDate(text) {
     }
   }
 
-  const compact = raw.replace(/\n+/g, ' ').replace(/\s+/g, ' ');
-  for (const label of [/vencimiento\s+actual/i, /pr[oó]ximo\s+vencimiento/i]) {
-    const idx = compact.search(label);
-    if (idx >= 0) {
-      const after = compact.slice(idx);
-      const date = after.match(/(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/);
-      if (date) return parseStatementDate(date[1]);
+  const lines = raw.split('\n').map(function(line) {
+    return line.replace(/\s+/g, ' ').trim();
+  }).filter(Boolean);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!/vencimiento\s+actual/i.test(line)) continue;
+
+    const sameLineDates = line.match(dateRx) || [];
+    if (sameLineDates.length) {
+      const parsedSame = parseStatementDate(sameLineDates[sameLineDates.length - 1]);
+      if (parsedSame) return parsedSame;
+    }
+
+    const windowText = lines.slice(i, i + 5).join(' ');
+    const dates = windowText.match(dateRx) || [];
+    if (/cierre\s+actual/i.test(windowText) && dates.length >= 2) {
+      const parsedColumn = parseStatementDate(dates[1]);
+      if (parsedColumn) return parsedColumn;
+    }
+    if (dates.length) {
+      const parsedNext = parseStatementDate(dates[0]);
+      if (parsedNext) return parsedNext;
     }
   }
+
+  const compact = raw.replace(/\n+/g, ' ').replace(/\s+/g, ' ');
+  const headerMatch = compact.match(/cierre\s+actual\s+vencimiento\s+actual[\s\S]{0,220}?(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/i);
+  if (headerMatch) {
+    const parsedHeader = parseStatementDate(headerMatch[2]);
+    if (parsedHeader) return parsedHeader;
+  }
+
+  const nextMatch = compact.match(/pr[oó]ximo\s+cierre\s+pr[oó]ximo\s+vencimiento[\s\S]{0,220}?(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/i);
+  if (nextMatch) {
+    const parsedNextHeader = parseStatementDate(nextMatch[2]);
+    if (parsedNextHeader) return parsedNextHeader;
+  }
+
   return null;
 }
 
