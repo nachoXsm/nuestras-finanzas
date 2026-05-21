@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -4080,7 +4080,7 @@ function extractVisionLines(data) {
       const medianH = words.length
         ? words.map(w => w.h).sort((a, b) => a - b)[Math.floor(words.length / 2)] || 12
         : 12;
-      const tolerance = Math.max(6, medianH * 0.55);
+      const tolerance = Math.max(10, medianH * 1.35);
       const groups = [];
       words.forEach(function(word) {
         let group = groups.find(g => Math.abs(g.cy - word.cy) <= tolerance);
@@ -4143,80 +4143,112 @@ function parseCardStatementRowsFromVision(data) {
   const words = extractVisionWords(data);
   if (!words.length) return [];
 
-  const medianH = words.map(w => w.h).sort((a, b) => a - b)[Math.floor(words.length / 2)] || 12;
+  const heights = words.map(w => w.h).sort((a, b) => a - b);
+  const medianH = heights[Math.floor(heights.length / 2)] || 12;
   const rowTolerance = Math.max(8, medianH * 1.25);
-  const dateWords = words.filter(w => looksLikeStatementDateToken(w.text));
+  const blockPadding = Math.max(3, medianH * 0.35);
+
+  const dateWords = words
+    .filter(w => looksLikeStatementDateToken(w.text))
+    .sort((a, b) => (a.page - b.page) || (a.cy - b.cy) || (a.x - b.x));
   if (!dateWords.length) return [];
 
+  function blockText(blockWords) {
+    const sorted = blockWords.slice().sort((a, b) => (a.cy - b.cy) || (a.x - b.x));
+    const lines = [];
+    sorted.forEach(function(word) {
+      let line = lines.find(l => Math.abs(l.cy - word.cy) <= rowTolerance);
+      if (!line) {
+        line = { cy: word.cy, words: [] };
+        lines.push(line);
+      }
+      line.words.push(word);
+      line.cy = line.words.reduce((sum, w) => sum + w.cy, 0) / line.words.length;
+    });
+    return lines
+      .sort((a, b) => a.cy - b.cy)
+      .map(function(line) {
+        return line.words.sort((a, b) => a.x - b.x).map(w => w.text).join(' ');
+      })
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   const rows = [];
-  dateWords.forEach(function(dateWord) {
+  dateWords.forEach(function(dateWord, index) {
     const dateInfo = parseStatementDate(dateWord.text);
     if (!dateInfo) return;
 
-    const rowWords = words
-      .filter(w => w.page === dateWord.page && Math.abs(w.cy - dateWord.cy) <= rowTolerance)
-      .sort((a, b) => a.x - b.x);
+    const nextDate = dateWords.slice(index + 1).find(w => w.page === dateWord.page && w.cy > dateWord.cy + rowTolerance);
+    const top = dateWord.cy - rowTolerance;
+    const bottom = nextDate ? nextDate.cy - blockPadding : dateWord.cy + Math.max(80, medianH * 6);
 
-    if (rowWords.length < 4) return;
+    const blockWords = words
+      .filter(w => w.page === dateWord.page && w.cy >= top && w.cy < bottom)
+      .sort((a, b) => (a.cy - b.cy) || (a.x - b.x));
 
-    const moneyWords = rowWords
+    if (blockWords.length < 4) return;
+
+    const sourceLine = blockText(blockWords);
+    if (/saldo|total|pago minimo|su pago|limites|tasas|cierre|vencimiento|actual|anterior/i.test(sourceLine)) return;
+
+    const moneyWords = blockWords
       .filter(w => w.x > dateWord.x + dateWord.w + 40 && looksLikeStatementMoneyToken(w.text))
       .sort((a, b) => a.x - b.x);
-
     if (!moneyWords.length) return;
 
     const amountWord = moneyWords[moneyWords.length - 1];
     const monto = parseOCRMoney(amountWord.text);
     if (!monto) return;
 
-    const couponWord = rowWords.find(function(w) {
+    const couponWords = blockWords.filter(function(w) {
       return w.x > dateWord.x + dateWord.w + 40
         && w.x < amountWord.x
         && /^\d{5,8}$/.test(String(w.text || '').trim());
-    });
-
+    }).sort((a, b) => b.x - a.x);
+    const couponWord = couponWords[0];
     const descLimitX = couponWord ? couponWord.x : amountWord.x;
-    const descWords = rowWords.filter(function(w) {
-      if (w === dateWord) return false;
-      if (w.x <= dateWord.x + dateWord.w) return false;
-      if (w.x >= descLimitX - 4) return false;
+
+    const descWords = blockWords.filter(function(w) {
       const token = String(w.text || '').trim();
       if (!token) return false;
+      if (w === dateWord) return false;
+      if (looksLikeStatementDateToken(token)) return false;
+      if (w.x <= dateWord.x + dateWord.w) return false;
+      if (w.x >= descLimitX - 4) return false;
       if (/^\d{5,8}$/.test(token)) return false;
       if (looksLikeStatementMoneyToken(token)) return false;
       return true;
-    });
+    }).sort((a, b) => (a.cy - b.cy) || (a.x - b.x));
 
     let descPart = descWords.map(w => w.text).join(' ')
       .replace(/\s{2,}/g, ' ')
       .trim();
     if (!descPart || /saldo|total|pago|limites|tasas|cierre|vencimiento|actual|anterior/i.test(descPart)) return;
 
-    const cuotasInfo = parseInstallmentInfo(descPart);
+    const cuotasInfo = parseInstallmentInfo(descPart, { pick: 'first' });
     const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
     rows.push({
       ...dateInfo,
       descripcion,
       monto,
       moneda: /(?:US\$|U\$S|USD)/i.test(amountWord.text) ? 'USD' : 'ARS',
-      cat: guessOCRCategory(descripcion),
+      cat: 'Tarjeta',
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
-      _sourceY: dateWord.cy,
-      _sourceX: dateWord.x
+      _statementSource: 'vision-row',
+      _sourceLine: sourceLine
     });
   });
 
   const deduped = [];
   const seen = new Set();
   rows.forEach(function(row) {
-    const key = [row.fecha, row.descripcion.toLowerCase(), row.monto, row.moneda, row.cuota_actual, row.cuotas].join('|');
+    const key = [row.fecha, normalizeStatementMatchText(row.descripcion), row.monto, row.moneda].join('|');
     if (seen.has(key)) return;
     seen.add(key);
-    const clean = { ...row };
-    delete clean._sourceY;
-    delete clean._sourceX;
-    deduped.push(clean);
+    deduped.push(row);
   });
 
   return applyStatementDueDate(deduped, extractVisionLines(data).join('\n'));
@@ -4335,17 +4367,13 @@ function parseStatementRowLine(line) {
   const monto = parseOCRMoney(amountRaw);
   if (!monto || monto < 1) return null;
 
-  // Extraer cuotas del texto completo antes del monto (incluye C.XX/YY antes del cupón numérico)
-  const fullDesc = rest.slice(0, amountMatch.index).replace(/\s{2,}/g, ' ').trim();
-  const cuotasInfo = parseInstallmentInfo(fullDesc, { pick: 'first' });
-
-  let descPart = fullDesc
-    .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
+  let descPart = rest.slice(0, amountMatch.index)
     .replace(/\s+\d{5,8}\s*$/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
   if (!descPart || /^\d{5,8}$/.test(descPart)) return null;
 
+  const cuotasInfo = parseInstallmentInfo(descPart, { pick: 'first' });
   const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
   return {
     ...dateInfo,
@@ -5344,7 +5372,7 @@ async function processOCR(input) {
     const columnStatementItems = parseCardStatementRowsByColumns(text);
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
-    const deterministicItems = visualLineStatementItems.length ? visualLineStatementItems : (visionStatementItems.length ? visionStatementItems : textStatementItems);
+    const deterministicItems = visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems);
     const markStatementSource = function(list, source) {
       return (list || []).map(row => ({ ...row, _statementSource: source }));
     };
@@ -5357,10 +5385,12 @@ async function processOCR(input) {
         markStatementSource(textStatementItems, 'text-parser'),
         markStatementSource(installmentHints, 'hints')
       );
-    const statementItems = verifyStatementInstallments(
-      enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
-      text
-    );
+    const statementItems = visionStatementItems.length
+      ? verifyStatementInstallments(visionStatementItems, text)
+      : verifyStatementInstallments(
+          enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
+          text
+        );
     window.lastStatementImportDebug = {
       isStatement,
       aiStatementItems,
