@@ -4545,6 +4545,7 @@ function parseCardStatementRowsByColumns(text) {
   const descriptions = [];
   const amounts = [];
   const looseInstallments = [];
+  const plainNumberCandidates = [];
 
   lines.forEach(function(line) {
     const cleanLine = String(line || '').trim();
@@ -4555,6 +4556,13 @@ function parseCardStatementRowsByColumns(text) {
     if (dateOnly) {
       dates.push(dateOnly);
       return;
+    }
+
+    if (/^-?\d{4,8}$/.test(cleanLine)) {
+      // Puede ser NRO. CUPON o un importe sin separadores. Se guarda aparte y
+      // solo se usa si falta un monto al final de la tabla.
+      plainNumberCandidates.push(cleanLine);
+      if (isStatementCouponLine(line)) return;
     }
 
     if (isStatementCouponLine(line) || /^-?\d{5,8}$/.test(cleanLine)) return;
@@ -4593,6 +4601,22 @@ function parseCardStatementRowsByColumns(text) {
     const q = looseInstallments[looseInstallmentIndex++];
     return q ? (desc + ' ' + q) : desc;
   });
+
+  const expectedCount = Math.min(dates.length, descriptionsWithInstallments.length);
+  if (amounts.length < expectedCount && plainNumberCandidates.length) {
+    const needed = expectedCount - amounts.length;
+    const extraAmounts = plainNumberCandidates
+      .filter(function(token) {
+        const clean = String(token || '').replace(/\D/g, '');
+        return clean.length >= 4 && clean.length <= 5 && !/^0/.test(clean);
+      })
+      .slice(-needed)
+      .map(function(token) {
+        return { monto: parseOCRMoney(token), moneda: 'ARS' };
+      })
+      .filter(function(item) { return item.monto > 0; });
+    amounts.push.apply(amounts, extraAmounts);
+  }
 
   const count = Math.min(dates.length, descriptionsWithInstallments.length, amounts.length);
   if (count < 2) return [];
