@@ -1484,26 +1484,46 @@ function applyRecordCurrencies(table, rows){
   (rows||[]).forEach(function(r){ if(r && !r.moneda && m[r.id]) r.moneda = m[r.id]; });
   return rows;
 }
-function isUnknownColumnError(e){ var msg=String((e&&e.message)||e||''); return msg.includes('moneda') && (msg.includes('column') || msg.includes('schema') || msg.includes('PGRST')); }
+function isUnknownColumnError(e){
+  var msg=String((e&&e.message)||e||'');
+  return (msg.includes('column') || msg.includes('schema') || msg.includes('PGRST204') || msg.includes('PGRST'))
+    && /moneda|tarjeta_id|cuotas|cuota_actual|gasto_origen_id|division/i.test(msg);
+}
 async function dbPostMoney(table, body){
   try { return await dbPost(table, body); }
   catch(e) {
+    window.lastMoneyPostError = { table: table, body: body, error: String((e&&e.message)||e||'') };
     if(!isUnknownColumnError(e)) throw e;
+
     var moneda = body.moneda;
-    var clean = Object.assign({}, body); delete clean.moneda;
+    var clean = Object.assign({}, body);
+    ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
     var res = await dbPost(table, clean);
-    if(res && res[0]) { res[0].moneda = moneda; rememberRecordCurrency(table, res[0].id, moneda); }
+    if(res && res[0]) {
+      res[0].moneda = moneda;
+      res[0].cuotas = body.cuotas || 1;
+      res[0].cuota_actual = body.cuota_actual || 1;
+      rememberRecordCurrency(table, res[0].id, moneda);
+    }
     return res;
   }
 }
 async function dbPatchMoney(table, id, body){
   try { return await dbPatch(table, id, body); }
   catch(e) {
+    window.lastMoneyPatchError = { table: table, id: id, body: body, error: String((e&&e.message)||e||'') };
     if(!isUnknownColumnError(e)) throw e;
+
     var moneda = body.moneda;
-    var clean = Object.assign({}, body); delete clean.moneda;
+    var clean = Object.assign({}, body);
+    ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
     var res = await dbPatch(table, id, clean);
-    if(res && res[0]) { res[0].moneda = moneda; rememberRecordCurrency(table, res[0].id, moneda); }
+    if(res && res[0]) {
+      res[0].moneda = moneda;
+      res[0].cuotas = body.cuotas || 1;
+      res[0].cuota_actual = body.cuota_actual || 1;
+      rememberRecordCurrency(table, res[0].id, moneda);
+    }
     return res;
   }
 }
@@ -4459,83 +4479,130 @@ function parseCardStatementRowsByColumns(text) {
     .map(l => l.replace(/[·•|]+/g, ' ').replace(/\s+/g, ' ').trim())
     .filter(Boolean);
 
+  const rows = [];
+  const dateRx = /^(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\b/i;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2}|-?\d+\.\d{2})/gi;
+  const installmentOnlyRx = /^C\.?\s*\d{1,2}\s*\/\s*\d{1,2}$/i;
+
+  function cleanDesc(value) {
+    return cleanupStatementDescription(value)
+      .replace(/\b\d{5,8}\b/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  function makeRow(dateInfo, descRaw, amountObj, sourceLine) {
+    const cuotasInfo = parseInstallmentInfo(descRaw, { pick: 'first' });
+    const descripcion = (cuotasInfo.descripcion || descRaw || 'Consumo tarjeta').slice(0, 80);
+    if (!dateInfo || !descripcion || !amountObj || !amountObj.monto) return null;
+    return {
+      ...dateInfo,
+      descripcion,
+      monto: amountObj.monto,
+      moneda: amountObj.moneda || 'ARS',
+      cat: guessOCRCategory(descripcion),
+      cuotas: cuotasInfo.cuotas,
+      cuota_actual: cuotasInfo.cuotaActual,
+      _statementSource: 'columns',
+      _sourceLine: sourceLine || [dateInfo.fecha, descRaw, amountObj.monto].join(' ')
+    };
+  }
+
+  lines.forEach(function(line) {
+    if (isStatementHeaderLine(line)) return;
+    if (/saldo|total|su pago|l[ií]mite|cierre|vencimiento|actual|anterior|m[ií]nimo|cuotas a vencer|^sobre\b|p[aá]gina/i.test(line)) return;
+
+    const dateMatch = line.match(dateRx);
+    if (!dateMatch) return;
+    const dateInfo = parseStatementDate(dateMatch[1]);
+    if (!dateInfo) return;
+
+    const rest = line.slice(dateMatch[0].length).trim();
+    const amountMatches = [...rest.matchAll(amountRx)].filter(m => /,\d{2}\b|\d{1,3}(?:\.\d{3})+\b/.test(m[0]));
+    if (!amountMatches.length) return;
+
+    const amountMatch = amountMatches[amountMatches.length - 1];
+    const amountObj = {
+      monto: parseOCRMoney(amountMatch[0]),
+      moneda: /(?:US\$|U\$S|USD)/i.test(amountMatch[0] || rest) ? 'USD' : 'ARS'
+    };
+    if (!amountObj.monto) return;
+
+    let descPart = rest.slice(0, amountMatch.index).trim();
+    descPart = cleanDesc(descPart);
+    if (!descPart) return;
+
+    const row = makeRow(dateInfo, descPart, amountObj, line);
+    if (row) {
+      row._statementSource = 'columns-inline';
+      rows.push(row);
+    }
+  });
+
+  if (rows.length >= 3) return applyStatementDueDate(rows, text);
+
   const dates = [];
   const descriptions = [];
   const amounts = [];
-  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2}|-?\d+\.\d{2})/gi;
-  let lastDescIndex = -1;
-  let columnMode = '';
+  const looseInstallments = [];
 
   lines.forEach(function(line) {
     const cleanLine = String(line || '').trim();
-    if (/^fecha$/i.test(cleanLine)) { columnMode = 'date'; return; }
-    if (/^descripci[oó]n$|^descripcion$/i.test(cleanLine)) { columnMode = 'description'; return; }
-    if (/^nro\.?\s*cup[oó]n$|^cup[oó]n$|^cupon$/i.test(cleanLine)) { columnMode = 'coupon'; return; }
-    if (/^pesos$|^d[oó]lares$|^dolares$/i.test(cleanLine)) { columnMode = 'amount'; return; }
     if (isStatementHeaderLine(line)) return;
+    if (/saldo|total|su pago|l[ií]mite|cierre|vencimiento|actual|anterior|m[ií]nimo|cuotas a vencer|^sobre\b|p[aá]gina/i.test(line)) return;
+
     const dateOnly = parseStatementDate(line);
     if (dateOnly) {
       dates.push(dateOnly);
       return;
     }
-    // Nunca aceptar enteros puros como importe en resúmenes: suelen ser NRO. CUPÓN.
-    // Los importes válidos deben traer separador decimal o miles: 18.399,00 / 18.399 / 18399,00.
-    if (/^-?\d{5,8}$/.test(cleanLine)) return;
-    if (isStatementCouponLine(line)) return;
+
+    if (isStatementCouponLine(line) || /^-?\d{5,8}$/.test(cleanLine)) return;
+
     if (isStatementAmountLine(line)) {
       const value = parseOCRMoney(line);
       if (value > 0) {
-        amounts.push({
-          monto: value,
-          moneda: /(?:US\$|U\$S|USD)/i.test(line) ? 'USD' : 'ARS'
-        });
+        amounts.push({ monto: value, moneda: /(?:US\$|U\$S|USD)/i.test(line) ? 'USD' : 'ARS' });
       }
       return;
     }
-    const looseAmounts = [...line.matchAll(amountRx)].filter(m => /,\d{2}\b|\d{1,3}(?:\.\d{3})+\b/.test(m[0]));
-    if (looseAmounts.length && (/\bsobre\b|p[aá]gina|^\$|^\d/i.test(line))) {
-      const rawAmount = looseAmounts[looseAmounts.length - 1][0];
-      const value = parseOCRMoney(rawAmount);
-      if (value > 0) {
-        amounts.push({
-          monto: value,
-          moneda: /(?:US\$|U\$S|USD)/i.test(rawAmount) ? 'USD' : 'ARS'
-        });
-      }
+
+    if (/^(?:C\.?\s*\d{1,2}\s*\/\s*\d{1,2}\s*)+$/i.test(line)) {
+      const found = [...line.matchAll(/C\.?\s*\d{1,2}\s*\/\s*\d{1,2}/gi)].map(m => m[0]);
+      found.forEach(function(q) { looseInstallments.push(q); });
       return;
     }
-    if (/^C\.?\s*\d{1,2}\s*\/\s*\d{1,2}$/i.test(line) && lastDescIndex >= 0) {
-      descriptions[lastDescIndex] = descriptions[lastDescIndex] + ' ' + line;
+
+    if (installmentOnlyRx.test(line)) {
+      looseInstallments.push(line);
       return;
     }
-    if (/[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/.test(line)
-      && !/saldo|total|su pago|l[ií]mite|cierre|vencimiento|actual|anterior|m[ií]nimo|cuotas a vencer|^sobre\b|p[aá]gina/i.test(line)) {
-      const cleaned = cleanupStatementDescription(line);
-      if (cleaned) {
-        descriptions.push(cleaned);
-        lastDescIndex = descriptions.length - 1;
-      }
+
+    if (/[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/.test(line)) {
+      const cleaned = cleanDesc(line);
+      if (cleaned) descriptions.push(cleaned);
     }
   });
 
-  const count = Math.min(dates.length, descriptions.length, amounts.length);
+  // Cuando Vision devuelve la tabla por columnas, las cuotas suelen aparecer como
+  // una subcolumna dentro de "descripcion". Se emparejan por orden, nunca por
+  // busqueda difusa ni por monto, para evitar copiar cuotas de filas vecinas.
+  let looseInstallmentIndex = 0;
+  const descriptionsWithInstallments = descriptions.map(function(desc) {
+    if (parseInstallmentInfo(desc).cuotas > 1) return desc;
+    const q = looseInstallments[looseInstallmentIndex++];
+    return q ? (desc + ' ' + q) : desc;
+  });
+
+  const count = Math.min(dates.length, descriptionsWithInstallments.length, amounts.length);
   if (count < 2) return [];
 
-  const rows = [];
   for (let i = 0; i < count; i++) {
-    const cuotasInfo = parseInstallmentInfo(descriptions[i]);
-    const descripcion = (cuotasInfo.descripcion || descriptions[i] || 'Consumo tarjeta').slice(0, 80);
-    rows.push({
-      ...dates[i],
-      descripcion,
-      monto: amounts[i].monto,
-      moneda: amounts[i].moneda,
-      cat: guessOCRCategory(descripcion),
-      cuotas: cuotasInfo.cuotas,
-      cuota_actual: cuotasInfo.cuotaActual
-    });
+    const row = makeRow(dates[i], descriptionsWithInstallments[i], amounts[i], [dates[i].fecha, descriptionsWithInstallments[i], amounts[i].monto].join(' '));
+    if (row) rows.push(row);
   }
-  return rows;
+
+  return applyStatementDueDate(rows, text);
 }
 
 function normalizeStatementScanText(text) {
@@ -5375,7 +5442,7 @@ async function processOCR(input) {
     const columnStatementItems = parseCardStatementRowsByColumns(text);
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
-    const deterministicItems = visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems);
+    const deterministicItems = columnStatementItems.length >= 3 ? columnStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems));
     const markStatementSource = function(list, source) {
       return (list || []).map(row => ({ ...row, _statementSource: source }));
     };
@@ -5388,15 +5455,12 @@ async function processOCR(input) {
         markStatementSource(textStatementItems, 'text-parser'),
         markStatementSource(installmentHints, 'hints')
       );
-    const statementItems = visionStatementItems.length
-      ? verifyStatementInstallments(
-          applyColumnInstallmentsToVisionRows(visionStatementItems, columnStatementItems),
-          text
-        )
-      : verifyStatementInstallments(
-          enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
-          text
-        );
+    const statementItems = verifyStatementInstallments(
+      columnStatementItems.length >= 3
+        ? columnStatementItems
+        : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
+      text
+    );
     window.lastStatementImportDebug = {
       isStatement,
       aiStatementItems,
@@ -5414,7 +5478,7 @@ async function processOCR(input) {
       return {
         desc: row.descripcion,
         monto: row.monto,
-        cuotas: (row.cuotas || 1) + '/' + (row.cuota_actual || 1),
+        cuotas: (row.cuota_actual || 1) + '/' + (row.cuotas || 1),
         linea: row._sourceLine || ''
       };
     }));
