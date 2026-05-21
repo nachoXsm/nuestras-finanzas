@@ -3918,6 +3918,103 @@ async function callGoogleVisionFilesAnnotate(file) {
   return getGoogleVisionTextFromFileResponse(data);
 }
 
+function isPdfOCRFile(file) {
+  const name = (file && file.name || '').toLowerCase();
+  const mime = getVisionFileMimeType(file);
+  return mime === 'application/pdf' || /\.pdf$/i.test(name);
+}
+
+async function getPdfJsLib() {
+  if (window.pdfjsLib) return window.pdfjsLib;
+  const lib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
+  if (lib && lib.GlobalWorkerOptions) {
+    lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+  }
+  window.pdfjsLib = lib;
+  return lib;
+}
+
+function normalizeDigitalPdfText(text) {
+  return String(text || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function sortPdfTextItems(items) {
+  return (items || []).map(function(item) {
+    const t = item.transform || [];
+    return {
+      text: String(item.str || '').trim(),
+      x: Number(t[4] || 0),
+      y: Number(t[5] || 0)
+    };
+  }).filter(function(item) {
+    return item.text;
+  }).sort(function(a, b) {
+    if (Math.abs(b.y - a.y) > 2) return b.y - a.y;
+    return a.x - b.x;
+  });
+}
+
+function groupPdfTextItemsIntoLines(items) {
+  const sorted = sortPdfTextItems(items);
+  const lines = [];
+  sorted.forEach(function(item) {
+    let line = lines.find(function(row) { return Math.abs(row.y - item.y) <= 2; });
+    if (!line) {
+      line = { y: item.y, items: [] };
+      lines.push(line);
+    }
+    line.items.push(item);
+  });
+  return lines.map(function(line) {
+    return line.items.sort(function(a, b) { return a.x - b.x; })
+      .map(function(item) { return item.text; })
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }).filter(Boolean).join('\n');
+}
+
+async function extractTextFromDigitalPdf(file, onProgress) {
+  const pdfjsLib = await getPdfJsLib();
+  const buffer = await readOCRFileAsArrayBuffer(file);
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    if (onProgress) {
+      const pct = 18 + Math.round((pageNumber / Math.max(pdf.numPages, 1)) * 28);
+      onProgress(pct, 'Leyendo texto del PDF...', 'PDF');
+    }
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent({ normalizeWhitespace: true, disableCombineTextItems: false });
+    const pageText = groupPdfTextItemsIntoLines(content.items);
+    if (pageText) pages.push(pageText);
+  }
+  return normalizeDigitalPdfText(pages.join('\n'));
+}
+
+async function extractPdfTextWithVisionFallback(file, onProgress) {
+  try {
+    if (onProgress) onProgress(15, 'Leyendo PDF digital...', 'PDF');
+    const pdfText = await extractTextFromDigitalPdf(file, onProgress);
+    if (pdfText && pdfText.length > 80) {
+      lastOCRVisionData = null;
+      window.lastOCRVisionData = null;
+      window.lastOCRPdfTextUsed = true;
+      return pdfText;
+    }
+  } catch (err) {
+    console.warn('No se pudo leer texto digital del PDF; se usa Vision como respaldo.', err);
+  }
+
+  window.lastOCRPdfTextUsed = false;
+  if (onProgress) onProgress(35, 'Leyendo PDF escaneado con Google Vision...', 'Vision');
+  return await callGoogleVisionFilesAnnotate(file);
+}
+
 async function extractTextFromSpreadsheet(file) {
   if (typeof XLSX === 'undefined') {
     throw new Error('No está disponible el lector de Excel.');
@@ -3948,6 +4045,10 @@ async function extractTextFromOCRFile(file, onProgress) {
   if (isSpreadsheetOCRFile(file)) {
     if (onProgress) onProgress(45, 'Leyendo planilla…', '📊');
     return await extractTextFromSpreadsheet(file);
+  }
+
+  if (isPdfOCRFile(file)) {
+    return await extractPdfTextWithVisionFallback(file, onProgress);
   }
 
   if (isVisionOCRFile(file)) {
