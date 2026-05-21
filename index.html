@@ -4407,6 +4407,39 @@ function parseStatementDueDate(text) {
   return null;
 }
 
+function isCardStatementConsumptionRow(row) {
+  if (!row) return false;
+  const amount = Number(row.monto || 0);
+  if (!isFinite(amount) || amount <= 0) return false;
+
+  const desc = String(row.descripcion || '').trim();
+  if (!desc) return false;
+
+  const upper = desc.toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (/\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+MINIMO|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|TOTAL\s+CONSUMOS|VENCIMIENTO|CIERRE\s+ACTUAL|PROXIMO\s+CIERRE|LIMITES?|TASAS?|LEGALES?|AVISOS?)\b/.test(upper)) {
+    return false;
+  }
+
+  const merchantText = upper
+    .replace(/\b\d{1,2}\s*[-\/]\s*[A-Z]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
+    .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/g, ' ')
+    .replace(/\b(?:ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|SET|OCT|NOV|DIC)\b/g, ' ')
+    .replace(/(?:US\$|U\$S|USD|ARS|\$)/g, ' ')
+    .replace(/[-+]?\d[\d.,]*/g, ' ')
+    .replace(/[^A-ZÑ*./& -]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return /[A-ZÑ]{3,}/.test(merchantText);
+}
+
+function filterCardStatementConsumptionRows(rows) {
+  return (rows || []).filter(isCardStatementConsumptionRow);
+}
+
 function applyStatementDueDate(rows, text) {
   const due = parseStatementDueDate(text);
   if (!due || !rows || !rows.length) return rows || [];
@@ -5688,10 +5721,15 @@ async function processOCR(input) {
         markStatementSource(textStatementItems, 'text-parser'),
         markStatementSource(installmentHints, 'hints')
       );
-    const statementItems = verifyStatementInstallments(
-      baseStatementItems.length
-        ? baseStatementItems
-        : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
+    const statementItems = applyStatementDueDate(
+      filterCardStatementConsumptionRows(
+        verifyStatementInstallments(
+          baseStatementItems.length
+            ? baseStatementItems
+            : enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
+          text
+        )
+      ),
       text
     );
     window.lastStatementImportDebug = {
