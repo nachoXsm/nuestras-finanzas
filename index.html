@@ -3857,6 +3857,7 @@ async function fileToBase64Content(file) {
 }
 
 let lastOCRVisionData = null;
+let lastStatementDueDateForImport = null;
 
 function getGoogleVisionTextFromImageResponse(data) {
   const response = data && data.responses ? data.responses[0] : data;
@@ -4440,12 +4441,15 @@ function filterCardStatementConsumptionRows(rows) {
   return (rows || []).filter(isCardStatementConsumptionRow);
 }
 
-function applyStatementDueDate(rows, text) {
-  const due = parseStatementDueDate(text);
+function forceRowsStatementDate(rows, due) {
   if (!due || !rows || !rows.length) return rows || [];
   return rows.map(function(row) {
     return { ...row, dia: due.dia, mes: due.mes, anio: due.anio, fecha: due.fecha };
   });
+}
+
+function applyStatementDueDate(rows, text) {
+  return forceRowsStatementDate(rows, parseStatementDueDate(text));
 }
 
 function chooseBestStatementRows(candidates) {
@@ -5596,7 +5600,11 @@ function isDuplicateStatementExpense(item) {
 }
 
 async function importCardStatementExpenses(items, setProgress) {
-  const list = (items || []).filter(Boolean);
+  const dueForImport = lastStatementDueDateForImport || window.lastStatementDueDateForImport || null;
+  const list = forceRowsStatementDate(
+    filterCardStatementConsumptionRows(items || []),
+    dueForImport
+  ).filter(Boolean);
   if (!list.length) return { imported: 0, skipped: 0 };
 
   const quienEl = document.getElementById('g_quien');
@@ -5693,10 +5701,14 @@ async function processOCR(input) {
   try {
     lastOCRVisionData = null;
     window.lastOCRVisionData = null;
+    lastStatementDueDateForImport = null;
+    window.lastStatementDueDateForImport = null;
 
     const aiStatementItems = [];
     const text = await extractTextFromOCRFile(file, setProgress);
     if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
+    lastStatementDueDateForImport = parseStatementDueDate(text);
+    window.lastStatementDueDateForImport = lastStatementDueDateForImport;
     setProgress(60, 'Resumen leído, reconstruyendo filas…', '✅');
     const isStatement = looksLikeCardStatement(text);
     const currentVisionData = lastOCRVisionData || window.lastOCRVisionData;
