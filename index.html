@@ -4906,53 +4906,21 @@ function extractInstallmentFromVisionRow(row, data) {
 
 
 function findVerifiedStatementInstallment(row, text) {
-  const exactSegment = extractInstallmentFromAmountSegment(row, text);
-  if (exactSegment) return exactSegment;
-
-  const sameAmountHints = extractStatementInstallmentHints(text).filter(function(hint) {
-    return Number(hint.cuotas || 1) > 1
-      && Number(hint.monto || 0) > 0
-      && String(hint.moneda || 'ARS') === String(row.moneda || 'ARS')
-      && Math.abs(Number(hint.monto || 0) - Number(row.monto || 0)) < 0.01;
-  });
-  if (!sameAmountHints.length) return null;
-
-  const best = sameAmountHints
-    .map(hint => ({ hint, score: statementTextOverlap(row.descripcion, hint.descripcion) }))
-    .sort((a, b) => b.score - a.score)[0];
-  if (!best || best.score < 0.15) return null;
-  return {
-    cuotas: Number(best.hint.cuotas || 1),
-    cuota_actual: Number(best.hint.cuota_actual || 1),
-    overlap: best.score,
-    source: 'verified-text'
-  };
+  // No usar busqueda global por monto en el texto OCR: en resúmenes con columnas,
+  // el orden textual puede mezclar descripcion/cuotas/montos de distintas filas.
+  // Las cuotas solo se aceptan desde la misma fila visual o desde la fila de
+  // columnas con mismo monto + mismo comercio.
+  return null;
 }
 
 function verifyStatementInstallments(rows, text) {
   return (rows || []).map(function(row) {
     const currentCuotas = Number(row && row.cuotas || 1);
     const currentCuotaActual = Number(row && row.cuota_actual || 1);
-    const strictSource = row && ['visual-lines', 'vision-row', 'text-segments'].includes(row._statementSource);
-
-    // Si la cuota ya salio de la misma fila visual, no se pisa con heuristicas
-    // globales. Esto evita copiar la cuota de la fila de arriba o de abajo.
-    if (currentCuotas > 1 && strictSource) {
-      return {
-        ...row,
-        cuotas: currentCuotas,
-        cuota_actual: currentCuotaActual || 1
-      };
-    }
-
-    const verified = findVerifiedStatementInstallment(row, text);
-    if (!verified) {
-      return { ...row, cuotas: 1, cuota_actual: 1 };
-    }
     return {
       ...row,
-      cuotas: verified.cuotas,
-      cuota_actual: verified.cuota_actual
+      cuotas: currentCuotas > 1 ? currentCuotas : 1,
+      cuota_actual: currentCuotas > 1 ? (currentCuotaActual || 1) : 1
     };
   });
 }
@@ -5083,16 +5051,14 @@ function applyColumnInstallmentsToVisionRows(visionRows, columnRows) {
         return overlap >= 0.20 || contained;
       })
       .sort(function(a, b) {
-        const ai = Number(a.cuotas || 1) > 1 ? 1 : 0;
-        const bi = Number(b.cuotas || 1) > 1 ? 1 : 0;
-        return bi - ai;
+        const scoreA = (Number(a.cuotas || 1) > 1 ? 10 : 0) + statementTextOverlap(row.descripcion, a.descripcion);
+        const scoreB = (Number(b.cuotas || 1) > 1 ? 10 : 0) + statementTextOverlap(row.descripcion, b.descripcion);
+        return scoreB - scoreA;
       });
 
     const best = matches[0];
     if (!best) return row;
 
-    // La fila por columnas viene del mismo OCR, pero conserva mejor la descripcion
-    // completa cuando las cuotas aparecen dentro del texto del comercio.
     return {
       ...row,
       cuotas: Number(best.cuotas || 1),
