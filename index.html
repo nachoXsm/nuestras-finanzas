@@ -4473,6 +4473,104 @@ function cleanupStatementDescription(line) {
     .trim();
 }
 
+
+function normalizeStatementAmountToken(token) {
+  const raw = String(token || '').trim();
+  if (!raw) return null;
+  if (looksLikeStatementMoneyToken(raw)) return raw;
+  const digits = raw.replace(/\D/g, '');
+  // Importe entero sin separadores. Evitamos cupones largos y ceros de cabecera.
+  if (/^\d{4,5}$/.test(digits) && !/^0/.test(digits)) return digits;
+  return null;
+}
+
+function parseCardStatementRowsByDateChunks(text) {
+  const section = getStatementDetailText(text);
+  const normalized = section
+    .replace(/\r/g, '\n')
+    .replace(/[·•|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/g, '\n$1')
+    .trim();
+  const chunks = normalized.split('\n').map(x => x.trim()).filter(Boolean);
+  const rows = [];
+  const rowRx = /^(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
+  const tokenRx = /(?:US\$|U\$S|USD|\$)?\s*-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|(?:US\$|U\$S|USD|\$)?\s*-?\d+,\d{2}|(?:US\$|U\$S|USD|\$)?\s*-?\d+\.\d{2}|\b\d{4,8}\b/g;
+
+  chunks.forEach(function(chunk) {
+    const match = chunk.match(rowRx);
+    if (!match) return;
+    if (/saldo|total|su pago|l[ií]mite|cierre|vencimiento|actual|anterior|m[ií]nimo|cuotas a vencer|^sobre\b|p[aá]gina/i.test(chunk)) return;
+
+    const dateInfo = parseStatementDate(match[1]);
+    if (!dateInfo) return;
+
+    let rest = match[2].trim();
+    const tokens = [...rest.matchAll(tokenRx)]
+      .map(function(m) { return { raw: m[0].trim(), index: m.index }; })
+      .filter(function(t) { return normalizeStatementAmountToken(t.raw); });
+    if (!tokens.length) return;
+
+    // En una fila de resumen el monto real suele ser el ultimo numero util.
+    // El NRO. CUPON queda antes y se elimina de la descripcion.
+    const amountToken = tokens[tokens.length - 1];
+    const monto = parseOCRMoney(normalizeStatementAmountToken(amountToken.raw));
+    if (!monto) return;
+
+    let descRaw = rest.slice(0, amountToken.index).trim()
+      .replace(/\b\d{5,8}\b/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    descRaw = cleanupStatementDescription(descRaw);
+    if (!descRaw || !/[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/.test(descRaw)) return;
+
+    const cuotasInfo = parseInstallmentInfo(descRaw, { pick: 'first' });
+    const descripcion = (cuotasInfo.descripcion || descRaw || 'Consumo tarjeta').slice(0, 80);
+    rows.push({
+      ...dateInfo,
+      descripcion,
+      monto,
+      moneda: /(?:US\$|U\$S|USD)/i.test(amountToken.raw) ? 'USD' : 'ARS',
+      cat: guessOCRCategory(descripcion),
+      cuotas: cuotasInfo.cuotas,
+      cuota_actual: cuotasInfo.cuotaActual,
+      _statementSource: 'date-chunks',
+      _sourceLine: chunk
+    });
+  });
+
+  return applyStatementDueDate(rows, text);
+}
+
+function mergeStatementRowsByIdentity() {
+  const merged = [];
+  Array.from(arguments).forEach(function(list) {
+    (list || []).forEach(function(row) {
+      if (!row || !row.descripcion || !row.monto) return;
+      const key = [
+        String(row.descripcion || '').toLowerCase().replace(/\s+/g, ' ').trim(),
+        Number(row.monto || 0).toFixed(2),
+        String(row.moneda || 'ARS')
+      ].join('|');
+      const existing = merged.find(x => x._mergeKey === key);
+      if (!existing) {
+        merged.push({ ...row, _mergeKey: key });
+        return;
+      }
+      if (Number(existing.cuotas || 1) <= 1 && Number(row.cuotas || 1) > 1) {
+        existing.cuotas = row.cuotas;
+        existing.cuota_actual = row.cuota_actual;
+      }
+      if (!existing._sourceLine && row._sourceLine) existing._sourceLine = row._sourceLine;
+    });
+  });
+  return merged.map(function(row) {
+    const clean = { ...row };
+    delete clean._mergeKey;
+    return clean;
+  });
+}
+
 function parseCardStatementRowsByColumns(text) {
   const section = getStatementDetailText(text);
   const lines = section.replace(/\r/g, '\n').split('\n')
@@ -4628,7 +4726,11 @@ function parseCardStatementRowsByColumns(text) {
   }
 
   const columnRows = applyStatementDueDate(rows, text);
-  const finalRows = columnRows.length >= inlineRows.length ? columnRows : applyStatementDueDate(inlineRows, text);
+  const chunkRows = parseCardStatementRowsByDateChunks(text);
+  const mergedRows = mergeStatementRowsByIdentity(columnRows, inlineRows, chunkRows);
+  const finalRows = mergedRows.length >= Math.max(columnRows.length, inlineRows.length, chunkRows.length)
+    ? mergedRows
+    : (columnRows.length >= inlineRows.length ? columnRows : applyStatementDueDate(inlineRows, text));
   return finalRows;
 }
 
@@ -5467,6 +5569,7 @@ async function processOCR(input) {
     const visionStatementItems = parseCardStatementRowsFromVision(currentVisionData);
     const segmentStatementItems = parseCardStatementRowsBySegments(text);
     const columnStatementItems = parseCardStatementRowsByColumns(text);
+    const dateChunkStatementItems = parseCardStatementRowsByDateChunks(text);
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
     const deterministicItems = columnStatementItems.length >= 3 ? columnStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems));
@@ -5495,6 +5598,7 @@ async function processOCR(input) {
       visionStatementItems,
       segmentStatementItems,
       columnStatementItems,
+      dateChunkStatementItems,
       textStatementItems,
       installmentHints,
       installmentCandidates,
