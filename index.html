@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -4157,12 +4157,11 @@ function parseCardStatementRowsFromVision(data) {
       .filter(w => w.page === dateWord.page && Math.abs(w.cy - dateWord.cy) <= rowTolerance)
       .sort((a, b) => a.x - b.x);
 
-    if (rowWords.length < 4) return;
+    if (rowWords.length < 3) return;
 
     const moneyWords = rowWords
-      .filter(w => w.x > dateWord.x + dateWord.w + 40 && looksLikeStatementMoneyToken(w.text))
+      .filter(w => w.x > dateWord.x + dateWord.w + 20 && looksLikeStatementMoneyToken(w.text))
       .sort((a, b) => a.x - b.x);
-
     if (!moneyWords.length) return;
 
     const amountWord = moneyWords[moneyWords.length - 1];
@@ -4170,29 +4169,49 @@ function parseCardStatementRowsFromVision(data) {
     if (!monto) return;
 
     const couponWord = rowWords.find(function(w) {
-      return w.x > dateWord.x + dateWord.w + 40
+      return w.x > dateWord.x + dateWord.w + 20
         && w.x < amountWord.x
         && /^\d{5,8}$/.test(String(w.text || '').trim());
     });
 
     const descLimitX = couponWord ? couponWord.x : amountWord.x;
+
     const descWords = rowWords.filter(function(w) {
       if (w === dateWord) return false;
+      if (w.x >= descLimitX) return false;
       if (w.x <= dateWord.x + dateWord.w) return false;
-      if (w.x >= descLimitX - 4) return false;
       const token = String(w.text || '').trim();
       if (!token) return false;
-      if (/^\d{5,8}$/.test(token)) return false;
+      // No excluir tokens de cuota (C.XX/YY)
+      if (/^C\.?\s*\d{1,2}\s*\/\s*\d{1,2}$/i.test(token)) return true;
       if (looksLikeStatementMoneyToken(token)) return false;
       return true;
     });
 
+    // Texto completo antes del monto (para buscar cuota con más contexto)
+    const fullRowText = rowWords
+      .filter(w => w.x < amountWord.x)
+      .map(w => w.text)
+      .join(' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
     let descPart = descWords.map(w => w.text).join(' ')
       .replace(/\s{2,}/g, ' ')
       .trim();
+
     if (!descPart || /saldo|total|pago|limites|tasas|cierre|vencimiento|actual|anterior/i.test(descPart)) return;
 
-    const cuotasInfo = parseInstallmentInfo(descPart);
+    // Buscar cuota en descPart; si no hay, buscar en fila completa
+    let cuotasInfo = parseInstallmentInfo(descPart);
+    if (cuotasInfo.cuotas <= 1) {
+      const fullInfo = parseInstallmentInfo(fullRowText);
+      if (fullInfo.cuotas > 1) {
+        cuotasInfo = fullInfo;
+        descPart = descPart.replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g, ' ').trim();
+      }
+    }
+
     const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
     rows.push({
       ...dateInfo,
@@ -4202,6 +4221,7 @@ function parseCardStatementRowsFromVision(data) {
       cat: guessOCRCategory(descripcion),
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
+      _statementSource: 'vision-row',
       _sourceY: dateWord.cy,
       _sourceX: dateWord.x
     });
@@ -4335,20 +4355,30 @@ function parseStatementRowLine(line) {
   const monto = parseOCRMoney(amountRaw);
   if (!monto || monto < 1) return null;
 
-  let descPart = rest.slice(0, amountMatch.index)
-    .replace(/\s+\d{5,8}\s*$/g, ' ')
+  // Texto completo entre fecha y monto — incluye descripcion + C.XX/YY + cupon
+  const fullDesc = rest.slice(0, amountMatch.index)
     .replace(/\s{2,}/g, ' ')
     .trim();
-  if (!descPart || /^\d{5,8}$/.test(descPart)) return null;
 
-  const cuotasInfo = parseInstallmentInfo(descPart, { pick: 'first' });
-  const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
+  if (!fullDesc || /^\d{5,8}$/.test(fullDesc)) return null;
+
+  // Buscar cuota en el texto completo (captura C.10/12 aunque esté antes del cupón)
+  const cuotasInfo = parseInstallmentInfo(fullDesc, { pick: 'first' });
+
+  // Limpiar cupón numérico del final
+  let descPart = cuotasInfo.descripcion
+    .replace(/\s+\d{5,8}\s*$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (!descPart) descPart = 'Consumo tarjeta';
+
   return {
     ...dateInfo,
-    descripcion,
+    descripcion: descPart.slice(0, 80),
     monto,
     moneda: /(?:US\$|U\$S|USD|D[OÓ]LARES|DOLARES)/i.test(rest) ? 'USD' : 'ARS',
-    cat: guessOCRCategory(descripcion),
+    cat: guessOCRCategory(descPart),
     cuotas: cuotasInfo.cuotas,
     cuota_actual: cuotasInfo.cuotaActual,
     _statementSource: 'visual-lines',
