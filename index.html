@@ -4539,7 +4539,8 @@ function parseCardStatementRowsByColumns(text) {
     }
   });
 
-  if (rows.length >= 3) return applyStatementDueDate(rows, text);
+  const inlineRows = rows.slice();
+  rows.length = 0;
 
   const dates = [];
   const descriptions = [];
@@ -4626,7 +4627,9 @@ function parseCardStatementRowsByColumns(text) {
     if (row) rows.push(row);
   }
 
-  return applyStatementDueDate(rows, text);
+  const columnRows = applyStatementDueDate(rows, text);
+  const finalRows = columnRows.length >= inlineRows.length ? columnRows : applyStatementDueDate(inlineRows, text);
+  return finalRows;
 }
 
 function normalizeStatementScanText(text) {
