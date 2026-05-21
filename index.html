@@ -4234,7 +4234,7 @@ function parseCardStatementRowsFromVision(data) {
       descripcion,
       monto,
       moneda: /(?:US\$|U\$S|USD)/i.test(amountWord.text) ? 'USD' : 'ARS',
-      cat: 'Tarjeta',
+      cat: 'Otros',
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
       _statementSource: 'vision-row',
@@ -5065,6 +5065,43 @@ function reconcileAIStatementInstallments(rows, text, candidateRows, visionData)
   });
 }
 
+function applyColumnInstallmentsToVisionRows(visionRows, columnRows) {
+  const columns = (columnRows || []).filter(function(row) {
+    return row && Number(row.monto || 0) > 0;
+  });
+  if (!columns.length) return visionRows || [];
+
+  return (visionRows || []).map(function(row) {
+    const rowText = normalizeStatementMatchText(row && row.descripcion);
+    const matches = columns
+      .filter(function(col) {
+        if (String(col.moneda || 'ARS') !== String(row.moneda || 'ARS')) return false;
+        if (Math.abs(Number(col.monto || 0) - Number(row.monto || 0)) >= 0.01) return false;
+        const colText = normalizeStatementMatchText(col.descripcion);
+        const overlap = statementTextOverlap(row.descripcion, col.descripcion);
+        const contained = rowText && colText && (rowText.includes(colText) || colText.includes(rowText));
+        return overlap >= 0.20 || contained;
+      })
+      .sort(function(a, b) {
+        const ai = Number(a.cuotas || 1) > 1 ? 1 : 0;
+        const bi = Number(b.cuotas || 1) > 1 ? 1 : 0;
+        return bi - ai;
+      });
+
+    const best = matches[0];
+    if (!best) return row;
+
+    // La fila por columnas viene del mismo OCR, pero conserva mejor la descripcion
+    // completa cuando las cuotas aparecen dentro del texto del comercio.
+    return {
+      ...row,
+      cuotas: Number(best.cuotas || 1),
+      cuota_actual: Number(best.cuota_actual || 1),
+      _sourceLine: row._sourceLine || best._sourceLine || best.descripcion
+    };
+  });
+}
+
 function enrichStatementRowsWithInstallments(primaryRows, candidateRows) {
   const primary = (primaryRows || []).filter(Boolean).map(row => ({ ...row }));
   const candidates = (candidateRows || []).filter(function(row) {
@@ -5289,7 +5326,7 @@ async function importCardStatementExpenses(items, setProgress) {
       descripcion: item.descripcion,
       monto: item.monto,
       moneda: item.moneda || getDefaultCurrency(),
-      cat: 'Tarjeta',
+      cat: 'Otros',
       tipo: 'variable',
       medio,
       tarjeta_id,
@@ -5386,7 +5423,10 @@ async function processOCR(input) {
         markStatementSource(installmentHints, 'hints')
       );
     const statementItems = visionStatementItems.length
-      ? verifyStatementInstallments(visionStatementItems, text)
+      ? verifyStatementInstallments(
+          applyColumnInstallmentsToVisionRows(visionStatementItems, columnStatementItems),
+          text
+        )
       : verifyStatementInstallments(
           enrichStatementRowsWithInstallments(deterministicItems, installmentCandidates),
           text
