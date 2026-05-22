@@ -15,6 +15,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <link rel="manifest" id="pwa-manifest">
+  <!-- NF PWA ICONS -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
+  <meta name="theme-color" content="#0b0f1e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -578,7 +583,59 @@
     .inf-cat-bar-bg{width:100%!important;min-width:0!important;flex:none!important}
     .inf-cat-val{width:auto!important;min-width:0!important;text-align:right!important;font-size:clamp(9px,2.65vw,12px)!important;white-space:nowrap!important;overflow:visible!important}
 
-</style>
+
+
+  /* NF final design polish 2026-05-21 */
+  .balance-card.home-balance-only > img{
+    top:62%!important;
+    right:12px!important;
+    transform:translateY(-50%)!important;
+    width:76px!important;
+    height:76px!important;
+    opacity:.12!important;
+  }
+  .balance-card.home-balance-only .balance-privacy-btn{
+    top:16px!important;
+    right:16px!important;
+  }
+  .inf-chart-card .inf-cat-row{
+    grid-template-columns:minmax(116px,1fr) minmax(64px,.56fr) minmax(96px,108px)!important;
+    gap:10px!important;
+    margin-bottom:13px!important;
+  }
+  .inf-chart-card .inf-cat-name-with-icon{
+    grid-template-columns:28px minmax(0,1fr)!important;
+    gap:9px!important;
+  }
+  .inf-chart-card .inf-cat-name-with-icon span{
+    font-size:15px!important;
+    line-height:1.15!important;
+    font-weight:750!important;
+    letter-spacing:0!important;
+  }
+  .inf-chart-card .inf-cat-icon{
+    width:26px!important;
+    height:26px!important;
+    border-radius:9px!important;
+  }
+  .inf-chart-card .inf-cat-val{
+    font-size:14px!important;
+    line-height:1.15!important;
+    font-weight:850!important;
+    letter-spacing:0!important;
+  }
+  @media(max-width:390px){
+    .inf-chart-card{padding:16px 14px!important}
+    .inf-chart-card .inf-cat-row{
+      grid-template-columns:minmax(104px,1fr) minmax(54px,.46fr) minmax(86px,96px)!important;
+      gap:8px!important;
+    }
+    .inf-chart-card .inf-cat-name-with-icon span{font-size:13px!important}
+    .inf-chart-card .inf-cat-icon{width:24px!important;height:24px!important}
+    .inf-chart-card .inf-cat-val{font-size:12.5px!important}
+  }
+
+  </style>
 </head>
 <body>
 
@@ -3008,9 +3065,26 @@ function cerrarSesion() {
 
 
 function buildManifest(){
-  const m={name:'NuestrasFinanzas',short_name:'NuestrasFinanzas',start_url:'.',display:'standalone',background_color:'#0d1225',theme_color:'#0d1225',orientation:'portrait',icons:[{src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any maskable'},{src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
-  const b=new Blob([JSON.stringify(m)],{type:'application/json'});
-  document.getElementById('pwa-manifest').href=URL.createObjectURL(b);
+  const m={
+    name:'NuestrasFinanzas',
+    short_name:'NuestrasFinanzas',
+    id:'/',
+    start_url:'/',
+    scope:'/',
+    display:'standalone',
+    background_color:'#0b0f1e',
+    theme_color:'#0b0f1e',
+    orientation:'portrait',
+    icons:[
+      {src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any'},
+      {src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'maskable'},
+      {src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'},
+      {src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}
+    ]
+  };
+  const b=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+  const link=document.getElementById('pwa-manifest');
+  if(link) link.href=URL.createObjectURL(b);
 }
 
 init();
@@ -3430,16 +3504,16 @@ function renderAllGrupo() {
     balCard.classList.remove('home-balance-only', 'privacy-hidden');
     balCard.innerHTML =
       '<small style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65">' + L('groupBalance') + '</small>' +
-      '<h2 style="font-size:32px;font-weight:800;margin:8px 0 2px;letter-spacing:-1px">' + fmt(totalGrupo) + '</h2>' +
-      '<div style="font-size:12px;opacity:.6;margin-bottom:14px">' + participantes.length + ' ' + L('groupParticipants') + ' · ' + fmt(parteIgual) + ' ' + L('groupEach') + '</div>' +
+      '<h2 style="font-size:32px;font-weight:800;margin:8px 0 2px;letter-spacing:-1px">' + fmtInt(totalGrupo) + '</h2>' +
+      '<div style="font-size:12px;opacity:.6;margin-bottom:14px">' + participantes.length + ' ' + L('groupParticipants') + ' · ' + fmtInt(parteIgual) + ' ' + L('groupEach') + '</div>' +
       '<div style="height:1px;background:rgba(255,255,255,.15);margin-bottom:14px"></div>' +
-      '<div style="display:flex;justify-content:space-between">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:start">' +
         '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('groupSpent') + '</div>' +
-        '<div style="font-size:16px;font-weight:800">' + fmt(totalGrupo) + '</div></div>' +
+        '<div style="font-size:14px;font-weight:800;white-space:nowrap">' + fmtInt(totalGrupo) + '</div></div>' +
         '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoLeDeben') + '</div>' +
-        '<div style="font-size:16px;font-weight:800;color:#7effd4">' + fmt(liq.teDebenTotal) + '</div></div>' +
+        '<div style="font-size:14px;font-weight:800;color:#7effd4;white-space:nowrap">' + fmtInt(liq.teDebenTotal) + '</div></div>' +
         '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoDebe') + '</div>' +
-        '<div style="font-size:16px;font-weight:800;color:#ffb3a0">' + fmt(liq.debesTotal) + '</div></div>' +
+        '<div style="font-size:14px;font-weight:800;color:#ffb3a0;white-space:nowrap">' + fmtInt(liq.debesTotal) + '</div></div>' +
       '</div>';
   }
 
@@ -3757,9 +3831,26 @@ renderInforme = function() {
 };
 
 function buildManifest(){
-  const m={name:'NuestrasFinanzas',short_name:'NuestrasFinanzas',start_url:'.',display:'standalone',background_color:'#0b0f1e',theme_color:'#0b0f1e',orientation:'portrait',icons:[{src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any maskable'},{src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
-  const b=new Blob([JSON.stringify(m)],{type:'application/json'});
-  document.getElementById('pwa-manifest').href=URL.createObjectURL(b);
+  const m={
+    name:'NuestrasFinanzas',
+    short_name:'NuestrasFinanzas',
+    id:'/',
+    start_url:'/',
+    scope:'/',
+    display:'standalone',
+    background_color:'#0b0f1e',
+    theme_color:'#0b0f1e',
+    orientation:'portrait',
+    icons:[
+      {src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any'},
+      {src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'maskable'},
+      {src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'},
+      {src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}
+    ]
+  };
+  const b=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+  const link=document.getElementById('pwa-manifest');
+  if(link) link.href=URL.createObjectURL(b);
 }
 
 function getBgColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#141d35':'#ffffff';}
