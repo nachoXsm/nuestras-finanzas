@@ -4601,6 +4601,15 @@ function parseStatementDueDate(text) {
   return null;
 }
 
+function statementLineHasNegativeAmount(line) {
+  return /(?:^|\s)(?:US\$|U\$S|USD|\$)?\s*-\s*(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2}|\d{4,8})(?:\s|$)/.test(String(line || ''));
+}
+
+function isStatementTaxDescription(desc) {
+  const upper = String(desc || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return /\b(DB\.?\s*RG|IVA\s+RG|IIBB|IMPUESTO|PERCEP|SELLOS?)\b/.test(upper);
+}
+
 function isCardStatementConsumptionRow(row) {
   if (!row) return false;
   const amount = Number(row.monto || 0);
@@ -4608,6 +4617,7 @@ function isCardStatementConsumptionRow(row) {
 
   const desc = String(row.descripcion || '').trim();
   if (!desc) return false;
+  if (statementLineHasNegativeAmount(row._sourceLine || '') && amount > 0) return false;
 
   const upper = desc.toUpperCase()
     .normalize('NFD')
@@ -4617,7 +4627,7 @@ function isCardStatementConsumptionRow(row) {
     return false;
   }
 
-  if (/\b(DB\.?\s*RG|IVA\s+RG|IIBB|IMPUESTO|PERCEP|SELLOS?)\b/.test(upper)) {
+  if (isStatementTaxDescription(upper)) {
     return true;
   }
 
@@ -5065,6 +5075,11 @@ function parseCardStatementRowsByColumns(text) {
       return;
     }
 
+    if (/^-\d{4,8}$/.test(cleanLine)) {
+      amounts.push({ monto: 0, moneda: 'ARS', _skipNegative: true });
+      return;
+    }
+
     if (/^-?\d{4,8}$/.test(cleanLine)) {
       // Puede ser NRO. CUPON o un importe sin separadores. Se guarda aparte y
       // solo se usa si falta un monto al final de la tabla.
@@ -5078,6 +5093,10 @@ function parseCardStatementRowsByColumns(text) {
       const value = parseOCRMoney(line);
       if (value > 0) {
         amounts.push({ monto: value, moneda: /(?:US\$|U\$S|USD)/i.test(line) ? 'USD' : 'ARS' });
+      } else if (value < 0 || statementLineHasNegativeAmount(line)) {
+        // Mantiene alineadas fecha/descripcion/monto: una bonificacion o pago
+        // ocupa su fila y se descarta completa, sin correr los importes siguientes.
+        amounts.push({ monto: 0, moneda: 'ARS', _skipNegative: true });
       }
       return;
     }
@@ -5129,6 +5148,7 @@ function parseCardStatementRowsByColumns(text) {
   if (count < 2) return [];
 
   for (let i = 0; i < count; i++) {
+    if (amounts[i] && amounts[i]._skipNegative) continue;
     const row = makeRow(dates[i], descriptionsWithInstallments[i], amounts[i], [dates[i].fecha, descriptionsWithInstallments[i], amounts[i].monto].join(' '));
     if (row) rows.push(row);
   }
@@ -5791,6 +5811,7 @@ function statementRowIdentityKey(row) {
     Number(row && row.cuota_actual || 1),
     Number(row && row.cuotas || 1)
   ];
+  if (isStatementTaxDescription(row && row.descripcion)) return base.join('|');
   const sourceDate = statementSourceDateKey(row);
   const coupon = statementCouponKey(row);
   if (sourceDate || coupon) base.push(sourceDate, coupon);
