@@ -14,7 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <link rel="manifest" id="pwa-manifest">
+  <link rel="manifest" id="pwa-manifest" href="/manifest.webmanifest">
   <!-- NF PWA ICONS -->
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
@@ -3065,26 +3065,8 @@ function cerrarSesion() {
 
 
 function buildManifest(){
-  const m={
-    name:'NuestrasFinanzas',
-    short_name:'NuestrasFinanzas',
-    id:'/',
-    start_url:'/',
-    scope:'/',
-    display:'standalone',
-    background_color:'#0b0f1e',
-    theme_color:'#0b0f1e',
-    orientation:'portrait',
-    icons:[
-      {src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any'},
-      {src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'maskable'},
-      {src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'},
-      {src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}
-    ]
-  };
-  const b=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
   const link=document.getElementById('pwa-manifest');
-  if(link) link.href=URL.createObjectURL(b);
+  if(link && !link.getAttribute('href')) link.setAttribute('href','/manifest.webmanifest');
 }
 
 init();
@@ -3831,26 +3813,8 @@ renderInforme = function() {
 };
 
 function buildManifest(){
-  const m={
-    name:'NuestrasFinanzas',
-    short_name:'NuestrasFinanzas',
-    id:'/',
-    start_url:'/',
-    scope:'/',
-    display:'standalone',
-    background_color:'#0b0f1e',
-    theme_color:'#0b0f1e',
-    orientation:'portrait',
-    icons:[
-      {src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any'},
-      {src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'maskable'},
-      {src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'},
-      {src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}
-    ]
-  };
-  const b=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
   const link=document.getElementById('pwa-manifest');
-  if(link) link.href=URL.createObjectURL(b);
+  if(link && !link.getAttribute('href')) link.setAttribute('href','/manifest.webmanifest');
 }
 
 function getBgColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#141d35':'#ffffff';}
