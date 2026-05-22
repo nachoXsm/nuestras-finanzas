@@ -4635,6 +4635,31 @@ function filterCardStatementConsumptionRows(rows) {
   return (rows || []).filter(isCardStatementConsumptionRow);
 }
 
+function removeFalseUsdStatementDuplicates(rows) {
+  const list = rows || [];
+  const explicitUsd = function(row) {
+    return /(?:US\$|U\$S|USD)/i.test(String(row && (row._sourceLine || row.descripcion || '')));
+  };
+  const keyOf = function(row) {
+    return [
+      normalizeStatementMatchText(row && row.descripcion),
+      Number(row && row.monto || 0).toFixed(2),
+      Number(row && row.cuota_actual || 1),
+      Number(row && row.cuotas || 1)
+    ].join('|');
+  };
+  const arsKeys = new Set(
+    list
+      .filter(row => String(row && row.moneda || 'ARS').toUpperCase() !== 'USD')
+      .map(keyOf)
+  );
+  return list.filter(function(row) {
+    if (String(row && row.moneda || 'ARS').toUpperCase() !== 'USD') return true;
+    if (!arsKeys.has(keyOf(row))) return true;
+    return explicitUsd(row);
+  });
+}
+
 function forceRowsStatementDate(rows, due) {
   if (!due || !rows || !rows.length) return rows || [];
   return rows.map(function(row) {
@@ -4694,10 +4719,12 @@ function parseCardStatementRowsBySegments(text) {
       ...dateInfo,
       descripcion,
       monto,
-      moneda: /(?:US\$|U\$S|USD|D[OÓ]LARES|DOLARES)/i.test(rest) ? 'USD' : 'ARS',
+      moneda: /(?:US\$|U\$S|USD)/i.test(rest) ? 'USD' : 'ARS',
       cat: guessOCRCategory(descripcion),
       cuotas: cuotasInfo.cuotas,
-      cuota_actual: cuotasInfo.cuotaActual
+      cuota_actual: cuotasInfo.cuotaActual,
+      _sourceLine: line,
+      _statementSource: 'text-parser'
     });
   });
 
@@ -4737,7 +4764,7 @@ function parseStatementRowLine(line) {
     ...dateInfo,
     descripcion,
     monto,
-    moneda: /(?:US\$|U\$S|USD|D[OÓ]LARES|DOLARES)/i.test(rest) ? 'USD' : 'ARS',
+    moneda: /(?:US\$|U\$S|USD)/i.test(rest) ? 'USD' : 'ARS',
     cat: guessOCRCategory(descripcion),
     cuotas: cuotasInfo.cuotas,
     cuota_actual: cuotasInfo.cuotaActual,
@@ -5736,27 +5763,7 @@ function parseCardStatementRows(text) {
     const monto = parseOCRMoney(amountRaw);
     if (!monto) continue;
 
-    let moneda = /(?:US\$|U\$S|USD|D[OÓ]LARES|DOLARES)/i.test(rest) ? 'USD' : 'ARS';
-    if (amountMatches.length >= 2 && /(?:US\$|U\$S|USD)/i.test(amountRaw)) moneda = 'USD';
-
-    if (columnStarts.dolares >= 0 && columnStarts.pesos >= 0 && (columnStarts.dolares - columnStarts.pesos) > 12) {
-      const rawMatch = entry.raw.match(dateAnywhere);
-      if (rawMatch) {
-        const rawRest = rawMatch[2];
-        const rawAmountMatches = [...rawRest.matchAll(amountRx)].filter(m => /,\d{2}\b|\d{1,3}(?:\.\d{3})+\b/.test(m[0]));
-        const rawAmountMatch = rawAmountMatches[rawAmountMatches.length - 1];
-        const restStart = entry.raw.indexOf(rawRest);
-        if (rawAmountMatch && restStart >= 0) {
-          const absoluteAmountIndex = restStart + rawAmountMatch.index;
-          if (columnStarts.pesos >= 0) {
-            const usdBoundary = Math.floor((columnStarts.pesos + columnStarts.dolares) / 2);
-            moneda = absoluteAmountIndex >= usdBoundary ? 'USD' : 'ARS';
-          } else if (absoluteAmountIndex >= columnStarts.dolares - 8) {
-            moneda = 'USD';
-          }
-        }
-      }
-    }
+    let moneda = /(?:US\$|U\$S|USD)/i.test(amountRaw) || /(?:^|\s)(?:US\$|U\$S|USD)(?:\s|$)/i.test(rest) ? 'USD' : 'ARS';
 
     let descPart = rest.slice(0, amountMatch.index).trim();
     descPart = descPart
@@ -5953,7 +5960,7 @@ async function processOCR(input) {
         markStatementSource(textStatementItems, 'text-parser'),
         markStatementSource(installmentHints, 'hints')
       );
-    const statementItems = applyStatementDueDate(
+    const statementItems = removeFalseUsdStatementDuplicates(applyStatementDueDate(
       filterCardStatementConsumptionRows(
         verifyStatementInstallments(
           baseStatementItems.length
@@ -5963,7 +5970,7 @@ async function processOCR(input) {
         )
       ),
       text
-    );
+    ));
     window.lastStatementImportDebug = {
       isStatement,
       aiStatementItems,
