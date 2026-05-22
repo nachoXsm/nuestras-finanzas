@@ -4200,7 +4200,24 @@ function parseStatementDate(raw) {
     nov: 11, noviembre: 11,
     dic: 12, diciembre: 12
   };
-  const m = String(raw || '').trim().match(/^(\d{1,2})\s*[-\/]\s*([A-Za-zÁÉÍÓÚáéíóúÑñ]{3,})\.?\s*[-\/]\s*(\d{2,4})$/);
+  const value = String(raw || '').trim();
+
+  const numeric = value.match(/^(\d{1,2})\s*[-\/]\s*(\d{1,2})\s*[-\/]\s*(\d{2,4})$/);
+  if (numeric) {
+    const dia = parseInt(numeric[1], 10);
+    const mes = parseInt(numeric[2], 10);
+    let anio = parseInt(numeric[3], 10);
+    if (anio < 100) anio += 2000;
+    if (!dia || !mes || !anio || mes > 12 || dia > 31) return null;
+    return {
+      dia,
+      mes,
+      anio,
+      fecha: anio + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0')
+    };
+  }
+
+  const m = value.match(/^(\d{1,2})\s*[-\/]\s*([A-Za-zÁÉÍÓÚáéíóúÑñ]{3,})\.?\s*[-\/]\s*(\d{2,4})$/);
   if (!m) return null;
   const dia = parseInt(m[1], 10);
   const key = m[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zñ]/g, '').slice(0, 3);
@@ -4218,14 +4235,39 @@ function parseStatementDate(raw) {
 
 function parseInstallmentInfo(desc, options) {
   const text = String(desc || '');
-  const matches = [...text.matchAll(/\bC\.?\s*(\d{1,2})\s*\/\s*(\d{1,2})\b/gi)];
+  const explicit = [...text.matchAll(/\bC\.?\s*(\d{1,2})\s*\/\s*(\d{1,2})\b/gi)];
+  let matches = explicit.map(function(m) {
+    return { match: m[0], actual: m[1], total: m[2], index: m.index };
+  });
+
+  if (!matches.length && options && options.allowBare) {
+    matches = [...text.matchAll(/(^|\s)(\d{1,2})\s*\/\s*(\d{1,2})(?=\s|$)/g)]
+      .map(function(m) {
+        return { match: m[0], actual: m[2], total: m[3], index: m.index };
+      })
+      .filter(function(m) {
+        const actual = parseInt(m.actual, 10);
+        const total = parseInt(m.total, 10);
+        if (!actual || !total || total < actual || total <= 1 || total > 60) return false;
+        // Evita tomar fechas abreviadas como cuotas cuando no hay texto de comercio.
+        const before = text.slice(0, m.index).trim();
+        const after = text.slice(m.index + m.match.length).trim();
+        return /[A-Za-zÁÉÍÓÚáéíóúÑñ*]/.test(before + ' ' + after);
+      });
+  }
+
   if (!matches.length) return { descripcion: text.trim(), cuotaActual: 1, cuotas: 1 };
 
   const pick = options && options.pick === 'last' ? matches[matches.length - 1] : matches[0];
-  const cuotaActual = Math.max(1, parseInt(pick[1], 10) || 1);
-  const cuotas = Math.max(cuotaActual, parseInt(pick[2], 10) || cuotaActual);
+  const cuotaActual = Math.max(1, parseInt(pick.actual, 10) || 1);
+  const cuotas = Math.max(cuotaActual, parseInt(pick.total, 10) || cuotaActual);
+  const withoutInstallments = text
+    .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
+    .replace(options && options.allowBare ? /(^|\s)\d{1,2}\s*\/\s*\d{1,2}(?=\s|$)/g : /a^/, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
   return {
-    descripcion: text.replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g, ' ').trim(),
+    descripcion: withoutInstallments,
     cuotaActual,
     cuotas
   };
@@ -4252,9 +4294,15 @@ function guessOCRCategory(text) {
 }
 
 function looksLikeCardStatement(text) {
-  const t = String(text || '').toLowerCase();
-  return (/fecha/.test(t) && /descripci[oó]n|descripcion/.test(t) && /(cup[oó]n|cupon|pesos|d[oó]lares|dolares)/.test(t))
-    || (/bbva/.test(t) && /(consumos|saldo actual|total consumos)/.test(t));
+  const t = String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const hasDueDate = /vencimiento\s+actual|proximo\s+vencimiento/.test(t);
+  const hasTableHeaders = /fecha/.test(t)
+    && /(descripcion|referencia|comercio|establecimiento|detalle)/.test(t)
+    && /(cuota|cupon|comprobante|pesos|dolares|importe|monto)/.test(t);
+  const hasCardContext = /tarjeta|visa|mastercard|master|amex|resumen/.test(t);
+  const hasConsumptionContext = /detalle\s+del\s+consumo|detalle\s+de\s+consumos|consumos|movimientos|compras/.test(t);
+  return (hasCardContext && hasDueDate && (hasTableHeaders || hasConsumptionContext))
+    || (hasTableHeaders && hasConsumptionContext);
 }
 
 function getVisionResponseList(data) {
@@ -4354,7 +4402,7 @@ function extractVisionWords(data) {
 }
 
 function looksLikeStatementDateToken(text) {
-  return /^\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}$/.test(String(text || '').trim());
+  return /^\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}$/.test(String(text || '').trim());
 }
 
 function looksLikeStatementMoneyToken(text) {
@@ -4456,7 +4504,7 @@ function parseCardStatementRowsFromVision(data) {
       .trim();
     if (!descPart || /saldo|total|pago|limites|tasas|cierre|vencimiento|actual|anterior/i.test(descPart)) return;
 
-    const cuotasInfo = parseInstallmentInfo(descPart, { pick: 'first' });
+    const cuotasInfo = parseInstallmentInfo(descPart, { pick: 'first', allowBare: true });
     const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
     rows.push({
       ...dateInfo,
@@ -4485,11 +4533,11 @@ function parseCardStatementRowsFromVision(data) {
 
 function parseStatementDueDate(text) {
   const raw = String(text || '').replace(/\r/g, '\n');
-  const dateRx = /(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/g;
+  const dateRx = /(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/g;
 
   const directPatterns = [
-    /vencimiento\s+actual\s*(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/i,
-    /pr[oó]ximo\s+vencimiento\s*(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/i
+    /vencimiento\s+actual\s*(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/i,
+    /pr[oó]ximo\s+vencimiento\s*(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/i
   ];
   for (const pattern of directPatterns) {
     const match = raw.match(pattern);
@@ -4525,14 +4573,26 @@ function parseStatementDueDate(text) {
     }
   }
 
+  // Algunos resúmenes digitales muestran solo una fila de fechas de cabecera
+  // en pares: cierre/vencimiento anterior, cierre/vencimiento actual,
+  // próximo cierre/próximo vencimiento. Si el texto pierde las etiquetas,
+  // la cuarta fecha corresponde al VENCIMIENTO ACTUAL.
+  const headerDateRows = lines.slice(0, 30)
+    .map(function(line) { return line.match(dateRx) || []; })
+    .filter(function(dates) { return dates.length >= 4; });
+  if (headerDateRows.length) {
+    const parsedPairedHeader = parseStatementDate(headerDateRows[0][3]);
+    if (parsedPairedHeader) return parsedPairedHeader;
+  }
+
   const compact = raw.replace(/\n+/g, ' ').replace(/\s+/g, ' ');
-  const headerMatch = compact.match(/cierre\s+actual\s+vencimiento\s+actual[\s\S]{0,220}?(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/i);
+  const headerMatch = compact.match(/cierre\s+actual\s+vencimiento\s+actual[\s\S]{0,220}?(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\s+(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/i);
   if (headerMatch) {
     const parsedHeader = parseStatementDate(headerMatch[2]);
     if (parsedHeader) return parsedHeader;
   }
 
-  const nextMatch = compact.match(/pr[oó]ximo\s+cierre\s+pr[oó]ximo\s+vencimiento[\s\S]{0,220}?(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/i);
+  const nextMatch = compact.match(/pr[oó]ximo\s+cierre\s+pr[oó]ximo\s+vencimiento[\s\S]{0,220}?(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\s+(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/i);
   if (nextMatch) {
     const parsedNextHeader = parseStatementDate(nextMatch[2]);
     if (parsedNextHeader) return parsedNextHeader;
@@ -4553,13 +4613,14 @@ function isCardStatementConsumptionRow(row) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-  if (/\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+MINIMO|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|TOTAL\s+CONSUMOS|VENCIMIENTO|CIERRE\s+ACTUAL|PROXIMO\s+CIERRE|LIMITES?|TASAS?|LEGALES?|AVISOS?)\b/.test(upper)) {
+  if (/\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|PAGO\s+MINIMO|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|TOTAL\s+CONSUMOS|TOTAL\s+DE|CONSOLIDADO|VENCIMIENTO|CIERRE\s+ACTUAL|PROXIMO\s+CIERRE|LIMITES?|TASAS?|LEGALES?|AVISOS?|RESUMEN|CUENTA|TARJETA\s+CREDITO)\b/.test(upper)) {
     return false;
   }
 
   const merchantText = upper
-    .replace(/\b\d{1,2}\s*[-\/]\s*[A-Z]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
+    .replace(/\b\d{1,2}\s*[-\/]\s*(?:[A-Z]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
     .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/g, ' ')
+    .replace(/\b\d{1,2}\s*\/\s*\d{1,2}\b/g, ' ')
     .replace(/\b(?:ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|SET|OCT|NOV|DIC)\b/g, ' ')
     .replace(/(?:US\$|U\$S|USD|ARS|\$)/g, ' ')
     .replace(/[-+]?\d[\d.,]*/g, ' ')
@@ -4600,12 +4661,12 @@ function parseCardStatementRowsBySegments(text) {
   const section = getStatementDetailText(text);
   const normalized = section
     .replace(/\r/g, '\n')
-    .replace(/([\s\n]|^)(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/g, '\n$2')
+    .replace(/([\s\n]|^)(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/g, '\n$2')
     .replace(/[·•|]+/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/\s*(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/g, '\n$1');
+    .replace(/\s*(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/g, '\n$1');
   const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
-  const dateLine = /^(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
+  const dateLine = /^(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
   const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi;
   const rows = [];
 
@@ -4627,7 +4688,7 @@ function parseCardStatementRowsBySegments(text) {
       .replace(/\s+\d{5,8}\s*$/g, '')
       .replace(/\s{2,}/g, ' ')
       .trim();
-    const cuotasInfo = parseInstallmentInfo(descPart);
+    const cuotasInfo = parseInstallmentInfo(descPart, { allowBare: true });
     const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
     rows.push({
       ...dateInfo,
@@ -4647,7 +4708,7 @@ function parseStatementRowLine(line) {
   const cleanLine = String(line || '').replace(/[·•|]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!cleanLine || isStatementHeaderLine(cleanLine)) return null;
 
-  const dateMatch = cleanLine.match(/(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i);
+  const dateMatch = cleanLine.match(/(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i);
   if (!dateMatch) return null;
   const dateInfo = parseStatementDate(dateMatch[1]);
   if (!dateInfo) return null;
@@ -4670,7 +4731,7 @@ function parseStatementRowLine(line) {
     .trim();
   if (!descPart || /^\d{5,8}$/.test(descPart)) return null;
 
-  const cuotasInfo = parseInstallmentInfo(descPart, { pick: 'first' });
+  const cuotasInfo = parseInstallmentInfo(descPart, { pick: 'first', allowBare: true });
   const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
   return {
     ...dateInfo,
@@ -4714,17 +4775,41 @@ function parseCardStatementRowsByVisualLines(text, visionData) {
 }
 
 function getStatementDetailText(text) {
-  const raw = String(text || '');
-  const lower = raw.toLowerCase();
-  const consumoIdx = Math.max(
-    lower.lastIndexOf('consumos'),
-    lower.lastIndexOf('detalle')
-  );
-  const start = consumoIdx >= 0 ? consumoIdx : 0;
-  let section = raw.slice(start);
-  const stopMatch = section.search(/\b(iva responsable|tasas|otros per[ií]odos)\b/i);
-  if (stopMatch > 120) section = section.slice(0, stopMatch);
-  return section;
+  const raw = String(text || '').replace(/\r/g, '\n');
+  const lines = raw.split('\n');
+  const norm = function(value) {
+    return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+  const isStart = function(line, index) {
+    const l = norm(line);
+    if (/sus\s+pagos|pagos\s+y\s+ajustes|consolidado|saldo\s+anterior|limites|tasas/.test(l)) return false;
+    if (/detalle\s+del\s+consumo|detalle\s+de\s+consumos|detalle\s+de\s+compras|consumos\s+/.test(l)) return true;
+    if (/\b(consumos|movimientos|compras)\b/.test(l) && index > 0) return true;
+    if (/fecha/.test(l) && /(referencia|descripcion|comercio|establecimiento|detalle)/.test(l) && /(cuota|cupon|comprobante|pesos|dolares|importe|monto)/.test(l)) return true;
+    return false;
+  };
+  const isStop = function(line) {
+    const l = norm(line);
+    return /iva\s+responsable|tasas|otros\s+periodos|total\s+de\s+cuotas\s+a\s+vencer|total\s+cuotas\s+a\s+vencer|mensajes?|informacion\s+importante|pagina\s+\d|^sobre\b|saldo\s+actual\b/.test(l);
+  };
+
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (isStart(lines[i], i)) {
+      start = i;
+      if (/detalle\s+del\s+consumo|detalle\s+de\s+consumos|detalle\s+de\s+compras|consumos\s+/.test(norm(lines[i]))) break;
+    }
+  }
+  if (start < 0) return raw;
+
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (isStop(lines[i])) {
+      end = i;
+      break;
+    }
+  }
+  return lines.slice(start, end).join('\n');
 }
 
 function isStatementHeaderLine(line) {
@@ -4767,11 +4852,11 @@ function parseCardStatementRowsByDateChunks(text) {
     .replace(/\r/g, '\n')
     .replace(/[·•|]+/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/g, '\n$1')
+    .replace(/(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/g, '\n$1')
     .trim();
   const chunks = normalized.split('\n').map(x => x.trim()).filter(Boolean);
   const rows = [];
-  const rowRx = /^(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
+  const rowRx = /^(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
   const tokenRx = /(?:US\$|U\$S|USD|\$)?\s*-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|(?:US\$|U\$S|USD|\$)?\s*-?\d+,\d{2}|(?:US\$|U\$S|USD|\$)?\s*-?\d+\.\d{2}|\b\d{4,8}\b/g;
 
   chunks.forEach(function(chunk) {
@@ -4801,7 +4886,7 @@ function parseCardStatementRowsByDateChunks(text) {
     descRaw = cleanupStatementDescription(descRaw);
     if (!descRaw || !/[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/.test(descRaw)) return;
 
-    const cuotasInfo = parseInstallmentInfo(descRaw, { pick: 'first' });
+    const cuotasInfo = parseInstallmentInfo(descRaw, { pick: 'first', allowBare: true });
     const descripcion = (cuotasInfo.descripcion || descRaw || 'Consumo tarjeta').slice(0, 80);
     rows.push({
       ...dateInfo,
@@ -4855,7 +4940,7 @@ function parseCardStatementRowsByColumns(text) {
     .filter(Boolean);
 
   const rows = [];
-  const dateRx = /^(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\b/i;
+  const dateRx = /^(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\b/i;
   const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2}|-?\d+\.\d{2})/gi;
   const installmentOnlyRx = /^C\.?\s*\d{1,2}\s*\/\s*\d{1,2}$/i;
 
@@ -4867,7 +4952,7 @@ function parseCardStatementRowsByColumns(text) {
   }
 
   function makeRow(dateInfo, descRaw, amountObj, sourceLine) {
-    const cuotasInfo = parseInstallmentInfo(descRaw, { pick: 'first' });
+    const cuotasInfo = parseInstallmentInfo(descRaw, { pick: 'first', allowBare: true });
     const descripcion = (cuotasInfo.descripcion || descRaw || 'Consumo tarjeta').slice(0, 80);
     if (!dateInfo || !descripcion || !amountObj || !amountObj.monto) return null;
     return {
@@ -4973,7 +5058,7 @@ function parseCardStatementRowsByColumns(text) {
   // busqueda difusa ni por monto, para evitar copiar cuotas de filas vecinas.
   let looseInstallmentIndex = 0;
   const descriptionsWithInstallments = descriptions.map(function(desc) {
-    if (parseInstallmentInfo(desc).cuotas > 1) return desc;
+    if (parseInstallmentInfo(desc, { allowBare: true }).cuotas > 1) return desc;
     const q = looseInstallments[looseInstallmentIndex++];
     return q ? (desc + ' ' + q) : desc;
   });
@@ -5026,7 +5111,7 @@ function rescueMissingStatementRows(rows, text) {
       const windowStart = Math.max(0, yennyIndex - 90);
       const windowEnd = Math.min(scan.length, yennyIndex + 180);
       const chunk = scan.slice(windowStart, windowEnd);
-      const dateMatch = chunk.match(/(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/);
+      const dateMatch = chunk.match(/(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/);
       const afterYenny = chunk.slice(Math.max(0, chunk.toLowerCase().search(/yenny/))).split(/\bsobre\b|p[aá]gina/i)[0];
       const moneyMatches = [...afterYenny.matchAll(/[\$\s]*(?:\d{1,3}(?:\.\d{3})+(?:[,\.]\d{2})?|\d{4,7})\b/g)]
         .map(m => String(m[0] || '').trim())
@@ -5210,10 +5295,10 @@ function extractStatementInstallmentHints(text) {
   const normalized = String(section || '')
     .replace(/\r/g, '\n')
     .replace(/[·•|]+/g, ' ')
-    .replace(/([\s\n]|^)(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})/g, '\n$2')
+    .replace(/([\s\n]|^)(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})/g, '\n$2')
     .replace(/\s+/g, ' ');
   const chunks = normalized
-    .split(/(?=\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b)/g)
+    .split(/(?=\b\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b)/g)
     .map(s => s.trim())
     .filter(Boolean);
   const hints = [];
@@ -5230,7 +5315,7 @@ function extractStatementInstallmentHints(text) {
     const monto = parseOCRMoney(amountRaw);
 
     let desc = chunk
-      .replace(/\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
+      .replace(/\b\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
       .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
       .replace(/(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi, ' ')
       .replace(/\b\d{5,8}\b/g, ' ')
@@ -5289,16 +5374,16 @@ function extractInstallmentFromAmountSegment(row, text) {
       if (idx < 0) break;
       start = idx + token.length;
 
-      const prevDateMatches = [...section.slice(0, idx).matchAll(/\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g)];
+      const prevDateMatches = [...section.slice(0, idx).matchAll(/\b\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b/g)];
       const segStart = prevDateMatches.length ? prevDateMatches[prevDateMatches.length - 1].index : Math.max(0, idx - 180);
-      const nextDate = section.slice(idx).search(/\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g);
+      const nextDate = section.slice(idx).search(/\b\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b/g);
       const segEnd = nextDate > token.length ? idx + nextDate : Math.min(section.length, idx + token.length + 80);
       const segment = section.slice(segStart, segEnd);
       const cuotasMatches = [...segment.matchAll(/\bC\.?\s*(\d{1,2})\s*\/\s*(\d{1,2})\b/gi)];
       if (!cuotasMatches.length) return;
 
       const descPart = segment
-        .replace(/\b\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
+        .replace(/\b\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
         .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
         .replace(/\b\d{5,8}\b/g, ' ')
         .replace(/(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi, ' ')
@@ -5355,7 +5440,7 @@ function extractInstallmentFromVisionRow(row, data) {
     });
 
     const descPart = descWords.map(w => w.text).join(' ').replace(/\s+/g, ' ').trim();
-    const cuotasInfo = parseInstallmentInfo(descPart);
+    const cuotasInfo = parseInstallmentInfo(descPart, { allowBare: true });
     if (Number(cuotasInfo.cuotas || 1) <= 1) return;
 
     const cleanDesc = cuotasInfo.descripcion || descPart;
@@ -5454,7 +5539,7 @@ function getStrictStatementInstallment(row, candidateRows) {
 }
 
 function getInstallmentFromSourceLine(row) {
-  const info = parseInstallmentInfo(row && row._sourceLine, { pick: 'first' });
+  const info = parseInstallmentInfo(row && row._sourceLine, { pick: 'first', allowBare: true });
   if (Number(info.cuotas || 1) <= 1) return null;
   const cleanSource = info.descripcion || row._sourceLine || '';
   const overlap = statementTextOverlap(row.descripcion, cleanSource);
@@ -5628,8 +5713,8 @@ function parseCardStatementRows(text) {
     })
     .filter(entry => entry.line);
   const rows = [];
-  const dateStart = /^(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
-  const dateAnywhere = /(\d{1,2}\s*[-\/]\s*[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
+  const dateStart = /^(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
+  const dateAnywhere = /(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
   const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi;
 
   for (const entry of lines) {
@@ -5678,7 +5763,7 @@ function parseCardStatementRows(text) {
       .replace(/\s+\d{5,8}\s*$/g, '')
       .replace(/\s{2,}/g, ' ')
       .trim();
-    const cuotasInfo = parseInstallmentInfo(descPart);
+    const cuotasInfo = parseInstallmentInfo(descPart, { allowBare: true });
     const descripcion = (cuotasInfo.descripcion || descPart || 'Consumo tarjeta').slice(0, 80);
 
     rows.push({
@@ -5853,8 +5938,8 @@ async function processOCR(input) {
     const dateChunkStatementItems = parseCardStatementRowsByDateChunks(text);
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
-    const deterministicItems = mergeStatementRowsByIdentity(columnStatementItems, visionStatementItems, visualLineStatementItems, textStatementItems);
-    const baseStatementItems = deterministicItems.length ? deterministicItems : (columnStatementItems.length >= 3 ? columnStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems)));
+    const deterministicItems = mergeStatementRowsByIdentity(columnStatementItems, dateChunkStatementItems, segmentStatementItems, visionStatementItems, visualLineStatementItems, textStatementItems);
+    const baseStatementItems = deterministicItems.length ? deterministicItems : (columnStatementItems.length >= 3 ? columnStatementItems : (dateChunkStatementItems.length ? dateChunkStatementItems : (segmentStatementItems.length ? segmentStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems)))));
     const markStatementSource = function(list, source) {
       return (list || []).map(row => ({ ...row, _statementSource: source }));
     };
@@ -5864,6 +5949,7 @@ async function processOCR(input) {
         markStatementSource(columnStatementItems, 'description-blocks'),
         markStatementSource(visionStatementItems, 'vision-row'),
         markStatementSource(segmentStatementItems, 'text-segments'),
+        markStatementSource(dateChunkStatementItems, 'date-chunks'),
         markStatementSource(textStatementItems, 'text-parser'),
         markStatementSource(installmentHints, 'hints')
       );
