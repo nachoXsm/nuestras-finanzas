@@ -4617,6 +4617,10 @@ function isCardStatementConsumptionRow(row) {
     return false;
   }
 
+  if (/\b(DB\.?\s*RG|IVA\s+RG|IIBB|IMPUESTO|PERCEP|SELLOS?)\b/.test(upper)) {
+    return true;
+  }
+
   const merchantText = upper
     .replace(/\b\d{1,2}\s*[-\/]\s*(?:[A-Z]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
     .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/g, ' ')
@@ -5722,6 +5726,126 @@ async function extractCardStatementRowsWithAI(rawText, file, onProgress) {
   return normalizeAIStatementRows(result.data, rawText);
 }
 
+
+function cleanStatementImportDescription(desc) {
+  return cleanupStatementDescription(desc)
+    .replace(/\b\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
+    .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
+    .replace(/\b\d{1,2}\s*\/\s*\d{1,2}\b/g, ' ')
+    .replace(/\b(?:US\$|U\$S|USD|ARS)\b/gi, ' ')
+    .replace(/(?:(?:US\$|U\$S|USD|\$)\s*)?-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?/gi, ' ')
+    .replace(/(?:(?:US\$|U\$S|USD|\$)\s*)?-?\d+[,\.]\d{2}/gi, ' ')
+    .replace(/\b\d{5,15}\b/g, ' ')
+    .replace(/^\s*[/*-]?\s*[KF]\s+/i, ' ')
+    .replace(/^\s*[*-]\s*/, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function statementRowHasExplicitUsd(row) {
+  return /(?:US\$|U\$S|USD)/i.test(String(row && (row._sourceLine || row.descripcion || '')));
+}
+
+function normalizeStatementRowForImport(row) {
+  if (!row) return null;
+  const clean = { ...row };
+  const explicitUsd = statementRowHasExplicitUsd(clean);
+  if (explicitUsd) clean.moneda = 'USD';
+  clean.descripcion = cleanStatementImportDescription(clean.descripcion || clean._sourceLine || '');
+  if (!clean.descripcion || !Number(clean.monto || 0)) return null;
+  return clean;
+}
+
+function finalStatementRowKey(row) {
+  return [
+    normalizeStatementMatchText(cleanStatementImportDescription(row && row.descripcion)),
+    Number(row && row.monto || 0).toFixed(2),
+    String(row && row.moneda || 'ARS').toUpperCase(),
+    Number(row && row.cuota_actual || 1),
+    Number(row && row.cuotas || 1)
+  ].join('|');
+}
+
+function finalizeStatementRowsForImport(rows) {
+  const normalized = (rows || []).map(normalizeStatementRowForImport).filter(Boolean);
+  const merged = [];
+  normalized.forEach(function(row) {
+    const key = finalStatementRowKey(row);
+    const existing = merged.find(item => item._finalKey === key);
+    if (!existing) {
+      merged.push({ ...row, _finalKey: key });
+      return;
+    }
+    const priority = { 'table-lines': 80, 'columns-inline': 70, 'columns': 65, 'date-chunks': 60, 'vision-row': 55, 'visual-lines': 50, 'text-segments': 45, 'text-parser': 40 };
+    const currentScore = priority[existing._statementSource] || 0;
+    const nextScore = priority[row._statementSource] || 0;
+    if (nextScore > currentScore) Object.assign(existing, row, { _finalKey: key });
+    if (Number(existing.cuotas || 1) <= 1 && Number(row.cuotas || 1) > 1) {
+      existing.cuotas = row.cuotas;
+      existing.cuota_actual = row.cuota_actual;
+    }
+  });
+
+  const cleaned = merged.map(function(row) {
+    const copy = { ...row };
+    delete copy._finalKey;
+    return copy;
+  });
+  return removeFalseUsdStatementDuplicates(cleaned);
+}
+
+function parseCardStatementRowsByTableLines(text) {
+  const section = getStatementDetailText(text);
+  const lines = String(section || '').replace(/\r/g, '\n').split('\n')
+    .map(l => l.replace(/[·•|]+/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  const rows = [];
+  const dateRx = /^(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\s+(.+)$/i;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})/gi;
+
+  lines.forEach(function(line) {
+    if (isStatementHeaderLine(line)) return;
+    if (/\b(SALDO|TOTAL\s+A\s+PAGAR|TOTAL\s+CONSUMOS|PAGO\s+MINIMO|SU\s+PAGO|L[IÍ]MITES?|CIERRE|VENCIMIENTO|TASAS?|CUOTAS\s+A\s+VENCER|PLAN\s+V)\b/i.test(line)) return;
+
+    const match = line.match(dateRx);
+    if (!match) return;
+    const dateInfo = parseStatementDate(match[1]);
+    if (!dateInfo) return;
+
+    const rest = match[2].trim();
+    const amountMatches = [...rest.matchAll(amountRx)].filter(function(m) {
+      return /[,\.]\d{2}\b|\d{1,3}(?:\.\d{3})+\b/.test(m[0]);
+    });
+    if (!amountMatches.length) return;
+
+    const amountMatch = amountMatches[amountMatches.length - 1];
+    const amountRaw = amountMatch[0];
+    const monto = parseOCRMoney(amountRaw);
+    if (!monto || monto <= 0) return;
+
+    const cuotasInfo = parseInstallmentInfo(rest, { pick: 'first', allowBare: true });
+    const descSource = rest.slice(0, amountMatch.index).trim();
+    const descripcion = cleanStatementImportDescription(cuotasInfo.descripcion || descSource || rest).slice(0, 80);
+    if (!descripcion) return;
+
+    rows.push({
+      ...dateInfo,
+      descripcion,
+      monto,
+      moneda: /(?:US\$|U\$S|USD)/i.test(rest) ? 'USD' : 'ARS',
+      cat: guessOCRCategory(descripcion),
+      cuotas: cuotasInfo.cuotas,
+      cuota_actual: cuotasInfo.cuotaActual,
+      _statementSource: 'table-lines',
+      _sourceLine: line
+    });
+  });
+
+  return applyStatementDueDate(rows, text);
+}
+
+
 function parseCardStatementRows(text) {
   const rawLines = String(text || '').replace(/\r/g, '\n').split('\n');
   const headerLine = rawLines.find(function(l) {
@@ -5940,18 +6064,20 @@ async function processOCR(input) {
     const currentVisionData = lastOCRVisionData || window.lastOCRVisionData;
     const visualLineStatementItems = parseCardStatementRowsByVisualLines(text, currentVisionData);
     const visionStatementItems = parseCardStatementRowsFromVision(currentVisionData);
+    const tableLineStatementItems = parseCardStatementRowsByTableLines(text);
     const segmentStatementItems = parseCardStatementRowsBySegments(text);
     const columnStatementItems = parseCardStatementRowsByColumns(text);
     const dateChunkStatementItems = parseCardStatementRowsByDateChunks(text);
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
-    const deterministicItems = mergeStatementRowsByIdentity(columnStatementItems, dateChunkStatementItems, segmentStatementItems, visionStatementItems, visualLineStatementItems, textStatementItems);
-    const baseStatementItems = deterministicItems.length ? deterministicItems : (columnStatementItems.length >= 3 ? columnStatementItems : (dateChunkStatementItems.length ? dateChunkStatementItems : (segmentStatementItems.length ? segmentStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems)))));
+    const deterministicItems = mergeStatementRowsByIdentity(tableLineStatementItems, columnStatementItems, dateChunkStatementItems, segmentStatementItems, visionStatementItems, visualLineStatementItems, textStatementItems);
+    const baseStatementItems = tableLineStatementItems.length >= 3 ? tableLineStatementItems : (deterministicItems.length ? deterministicItems : (columnStatementItems.length >= 3 ? columnStatementItems : (dateChunkStatementItems.length ? dateChunkStatementItems : (segmentStatementItems.length ? segmentStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems))))));
     const markStatementSource = function(list, source) {
       return (list || []).map(row => ({ ...row, _statementSource: source }));
     };
     const installmentCandidates = []
       .concat(
+        markStatementSource(tableLineStatementItems, 'table-lines'),
         markStatementSource(visualLineStatementItems, 'visual-lines'),
         markStatementSource(columnStatementItems, 'description-blocks'),
         markStatementSource(visionStatementItems, 'vision-row'),
@@ -5960,7 +6086,7 @@ async function processOCR(input) {
         markStatementSource(textStatementItems, 'text-parser'),
         markStatementSource(installmentHints, 'hints')
       );
-    const statementItems = removeFalseUsdStatementDuplicates(applyStatementDueDate(
+    const statementItems = finalizeStatementRowsForImport(applyStatementDueDate(
       filterCardStatementConsumptionRows(
         verifyStatementInstallments(
           baseStatementItems.length
@@ -5974,6 +6100,7 @@ async function processOCR(input) {
     window.lastStatementImportDebug = {
       isStatement,
       aiStatementItems,
+      tableLineStatementItems,
       visualLineStatementItems,
       visionStatementItems,
       segmentStatementItems,
