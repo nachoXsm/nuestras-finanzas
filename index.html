@@ -1541,6 +1541,22 @@ function applyRecordCurrencies(table, rows){
   (rows||[]).forEach(function(r){ if(r && !r.moneda && m[r.id]) r.moneda = m[r.id]; });
   return rows;
 }
+function cardRelationStoreKey(table){ return 'nf_card_relations_' + table; }
+function getCardRelationStore(table){ try { return JSON.parse(localStorage.getItem(cardRelationStoreKey(table)) || '{}'); } catch(e) { return {}; } }
+function rememberRecordCardRelation(table, id, record){
+  if(!id || !record || !record.tarjeta_id) return;
+  var m = getCardRelationStore(table);
+  m[id] = record.tarjeta_id;
+  localStorage.setItem(cardRelationStoreKey(table), JSON.stringify(m));
+}
+function applyRecordCardRelations(table, rows){
+  var m = getCardRelationStore(table);
+  (rows||[]).forEach(function(r){
+    if(!r || !r.id) return;
+    if(!r.tarjeta_id && m[r.id]) r.tarjeta_id = m[r.id];
+  });
+  return rows;
+}
 function installmentStoreKey(table){ return 'nf_installments_' + table; }
 function getInstallmentStore(table){ try { return JSON.parse(localStorage.getItem(installmentStoreKey(table)) || '{}'); } catch(e) { return {}; } }
 function normalizeInstallmentParts(record){
@@ -1583,6 +1599,7 @@ async function dbPostMoney(table, body){
     if(direct && direct[0]) {
       rememberRecordCurrency(table, direct[0].id, body.moneda);
       rememberRecordInstallments(table, direct[0].id, body);
+      rememberRecordCardRelation(table, direct[0].id, body);
     }
     return direct;
   }
@@ -1596,10 +1613,12 @@ async function dbPostMoney(table, body){
     var res = await dbPost(table, clean);
     if(res && res[0]) {
       res[0].moneda = moneda;
+      res[0].tarjeta_id = body.tarjeta_id || res[0].tarjeta_id || null;
       res[0].cuotas = body.cuotas || 1;
       res[0].cuota_actual = body.cuota_actual || 1;
       rememberRecordCurrency(table, res[0].id, moneda);
       rememberRecordInstallments(table, res[0].id, body);
+      rememberRecordCardRelation(table, res[0].id, body);
     }
     return res;
   }
@@ -1610,6 +1629,7 @@ async function dbPatchMoney(table, id, body){
     if(direct && direct[0]) {
       rememberRecordCurrency(table, direct[0].id, body.moneda);
       rememberRecordInstallments(table, direct[0].id, body);
+      rememberRecordCardRelation(table, direct[0].id, body);
     }
     return direct;
   }
@@ -1623,10 +1643,12 @@ async function dbPatchMoney(table, id, body){
     var res = await dbPatch(table, id, clean);
     if(res && res[0]) {
       res[0].moneda = moneda;
+      res[0].tarjeta_id = body.tarjeta_id || res[0].tarjeta_id || null;
       res[0].cuotas = body.cuotas || 1;
       res[0].cuota_actual = body.cuota_actual || 1;
       rememberRecordCurrency(table, res[0].id, moneda);
       rememberRecordInstallments(table, res[0].id, body);
+      rememberRecordCardRelation(table, res[0].id, body);
     }
     return res;
   }
@@ -2027,7 +2049,7 @@ async function loadAll() {
       modoGrupo ? dbGet('gastos', `grupo_id=eq.${gid}`) : dbGet('gastos', `grupo_id=eq.${gid}&mes=eq.${mes}&anio=eq.${anio}`)
     ]);
     if (state.grupoId !== gid || (!modoGrupo && (state.mes !== mes || state.anio !== anio))) return;
-    state.tarjetas=tarjetas; state.ingresos=applyRecordCurrencies('ingresos', ingresos); state.gastos=applyRecordInstallments('gastos', applyRecordCurrencies('gastos', gastos));
+    state.tarjetas=tarjetas; state.ingresos=applyRecordCurrencies('ingresos', ingresos); state.gastos=applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', gastos)));
     setSyncing('ok');
     setTimeout(checkTarjetasVencimiento, 1500); // Verificar vencimientos
   } catch(e) {
