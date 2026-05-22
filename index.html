@@ -4819,28 +4819,47 @@ function getStatementDetailText(text) {
     if (/fecha/.test(l) && /(referencia|descripcion|comercio|establecimiento|detalle)/.test(l) && /(cuota|cupon|comprobante|pesos|dolares|importe|monto)/.test(l)) return true;
     return false;
   };
-  const isStop = function(line) {
+  const isFinalStop = function(line) {
     const l = norm(line);
-    return /iva\s+responsable|tasas|otros\s+periodos|total\s+de\s+cuotas\s+a\s+vencer|total\s+cuotas\s+a\s+vencer|mensajes?|informacion\s+importante|pagina\s+\d|^sobre\b|saldo\s+actual\b/.test(l);
+    return /total\s+a\s+pagar|plan\s+v\b|cuotas\s+a\s+vencer|total\s+de\s+cuotas\s+a\s+vencer|total\s+cuotas\s+a\s+vencer|mensajes?|informacion\s+importante/.test(l);
+  };
+  const isSoftStop = function(line) {
+    const l = norm(line);
+    return /iva\s+responsable|^sobre\b/.test(l);
+  };
+  const isPageChrome = function(line) {
+    const l = norm(line).trim();
+    return /^pagina\s+\d+\s*\/\s*\d+/.test(l)
+      || /^resumen\s+n/.test(l)
+      || /^tarjeta\s+credito\b/.test(l)
+      || /^monotributo\b/.test(l)
+      || /^banco:/.test(l)
+      || /^n[°o]\s*cuenta/.test(l);
   };
 
-  let start = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (isStart(lines[i], i)) {
-      start = i;
-      if (/detalle\s+del\s+consumo|detalle\s+de\s+consumos|detalle\s+de\s+compras|consumos\s+/.test(norm(lines[i]))) break;
-    }
-  }
-  if (start < 0) return raw;
+  const collected = [];
+  let active = false;
+  let foundStart = false;
 
-  let end = lines.length;
-  for (let i = start + 1; i < lines.length; i++) {
-    if (isStop(lines[i])) {
-      end = i;
-      break;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isStart(line, i)) {
+      active = true;
+      foundStart = true;
+      collected.push(line);
+      continue;
     }
+    if (!active) continue;
+    if (isFinalStop(line)) break;
+    if (isSoftStop(line)) {
+      active = false;
+      continue;
+    }
+    if (isPageChrome(line)) continue;
+    collected.push(line);
   }
-  return lines.slice(start, end).join('\n');
+
+  return foundStart && collected.length ? collected.join('\n') : raw;
 }
 
 function isStatementHeaderLine(line) {
