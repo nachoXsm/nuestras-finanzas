@@ -4522,7 +4522,7 @@ function parseCardStatementRowsFromVision(data) {
   const deduped = [];
   const seen = new Set();
   rows.forEach(function(row) {
-    const key = [row.fecha, normalizeStatementMatchText(row.descripcion), row.monto, row.moneda].join('|');
+    const key = statementRowIdentityKey(row);
     if (seen.has(key)) return;
     seen.add(key);
     deduped.push(row);
@@ -4798,7 +4798,7 @@ function parseCardStatementRowsByVisualLines(text, visionData) {
 
   const seen = new Set();
   return applyStatementDueDate(rows, text).filter(function(row) {
-    const key = [row.fecha, normalizeStatementMatchText(row.descripcion), row.monto, row.moneda].join('|');
+    const key = statementRowIdentityKey(row);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -4959,11 +4959,7 @@ function mergeStatementRowsByIdentity() {
   Array.from(arguments).forEach(function(list) {
     (list || []).forEach(function(row) {
       if (!row || !row.descripcion || !row.monto) return;
-      const key = [
-        String(row.descripcion || '').toLowerCase().replace(/\s+/g, ' ').trim(),
-        Number(row.monto || 0).toFixed(2),
-        String(row.moneda || 'ARS')
-      ].join('|');
+      const key = statementRowIdentityKey(row);
       const existing = merged.find(x => x._mergeKey === key);
       if (!existing) {
         merged.push({ ...row, _mergeKey: key });
@@ -5765,24 +5761,56 @@ function statementRowHasExplicitUsd(row) {
   return /(?:US\$|U\$S|USD)/i.test(String(row && (row._sourceLine || row.descripcion || '')));
 }
 
+function statementSourceDateKey(row) {
+  const raw = String(row && (row._purchaseDateKey || row.fecha_compra || row.fecha_original || row._sourceLine || '') || '');
+  const m = raw.match(/\b(\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4})\b/i);
+  return m ? normalizeStatementMatchText(m[1]) : '';
+}
+
+function statementCouponKey(row) {
+  const raw = String(row && (row.cupon || row.cupón || row.comprobante || row._couponKey || row._sourceLine || '') || '');
+  if (row && (row.cupon || row.cupón || row.comprobante || row._couponKey)) {
+    return String(row.cupon || row.cupón || row.comprobante || row._couponKey).replace(/\D/g, '');
+  }
+  const amountTokens = raw.match(/-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})/g) || [];
+  let beforeAmount = raw;
+  if (amountTokens.length) {
+    const lastAmount = amountTokens[amountTokens.length - 1];
+    const idx = raw.lastIndexOf(lastAmount);
+    if (idx > -1) beforeAmount = raw.slice(0, idx);
+  }
+  const tokens = beforeAmount.match(/\b\d{5,8}\b/g) || [];
+  return tokens.length ? tokens[tokens.length - 1].replace(/\D/g, '') : '';
+}
+
+function statementRowIdentityKey(row) {
+  const base = [
+    normalizeStatementMatchText(cleanStatementImportDescription(row && row.descripcion)),
+    Number(row && row.monto || 0).toFixed(2),
+    String(row && row.moneda || 'ARS').toUpperCase(),
+    Number(row && row.cuota_actual || 1),
+    Number(row && row.cuotas || 1)
+  ];
+  const sourceDate = statementSourceDateKey(row);
+  const coupon = statementCouponKey(row);
+  if (sourceDate || coupon) base.push(sourceDate, coupon);
+  return base.join('|');
+}
+
 function normalizeStatementRowForImport(row) {
   if (!row) return null;
   const clean = { ...row };
   const explicitUsd = statementRowHasExplicitUsd(clean);
   if (explicitUsd) clean.moneda = 'USD';
+  clean._purchaseDateKey = statementSourceDateKey(clean);
+  clean._couponKey = statementCouponKey(clean);
   clean.descripcion = cleanStatementImportDescription(clean.descripcion || clean._sourceLine || '');
   if (!clean.descripcion || !Number(clean.monto || 0)) return null;
   return clean;
 }
 
 function finalStatementRowKey(row) {
-  return [
-    normalizeStatementMatchText(cleanStatementImportDescription(row && row.descripcion)),
-    Number(row && row.monto || 0).toFixed(2),
-    String(row && row.moneda || 'ARS').toUpperCase(),
-    Number(row && row.cuota_actual || 1),
-    Number(row && row.cuotas || 1)
-  ].join('|');
+  return statementRowIdentityKey(row);
 }
 
 function finalizeStatementRowsForImport(rows) {
@@ -5944,7 +5972,9 @@ function parseCardStatementRows(text) {
       moneda,
       cat: guessOCRCategory(descripcion),
       cuotas: cuotasInfo.cuotas,
-      cuota_actual: cuotasInfo.cuotaActual
+      cuota_actual: cuotasInfo.cuotaActual,
+      _sourceLine: line,
+      _statementSource: 'text-parser'
     });
   }
 
@@ -5955,7 +5985,7 @@ function parseCardStatementRows(text) {
   const datedRows = applyStatementDueDate(rescuedRows, text);
   const seen = new Set();
   return datedRows.filter(function(row) {
-    const key = [row.fecha, row.descripcion.toLowerCase(), row.monto, row.moneda, row.cuota_actual, row.cuotas].join('|');
+    const key = statementRowIdentityKey(row);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -5964,8 +5994,29 @@ function parseCardStatementRows(text) {
 
 
 
-function findDuplicateStatementExpense(item) {
-  const sameBasics = (state.gastos || []).filter(function(g) {
+function statementExpenseDuplicateKey(item) {
+  return [
+    Number(item && item.dia || 0),
+    Number(item && item.mes || 0),
+    Number(item && item.anio || 0),
+    normalizeStatementMatchText(item && item.descripcion),
+    Number(item && item.monto || 0).toFixed(2),
+    String(item && item.moneda || getDefaultCurrency()).toUpperCase()
+  ].join('|');
+}
+
+function countStatementExpenseKeys(rows) {
+  const counts = {};
+  (rows || []).forEach(function(row) {
+    const key = statementExpenseDuplicateKey(row);
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
+function findDuplicateStatementExpense(item, sourceList) {
+  const gastos = Array.isArray(sourceList) ? sourceList : (state.gastos || []);
+  const sameBasics = gastos.filter(function(g) {
     return Number(g.dia) === Number(item.dia)
       && Number(g.mes) === Number(item.mes)
       && Number(g.anio) === Number(item.anio)
@@ -6003,6 +6054,10 @@ async function importCardStatementExpenses(items, setProgress) {
   const quien = selectedQuien && selectedQuien !== 'Todos' ? selectedQuien : activePayer;
   const tarjeta_id = tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null;
   const medio = 'tarjeta';
+  const existingStatementExpenses = (state.gastos || []).slice();
+  const targetStatementCounts = countStatementExpenseKeys(list);
+  const existingStatementCounts = countStatementExpenseKeys(existingStatementExpenses);
+  const consumedExistingStatementCounts = {};
   let imported = 0;
   let skipped = 0;
 
@@ -6033,8 +6088,14 @@ async function importCardStatementExpenses(items, setProgress) {
       division: null
     };
 
-    const duplicate = findDuplicateStatementExpense(item);
+    const duplicateKey = statementExpenseDuplicateKey(item);
+    const consumedCount = consumedExistingStatementCounts[duplicateKey] || 0;
+    const availableExistingCount = Math.min(existingStatementCounts[duplicateKey] || 0, targetStatementCounts[duplicateKey] || 1);
+    const duplicate = consumedCount < availableExistingCount
+      ? findDuplicateStatementExpense(item, existingStatementExpenses)
+      : null;
     if (duplicate) {
+      consumedExistingStatementCounts[duplicateKey] = consumedCount + 1;
       const needsPatch =
         duplicate.quien !== body.quien ||
         duplicate.cat !== body.cat ||
