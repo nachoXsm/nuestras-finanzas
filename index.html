@@ -5813,6 +5813,27 @@ function finalizeStatementRowsForImport(rows) {
   return removeFalseUsdStatementDuplicates(cleaned);
 }
 
+function countImportableStatementRows(rows) {
+  return filterCardStatementConsumptionRows(rows || []).length;
+}
+
+function chooseStatementRowsForImport(sources) {
+  const ranked = (sources || [])
+    .filter(source => source && Array.isArray(source.rows) && source.rows.length)
+    .map(source => ({
+      name: source.name,
+      rows: source.rows,
+      count: countImportableStatementRows(source.rows)
+    }))
+    .filter(source => source.count > 0)
+    .sort((a, b) => (b.count - a.count) || (b.rows.length - a.rows.length));
+
+  if (!ranked.length) return [];
+  const best = ranked[0];
+  console.log('NF resumen base seleccionada:', best.name, best.count, 'consumos');
+  return best.rows;
+}
+
 function parseCardStatementRowsByTableLines(text) {
   const section = getStatementDetailText(text);
   const lines = String(section || '').replace(/\r/g, '\n').split('\n')
@@ -6090,7 +6111,16 @@ async function processOCR(input) {
     const textStatementItems = parseCardStatementRows(text);
     const installmentHints = extractStatementInstallmentHints(text);
     const deterministicItems = mergeStatementRowsByIdentity(tableLineStatementItems, columnStatementItems, dateChunkStatementItems, segmentStatementItems, visionStatementItems, visualLineStatementItems, textStatementItems);
-    const baseStatementItems = tableLineStatementItems.length >= 3 ? tableLineStatementItems : (deterministicItems.length ? deterministicItems : (columnStatementItems.length >= 3 ? columnStatementItems : (dateChunkStatementItems.length ? dateChunkStatementItems : (segmentStatementItems.length ? segmentStatementItems : (visionStatementItems.length ? visionStatementItems : (visualLineStatementItems.length ? visualLineStatementItems : textStatementItems))))));
+    const baseStatementItems = chooseStatementRowsForImport([
+      { name: 'deterministic-merged', rows: deterministicItems },
+      { name: 'table-lines', rows: tableLineStatementItems },
+      { name: 'date-chunks', rows: dateChunkStatementItems },
+      { name: 'columns', rows: columnStatementItems },
+      { name: 'segments', rows: segmentStatementItems },
+      { name: 'vision-row', rows: visionStatementItems },
+      { name: 'visual-lines', rows: visualLineStatementItems },
+      { name: 'text-parser', rows: textStatementItems }
+    ]);
     const markStatementSource = function(list, source) {
       return (list || []).map(row => ({ ...row, _statementSource: source }));
     };
