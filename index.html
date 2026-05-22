@@ -5015,7 +5015,7 @@ function parseCardStatementRowsByColumns(text) {
       ...dateInfo,
       descripcion,
       monto: amountObj.monto,
-      moneda: amountObj.moneda || 'ARS',
+      moneda: /(?:US\$|U\$S|USD)/i.test([descRaw, sourceLine, amountObj.raw || ''].join(' ')) ? 'USD' : (amountObj.moneda || 'ARS'),
       cat: guessOCRCategory(descripcion),
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
@@ -5040,7 +5040,8 @@ function parseCardStatementRowsByColumns(text) {
     const amountMatch = amountMatches[amountMatches.length - 1];
     const amountObj = {
       monto: parseOCRMoney(amountMatch[0]),
-      moneda: /(?:US\$|U\$S|USD)/i.test(amountMatch[0] || rest) ? 'USD' : 'ARS'
+      moneda: /(?:US\$|U\$S|USD)/i.test(amountMatch[0] || rest) ? 'USD' : 'ARS',
+      raw: amountMatch[0]
     };
     if (!amountObj.monto) return;
 
@@ -5092,7 +5093,7 @@ function parseCardStatementRowsByColumns(text) {
     if (isStatementAmountLine(line)) {
       const value = parseOCRMoney(line);
       if (value > 0) {
-        amounts.push({ monto: value, moneda: /(?:US\$|U\$S|USD)/i.test(line) ? 'USD' : 'ARS' });
+        amounts.push({ monto: value, moneda: /(?:US\$|U\$S|USD)/i.test(line) ? 'USD' : 'ARS', raw: line });
       } else if (value < 0 || statementLineHasNegativeAmount(line)) {
         // Mantiene alineadas fecha/descripcion/monto: una bonificacion o pago
         // ocupa su fila y se descarta completa, sin correr los importes siguientes.
@@ -5803,15 +5804,38 @@ function statementCouponKey(row) {
   return tokens.length ? tokens[tokens.length - 1].replace(/\D/g, '') : '';
 }
 
+function canonicalStatementTaxKey(row) {
+  const desc = String(row && row.descripcion || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9% ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!isStatementTaxDescription(desc)) return '';
+  const kind = desc.includes('DB') && desc.includes('RG') ? 'DBRG'
+    : desc.includes('IVA') ? 'IVARG'
+    : desc.includes('IIBB') ? 'IIBB'
+    : desc.includes('PERCEP') ? 'PERCEP'
+    : desc.includes('SELLO') ? 'SELLOS'
+    : 'IMPUESTO';
+  const rg = (desc.match(/\bRG\s*(\d{3,5})\b/) || desc.match(/\b(\d{3,5})\b/) || [,''])[1];
+  const pct = (desc.match(/\b(\d{1,2})\s*%/) || [,''])[1];
+  return [kind, rg, pct].filter(Boolean).join('-');
+}
+
 function statementRowIdentityKey(row) {
+  const taxKey = canonicalStatementTaxKey(row);
   const base = [
-    normalizeStatementMatchText(cleanStatementImportDescription(row && row.descripcion)),
+    taxKey || normalizeStatementMatchText(cleanStatementImportDescription(row && row.descripcion)),
     Number(row && row.monto || 0).toFixed(2),
-    String(row && row.moneda || 'ARS').toUpperCase(),
-    Number(row && row.cuota_actual || 1),
-    Number(row && row.cuotas || 1)
+    String(row && row.moneda || 'ARS').toUpperCase()
   ];
-  if (isStatementTaxDescription(row && row.descripcion)) return base.join('|');
+
+  // Las cuotas NO forman parte de la identidad del consumo. Si una fuente
+  // detecta cuotas y otra no, deben fusionarse para conservar la pastilla.
+  if (taxKey) return base.join('|');
+
   const sourceDate = statementSourceDateKey(row);
   const coupon = statementCouponKey(row);
   if (sourceDate || coupon) base.push(sourceDate, coupon);
@@ -5847,8 +5871,17 @@ function finalizeStatementRowsForImport(rows) {
     const priority = { 'table-lines': 80, 'columns-inline': 70, 'columns': 65, 'date-chunks': 60, 'vision-row': 55, 'visual-lines': 50, 'text-segments': 45, 'text-parser': 40 };
     const currentScore = priority[existing._statementSource] || 0;
     const nextScore = priority[row._statementSource] || 0;
-    if (nextScore > currentScore) Object.assign(existing, row, { _finalKey: key });
-    if (Number(existing.cuotas || 1) <= 1 && Number(row.cuotas || 1) > 1) {
+    const savedCuotas = Number(existing.cuotas || 1);
+    const savedCuotaActual = Number(existing.cuota_actual || 1);
+    const nextCuotas = Number(row.cuotas || 1);
+    if (nextScore > currentScore) {
+      Object.assign(existing, row, { _finalKey: key });
+      if (savedCuotas > 1 && nextCuotas <= 1) {
+        existing.cuotas = savedCuotas;
+        existing.cuota_actual = savedCuotaActual;
+      }
+    }
+    if (Number(existing.cuotas || 1) <= 1 && nextCuotas > 1) {
       existing.cuotas = row.cuotas;
       existing.cuota_actual = row.cuota_actual;
     }
@@ -5872,10 +5905,15 @@ function chooseStatementRowsForImport(sources) {
     .map(source => ({
       name: source.name,
       rows: source.rows,
-      count: countImportableStatementRows(source.rows)
+      count: countImportableStatementRows(source.rows),
+      installmentCount: (source.rows || []).filter(row => Number(row && row.cuotas || 1) > 1).length,
+      usdCount: (source.rows || []).filter(row => String(row && row.moneda || 'ARS').toUpperCase() === 'USD').length
     }))
     .filter(source => source.count > 0)
-    .sort((a, b) => (b.count - a.count) || (b.rows.length - a.rows.length));
+    .sort((a, b) => (b.count - a.count)
+      || (b.installmentCount - a.installmentCount)
+      || (b.usdCount - a.usdCount)
+      || (b.rows.length - a.rows.length));
 
   if (!ranked.length) return [];
   const best = ranked[0];
@@ -6016,11 +6054,12 @@ function parseCardStatementRows(text) {
 
 
 function statementExpenseDuplicateKey(item) {
+  const taxKey = canonicalStatementTaxKey(item);
   return [
     Number(item && item.dia || 0),
     Number(item && item.mes || 0),
     Number(item && item.anio || 0),
-    normalizeStatementMatchText(item && item.descripcion),
+    taxKey || normalizeStatementMatchText(item && item.descripcion),
     Number(item && item.monto || 0).toFixed(2),
     String(item && item.moneda || getDefaultCurrency()).toUpperCase()
   ].join('|');
