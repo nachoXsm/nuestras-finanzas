@@ -311,6 +311,9 @@
     .tcard-total{font-size:18px;font-weight:800;color:var(--primary)}
     .tcard-item{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
     .tcard-item:last-child{border-bottom:none}
+.tcard-item-amount{color:white;font-weight:800}
+.tcard-currency-section{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 7px;padding-top:9px;border-top:1px solid rgba(255,255,255,.10);font-size:.74rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
+.tcard-currency-section strong{font-size:.9rem;letter-spacing:0;text-transform:none;color:#ffb86b}
 
     /* CATS */
     .cat-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -3279,7 +3282,14 @@ renderAll = function() {
     const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     tEl.innerHTML = tarjetas.map(t=>{
       const tG = gastos.filter(g=>g.tarjeta_id===t.id);
-      const tTot = tG.reduce((a,g)=>a+parseFloat(g.monto),0);
+      const tGUsd = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()==='USD');
+      const tGBase = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()!=='USD');
+      const tTot = tGBase.reduce((a,g)=>a+parseFloat(g.monto||0),0);
+      const tUsdTot = tGUsd.reduce((a,g)=>a+parseFloat(g.monto||0),0);
+      const tRows = rows => rows.map(g=>`<div class="tcard-item">
+            <span>${gastoDisplayDescription(g)} ${g.cuotas>1?`<span style="color:var(--text3);font-size:0.7rem">${cuotaDisplayValue(g)}</span>`:''}</span>
+            <span class="tcard-item-amount">${fmtCurrency(g.monto, g.moneda)}</span>
+          </div>`).join('');
       const cierreStr = t.cierre?(t.cierre+(t.cierre_mes?'/'+MS[t.cierre_mes-1]:'')):'?';
       const vencStr = t.vencimiento?(t.vencimiento+(t.venc_mes?'/'+MS[t.venc_mes-1]:'')):'?';
       return `<div class="tcard">
@@ -3297,10 +3307,7 @@ renderAll = function() {
           </div>
         </div>
         ${!tG.length?`<div style="font-size:0.8rem;color:var(--text3)">Sin gastos en esta tarjeta</div>`:
-          tG.map(g=>`<div class="tcard-item">
-            <span>${gastoDisplayDescription(g)} ${g.cuotas>1?`<span style="color:var(--text3);font-size:0.7rem">${cuotaDisplayValue(g)}</span>`:''}</span>
-            <span class="tcard-item-amount">${fmtCurrency(g.monto, g.moneda)}</span>
-          </div>`).join('')}
+          `${tGBase.length?`${tRows(tGBase)}`:''}${tGUsd.length?`<div class="tcard-currency-section"><span>Dólares</span><strong>${fmtCurrency(tUsdTot,'USD')}</strong></div>${tRows(tGUsd)}`:''}`}
       </div>`;
     }).join('');
   }
