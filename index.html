@@ -1735,6 +1735,9 @@ async function dbPostMoney(table, body){
     var moneda = body.moneda;
     var clean = Object.assign({}, body);
     ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
+    if (body.tarjeta_id && table === 'gastos') {
+      clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
+    }
     var res = await dbPost(table, clean);
     if(res && res[0]) {
       res[0].moneda = moneda;
@@ -1765,6 +1768,9 @@ async function dbPatchMoney(table, id, body){
     var moneda = body.moneda;
     var clean = Object.assign({}, body);
     ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
+    if (body.tarjeta_id && table === 'gastos') {
+      clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
+    }
     var res = await dbPatch(table, id, clean);
     if(res && res[0]) {
       res[0].moneda = moneda;
@@ -4889,9 +4895,29 @@ function statementLineHasNegativeAmount(line) {
   return /(?:^|\s)(?:US\$|U\$S|USD|\$)?\s*-\s*(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2}|\d{4,8})(?:\s|$)/.test(String(line || ''));
 }
 
+function statementUpperText(value) {
+  return String(value || '').toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function isStatementTaxDescription(desc) {
-  const upper = String(desc || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const upper = statementUpperText(desc);
   return /\b(DB\.?\s*RG|IVA\s+RG|IIBB|IMPUESTO|PERCEP|SELLOS?)\b/.test(upper);
+}
+
+function isStatementNonConsumptionText(value) {
+  const upper = statementUpperText(value);
+  return /\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|PAGO\s+MINIMO|SALDO\s+PENDIENTE|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|SUBTOTAL|TOTAL\s+(?:CONSUMOS|DEL\s+MES|TITULAR|TARJETA|RESUMEN)|TOTAL\s+DE|TOTAL\s+A\s+PAGAR|CONSOLIDADO|VENCIMIENTO|CIERRE\s+ACTUAL|PROXIMO\s+CIERRE|LIMITES?|TASAS?|LEGALES?|AVISOS?|RESUMEN|CUENTA|TARJETA\s+CREDITO)\b/.test(upper);
+}
+
+function isStatementAdminFeeDescription(desc) {
+  const upper = statementUpperText(desc);
+  return /\b(COM\.?\s*ADM|COMISION|LIQ\.?\s*D\/?CTA|MANTENIMIENTO|CARGO\s+ADMIN|ADM\.?\s*Y\s*LIQ)\b/.test(upper);
+}
+
+function statementAmountCurrencyKey(row) {
+  return [Number(row && row.monto || 0).toFixed(2), String(row && row.moneda || 'ARS').toUpperCase()].join('|');
 }
 
 function isCardStatementConsumptionRow(row) {
@@ -4903,18 +4929,14 @@ function isCardStatementConsumptionRow(row) {
   if (!desc) return false;
   if (statementLineHasNegativeAmount(row._sourceLine || '') && amount > 0) return false;
 
-  const sourceUpper = String(row._sourceLine || '').toUpperCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-  if (/\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|PAGO\s+MINIMO|SALDO\s+PENDIENTE|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|SUBTOTAL|TOTAL\s+(?:CONSUMOS|DEL\s+MES|TITULAR|TARJETA|RESUMEN)|TOTAL\s+DE|TOTAL\s+A\s+PAGAR)\b/.test(sourceUpper)) {
+  const sourceUpper = statementUpperText(row._sourceLine || '');
+  if (isStatementNonConsumptionText(sourceUpper)) {
     return false;
   }
 
-  const upper = desc.toUpperCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+  const upper = statementUpperText(desc);
 
-  if (/\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|PAGO\s+MINIMO|SALDO\s+PENDIENTE|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|SUBTOTAL|TOTAL\s+CONSUMOS|TOTAL\s+DEL\s+MES|TOTAL\s+TITULAR|TOTAL\s+TARJETA|TOTAL\s+RESUMEN|TOTAL\s+DE|TOTAL\s+A\s+PAGAR|CONSOLIDADO|VENCIMIENTO|CIERRE\s+ACTUAL|PROXIMO\s+CIERRE|LIMITES?|TASAS?|LEGALES?|AVISOS?|RESUMEN|CUENTA|TARJETA\s+CREDITO)\b/.test(upper)) {
+  if (isStatementNonConsumptionText(upper)) {
     return false;
   }
 
@@ -6266,12 +6288,44 @@ function finalStatementRowKey(row) {
   return statementRowIdentityKey(row);
 }
 
+function statementLooseDuplicateKey(row) {
+  const taxKey = canonicalStatementTaxKey(row);
+  return [
+    taxKey || normalizeStatementMatchText(cleanStatementImportDescription(row && row.descripcion)),
+    Number(row && row.monto || 0).toFixed(2),
+    String(row && row.moneda || 'ARS').toUpperCase(),
+    statementSourceDateKey(row) || String(row && row.fecha || '')
+  ].join('|');
+}
+
+function statementRowsAreLooseDuplicates(a, b) {
+  if (!a || !b) return false;
+  if (statementLooseDuplicateKey(a) !== statementLooseDuplicateKey(b)) return false;
+  const ca = statementCouponKey(a);
+  const cb = statementCouponKey(b);
+  return !ca || !cb || ca === cb;
+}
+
+function removeStatementFeeSummaryClones(rows) {
+  const list = rows || [];
+  const merchantAmounts = new Set(list
+    .filter(row => row && !isStatementAdminFeeDescription(row.descripcion) && !isStatementTaxDescription(row.descripcion))
+    .map(statementAmountCurrencyKey));
+
+  return list.filter(function(row) {
+    if (!row) return false;
+    if (!isStatementAdminFeeDescription(row.descripcion)) return true;
+    return !merchantAmounts.has(statementAmountCurrencyKey(row));
+  });
+}
+
 function finalizeStatementRowsForImport(rows) {
   const normalized = (rows || []).map(normalizeStatementRowForImport).filter(Boolean);
   const merged = [];
   normalized.forEach(function(row) {
     const key = finalStatementRowKey(row);
-    const existing = merged.find(item => item._finalKey === key);
+    const existing = merged.find(item => item._finalKey === key)
+      || merged.find(item => statementRowsAreLooseDuplicates(item, row));
     if (!existing) {
       merged.push({ ...row, _finalKey: key });
       return;
@@ -6300,7 +6354,8 @@ function finalizeStatementRowsForImport(rows) {
     delete copy._finalKey;
     return copy;
   });
-  return removeFalseUsdStatementDuplicates(cleaned);
+  const consumptionOnly = filterCardStatementConsumptionRows(cleaned);
+  return removeFalseUsdStatementDuplicates(removeStatementFeeSummaryClones(consumptionOnly));
 }
 
 function countImportableStatementRows(rows) {
@@ -6584,7 +6639,8 @@ async function importCardStatementExpenses(items, setProgress) {
     const res = await dbPostMoney('gastos', body);
     const origen = res && res[0];
     if (origen) {
-      state.gastos.push(origen);
+      const syncedOrigen = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [origen])))[0] || origen;
+      state.gastos.push(syncedOrigen);
       imported++;
       // Los resúmenes importados ya traen la cuota del período. No se generan cuotas futuras
       // para evitar duplicar cargos cuando se importen los próximos resúmenes.
