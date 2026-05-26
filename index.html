@@ -365,14 +365,18 @@
 
     /* INFORME */
     /* INFORME */
-    .inf-hero{position:relative;background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:24px;padding:20px 16px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden}
+    .inf-hero{position:relative;background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:24px;padding:24px 16px 22px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden}
+    .inf-hero .ai-advice-btn{top:12px}
+    .inf-hero .inf-hero-row{padding-top:20px}
     .ai-advice-btn{position:absolute;right:14px;top:14px;width:44px;height:44px;border-radius:16px;border:1px solid rgba(126,255,212,.36);background:rgba(8,18,38,.28);color:#7effd4;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 12px 28px rgba(0,0,0,.18);backdrop-filter:blur(10px);transition:transform .18s,background .18s,border-color .18s}
-    .ai-advice-btn svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+    .ai-advice-btn svg{width:29px;height:29px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+    .ai-advice-btn .ai-icon-text{font-family:Arial,sans-serif;font-size:10.5px;font-weight:900;letter-spacing:-.7px;fill:currentColor;stroke:none}
+    .ai-advice-btn .ai-icon-spark{fill:currentColor;stroke:none}
     .ai-advice-btn:hover,.ai-advice-btn.active{transform:translateY(-1px);background:rgba(18,199,183,.18);border-color:rgba(126,255,212,.7)}
     .ai-advice-panel{display:none;margin:-2px 0 14px;background:rgba(255,255,255,.045);border:1px solid rgba(126,255,212,.16);border-radius:18px;padding:14px;box-shadow:0 16px 36px rgba(0,0,0,.16)}
     .ai-advice-panel.open{display:block}
-    .ai-advice-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-    .ai-advice-title{font-size:13px;font-weight:900;color:var(--text);letter-spacing:-.2px}.ai-advice-badge{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#7effd4;background:rgba(18,199,183,.12);border:1px solid rgba(18,199,183,.25);border-radius:999px;padding:4px 8px;white-space:nowrap}
+    .ai-advice-head{display:flex;align-items:center;justify-content:flex-start;gap:10px;margin-bottom:10px}
+    .ai-advice-title{font-size:13px;font-weight:900;color:var(--text);letter-spacing:-.2px}.ai-advice-badge{display:none}
     .ai-advice-list{display:flex;flex-direction:column;gap:8px}.ai-advice-item{display:grid;grid-template-columns:28px minmax(0,1fr);gap:9px;align-items:flex-start;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px}.ai-advice-ico{width:28px;height:28px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px}.ai-advice-item.warn .ai-advice-ico{background:rgba(255,122,89,.14);color:#ffb3a0}.ai-advice-item.ok .ai-advice-ico{background:rgba(30,201,143,.14);color:#7effd4}.ai-advice-item.info .ai-advice-ico{background:rgba(108,99,255,.15);color:#c4b5fd}.ai-advice-item strong{display:block;font-size:12px;margin-bottom:2px;color:var(--text)}.ai-advice-item span{display:block;font-size:11px;line-height:1.35;color:var(--muted)}
     .inf-hero-row{display:flex;justify-content:space-between;align-items:flex-start;gap:2px}
     .inf-hero-stat{flex:1;text-align:center}
@@ -8285,7 +8289,7 @@ function _gc(lbl, val) {
 var nfAdviceOpen = { flujo:false, informe:false };
 
 function nfAiSparkIcon() {
-  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h7a5 5 0 0 1 5 5v7"></path><path d="M16 20H9a5 5 0 0 1-5-5V8"></path><path d="M12 8v8"></path><path d="M8.5 16V8"></path><path d="M15.5 16v-5"></path><path d="M18.5 4.5l.7 1.7 1.8.7-1.8.7-.7 1.7-.7-1.7-1.8-.7 1.8-.7.7-1.7Z"></path></svg>';
+  return '<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="8" width="19" height="19" rx="5"></rect><text x="9.2" y="22.5" class="ai-icon-text">AI</text><path class="ai-icon-spark" d="M24.5 4.5l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2 1.2-3Z"></path></svg>';
 }
 
 function aiAdviceButton(kind) {
@@ -8358,7 +8362,7 @@ function buildFinancialInsights(kind) {
 function renderAIAdvicePanel(kind) {
   var tips = buildFinancialInsights(kind);
   return '<div class="ai-advice-panel ' + (nfAdviceOpen[kind] ? 'open' : '') + '">' +
-    '<div class="ai-advice-head"><div class="ai-advice-title">Consejos inteligentes</div><div class="ai-advice-badge">MVP sin API</div></div>' +
+    '<div class="ai-advice-head"><div class="ai-advice-title">Consejos inteligentes</div></div>' +
     '<div class="ai-advice-list">' + tips.map(function(t){
       return '<div class="ai-advice-item ' + t.type + '"><div class="ai-advice-ico">' + t.icon + '</div><div><strong>' + t.title + '</strong><span>' + t.text + '</span></div></div>';
     }).join('') + '</div></div>';
@@ -8389,7 +8393,7 @@ function renderFlujo() {
   }
   var html = '';
   // HERO
-  html += '<div style="position:relative;background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:20px 18px;margin-bottom:14px;box-shadow:var(--shadow)">' + aiAdviceButton('flujo');
+  html += '<div style="position:relative;background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:24px 18px 22px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden">' + aiAdviceButton('flujo');
   html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:8px">'+L('flujoTitulo')+'</div>';
   html += '<div style="font-size:clamp(32px,9vw,36px);font-weight:800;letter-spacing:-1.5px;color:'+(sl>=0?'#7effd4':'#ffb3a0')+';white-space:nowrap;line-height:1.02">'+fmtInt(sl)+'</div>';
   html += '<div style="font-size:12px;opacity:.65;margin-top:2px">'+(sl>=0?L('balDisponible'):L('balDeficit'))+'</div>';
