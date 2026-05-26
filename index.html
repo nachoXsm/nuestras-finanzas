@@ -225,19 +225,19 @@
     .sec-actions-row{display:flex;align-items:center;gap:8px;flex-shrink:0}
     .expense-tools{display:flex;align-items:center;gap:7px}
     .expense-tool-btn{width:40px;height:40px;border-radius:14px;border:1px solid rgba(18,199,183,.24);background:rgba(18,199,183,.08);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16);transition:transform .18s,border-color .18s,background .18s,color .18s}
-    .expense-tool-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round}
+    .expense-tool-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.05;stroke-linecap:round;stroke-linejoin:round}
     .expense-tool-btn:hover,.expense-tool-btn.active{background:rgba(18,199,183,.18);border-color:rgba(18,199,183,.55);transform:translateY(-1px);color:#5ff7e7}
     .expense-tools-panel{display:none;align-items:center;gap:8px;margin:-4px 0 14px;flex-wrap:wrap}
     .expense-tools-panel.search-open,.expense-tools-panel.filter-open{display:flex}
     .expense-search-pill,.expense-filter-pill{display:none;align-items:center;gap:8px;min-height:42px;border:1px solid rgba(18,199,183,.18);background:rgba(255,255,255,.045);border-radius:16px;padding:6px 9px;box-shadow:0 12px 28px rgba(0,0,0,.12)}
     .expense-tools-panel.search-open .expense-search-pill,.expense-tools-panel.filter-open .expense-filter-pill{display:flex}
     .expense-search-pill{flex:1 1 210px;min-width:0}
-    .expense-search-pill svg,.expense-filter-pill svg{width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+    .expense-search-pill svg,.expense-filter-pill svg{width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2.05;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
     .expense-search-pill input,.expense-filter-pill select{background:transparent;border:none;color:var(--text);font-size:13px;font-weight:700;min-width:0;outline:none;width:100%}
     .expense-search-pill input::placeholder{color:var(--muted);font-weight:600}
     .expense-filter-pill{flex:0 1 220px;min-width:180px}
     .expense-filter-pill select option{background:var(--card);color:white}
-    .expense-clear-btn{width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0}
+    .expense-clear-btn{width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#dbe7f6;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0}
     .expense-clear-btn:hover{color:white;background:rgba(255,255,255,.1)}
     @media(max-width:430px){.sec-title{font-size:17px}.sec-actions-row{gap:6px}.expense-tools{gap:6px}.expense-tool-btn{width:38px;height:38px;border-radius:13px}.sec-action{padding:8px 13px}.expense-filter-pill{flex:1 1 100%}}
 
@@ -991,7 +991,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>
             </button>
             <button type="button" class="expense-tool-btn" id="btnExpenseFilter" onclick="toggleExpenseFilter()" aria-label="Filtrar por categoría" title="Filtrar por categoría">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><circle cx="9" cy="7" r="2"></circle><path d="M4 12h16"></path><circle cx="15" cy="12" r="2"></circle><path d="M4 17h16"></path><circle cx="11" cy="17" r="2"></circle></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15l-6.1 6.9v4.6l-2.8 1.6v-6.2L4.5 6.5Z"></path></svg>
             </button>
           </div>
           <button class="sec-action" onclick="toggleForm('fGasto')">+ Agregar</button>
@@ -1001,12 +1001,12 @@
         <div class="expense-search-pill" id="expenseSearchPill">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>
           <input id="expenseSearchInput" type="search" placeholder="Buscar gasto..." oninput="setExpenseSearchQuery(this.value)" autocomplete="off">
-          <button type="button" class="expense-clear-btn" onclick="clearExpenseSearch()" aria-label="Limpiar búsqueda">×</button>
+          <button type="button" class="expense-clear-btn" onclick="clearExpenseSearch(event)" aria-label="Cerrar búsqueda">×</button>
         </div>
         <div class="expense-filter-pill" id="expenseFilterPill">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><circle cx="9" cy="7" r="2"></circle><path d="M4 12h16"></path><circle cx="15" cy="12" r="2"></circle><path d="M4 17h16"></path><circle cx="11" cy="17" r="2"></circle></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15l-6.1 6.9v4.6l-2.8 1.6v-6.2L4.5 6.5Z"></path></svg>
           <select id="expenseCategoryFilter" onchange="setExpenseCategoryFilter(this.value)" aria-label="Filtrar gastos por categoría"></select>
-          <button type="button" class="expense-clear-btn" onclick="clearExpenseCategoryFilter()" aria-label="Quitar filtro">×</button>
+          <button type="button" class="expense-clear-btn" onclick="clearExpenseCategoryFilter(event)" aria-label="Cerrar filtro">×</button>
         </div>
       </div>
       <div class="form-panel" id="fGasto">
@@ -3355,10 +3355,14 @@ function setExpenseSearchQuery(value) {
   renderAll();
 }
 
-function clearExpenseSearch() {
+function clearExpenseSearch(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
   nfExpenseSearchQuery = '';
+  nfExpenseSearchOpen = false;
   renderAll();
-  setTimeout(function(){ const input = document.getElementById('expenseSearchInput'); if (input) input.focus(); }, 0);
 }
 
 function toggleExpenseFilter() {
@@ -3371,8 +3375,13 @@ function setExpenseCategoryFilter(value) {
   renderAll();
 }
 
-function clearExpenseCategoryFilter() {
+function clearExpenseCategoryFilter(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
   nfExpenseCategoryFilter = 'all';
+  nfExpenseFilterOpen = false;
   renderAll();
 }
 
