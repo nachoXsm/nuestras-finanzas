@@ -2616,8 +2616,15 @@ function renderAll() {
   if (tarjetas.length===0) { tEl.innerHTML=`<div class="empty"><div class="empty-icon">💳</div><div class="empty-text">${L('emptyTarjetas')}</div></div>`; }
   else {
     tEl.innerHTML = tarjetas.map(t=>{
-      const tG = gastos.filter(g=>g.tarjeta_id===t.id);
-      const tTot = tG.reduce((a,g)=>a+parseFloat(g.monto),0);
+      const tG = gastos.filter(g=>getExpenseCardId(g)===t.id);
+      const tGUsd = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()==='USD');
+      const tGBase = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()!=='USD');
+      const tTot = tGBase.reduce((a,g)=>a+parseFloat(g.monto||0),0);
+      const tUsdTot = tGUsd.reduce((a,g)=>a+parseFloat(g.monto||0),0);
+      const tRows = rows => rows.map(g=>`<div class="card-item">
+            <span>${gastoDisplayDescription(g)} ${g.cuotas>1?`<span style="color:var(--text3);font-size:0.72rem">${cuotaDisplayValue(g)}</span>`:''}</span>
+            <span style="font-family:var(--mono);font-size:0.82rem">${fmtCurrency(g.monto, g.moneda)}</span>
+          </div>`).join('');
       return `<div class="card-block">
         <div class="card-block-head">
           <div>
@@ -2632,11 +2639,8 @@ function renderAll() {
             </div>
           </div>
         </div>
-        ${tG.length===0?`<div style="font-size:0.8rem;color:var(--text3)">Sin gastos en esta tarjeta</div>`:
-          tG.map(g=>`<div class="card-item">
-            <span>${gastoDisplayDescription(g)} ${g.cuotas>1?`<span style="color:var(--text3);font-size:0.72rem">${cuotaDisplayValue(g)}</span>`:''}</span>
-            <span style="font-family:var(--mono);font-size:0.82rem">${fmtCurrency(g.monto, g.moneda)}</span>
-          </div>`).join('')}
+        ${!tG.length?`<div style="font-size:0.8rem;color:var(--text3)">Sin gastos en esta tarjeta</div>`:
+          `${tGBase.length?`${tRows(tGBase)}`:''}${tGUsd.length?`<div class="tcard-currency-section"><span>Dólares</span><strong>${fmtCurrency(tUsdTot,'USD')}</strong></div>${tRows(tGUsd)}`:''}`}
       </div>`;
     }).join('');
   }
@@ -3335,7 +3339,7 @@ renderAll = function() {
   } else {
     const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     tEl.innerHTML = tarjetas.map(t=>{
-      const tG = gastos.filter(g=>g.tarjeta_id===t.id);
+      const tG = gastos.filter(g=>getExpenseCardId(g)===t.id);
       const tGUsd = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()==='USD');
       const tGBase = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()!=='USD');
       const tTot = tGBase.reduce((a,g)=>a+parseFloat(g.monto||0),0);
@@ -7997,7 +8001,7 @@ function checkTarjetasVencimiento() {
         tarjeta: t.nombre,
         dias: diffDias,
         monto: state.gastos
-          .filter(function(g){ return g.tarjeta_id === t.id; })
+          .filter(function(g){ return getExpenseCardId(g) === t.id; })
           .reduce(function(a, g){ return a + parseFloat(g.monto || 0); }, 0)
       });
     }
