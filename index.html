@@ -365,7 +365,15 @@
 
     /* INFORME */
     /* INFORME */
-    .inf-hero{background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:24px;padding:20px 16px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden}
+    .inf-hero{position:relative;background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:24px;padding:20px 16px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden}
+    .ai-advice-btn{position:absolute;right:14px;top:14px;width:44px;height:44px;border-radius:16px;border:1px solid rgba(126,255,212,.36);background:rgba(8,18,38,.28);color:#7effd4;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 12px 28px rgba(0,0,0,.18);backdrop-filter:blur(10px);transition:transform .18s,background .18s,border-color .18s}
+    .ai-advice-btn svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+    .ai-advice-btn:hover,.ai-advice-btn.active{transform:translateY(-1px);background:rgba(18,199,183,.18);border-color:rgba(126,255,212,.7)}
+    .ai-advice-panel{display:none;margin:-2px 0 14px;background:rgba(255,255,255,.045);border:1px solid rgba(126,255,212,.16);border-radius:18px;padding:14px;box-shadow:0 16px 36px rgba(0,0,0,.16)}
+    .ai-advice-panel.open{display:block}
+    .ai-advice-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .ai-advice-title{font-size:13px;font-weight:900;color:var(--text);letter-spacing:-.2px}.ai-advice-badge{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#7effd4;background:rgba(18,199,183,.12);border:1px solid rgba(18,199,183,.25);border-radius:999px;padding:4px 8px;white-space:nowrap}
+    .ai-advice-list{display:flex;flex-direction:column;gap:8px}.ai-advice-item{display:grid;grid-template-columns:28px minmax(0,1fr);gap:9px;align-items:flex-start;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px}.ai-advice-ico{width:28px;height:28px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px}.ai-advice-item.warn .ai-advice-ico{background:rgba(255,122,89,.14);color:#ffb3a0}.ai-advice-item.ok .ai-advice-ico{background:rgba(30,201,143,.14);color:#7effd4}.ai-advice-item.info .ai-advice-ico{background:rgba(108,99,255,.15);color:#c4b5fd}.ai-advice-item strong{display:block;font-size:12px;margin-bottom:2px;color:var(--text)}.ai-advice-item span{display:block;font-size:11px;line-height:1.35;color:var(--muted)}
     .inf-hero-row{display:flex;justify-content:space-between;align-items:flex-start;gap:2px}
     .inf-hero-stat{flex:1;text-align:center}
     .inf-hero-label{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.65;margin-bottom:3px}
@@ -3846,6 +3854,7 @@ renderInforme = function() {
     const maxAporte=Math.max(1, ...personas.map(p=>liqGrupo.aportes[p]||0));
     elGrupo.innerHTML=`
       <div class="inf-hero">
+        ${aiAdviceButton('informe')}
         <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">${L('groupSummary')}</div>
         <div class="inf-hero-row">
           <div class="inf-hero-stat">
@@ -3865,6 +3874,7 @@ renderInforme = function() {
           </div>
         </div>
       </div>
+      ${renderAIAdvicePanel('informe')}
 
       <div class="inf-section-title">${L('informePorIntegrante')}</div>
       <div class="inf-chart-card">
@@ -3942,6 +3952,7 @@ renderInforme = function() {
   el.innerHTML=`
     <!-- HERO RESUMEN -->
     <div class="inf-hero">
+      ${aiAdviceButton('informe')}
       <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:10px">${L('informeResumen')}</div>
       <div class="inf-hero-row">
         <div class="inf-hero-stat">
@@ -3962,6 +3973,7 @@ renderInforme = function() {
         </div>
       </div>
     </div>
+    ${renderAIAdvicePanel('informe')}
 
     <!-- FIJOS VS VARIABLES -->
     <div class="inf-section-title">${L('informeComposicion')}</div>
@@ -8270,6 +8282,88 @@ function _gc(lbl, val) {
     '<div style="color:#95a6c7;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:8px">' + lbl + '</div>' +
     '<div style="color:#1ec98f;font-weight:800;font-size:20px;letter-spacing:-.5px">' + fmt(val) + '</div></div>';
 }
+var nfAdviceOpen = { flujo:false, informe:false };
+
+function nfAiSparkIcon() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h7a5 5 0 0 1 5 5v7"></path><path d="M16 20H9a5 5 0 0 1-5-5V8"></path><path d="M12 8v8"></path><path d="M8.5 16V8"></path><path d="M15.5 16v-5"></path><path d="M18.5 4.5l.7 1.7 1.8.7-1.8.7-.7 1.7-.7-1.7-1.8-.7 1.8-.7.7-1.7Z"></path></svg>';
+}
+
+function aiAdviceButton(kind) {
+  var active = nfAdviceOpen[kind] ? ' active' : '';
+  return '<button type="button" class="ai-advice-btn' + active + '" onclick="toggleAIAdvice(\'' + kind + '\')" aria-label="Ver consejos IA" title="Consejos IA">' + nfAiSparkIcon() + '</button>';
+}
+
+function toggleAIAdvice(kind) {
+  nfAdviceOpen[kind] = !nfAdviceOpen[kind];
+  if (typeof renderFlujo === 'function' && kind === 'flujo') renderFlujo();
+  if (typeof renderInforme === 'function' && kind === 'informe') renderInforme();
+}
+
+function calcFutureInstallmentsAmount(gastos) {
+  return (gastos || []).filter(function(g){ return isCardPayment(g) && Number(g.cuotas || 1) > 1 && Number(g.cuota_actual || 1) < Number(g.cuotas || 1); })
+    .reduce(function(a,g){ return a + moneyValue(g, getActiveBaseCurrency()); }, 0);
+}
+
+function findLikelyDuplicates(gastos) {
+  var map = {};
+  (gastos || []).forEach(function(g){
+    var key = normalizeExpenseFilterText((g.descripcion || '') + '|' + Math.round(Number(g.monto || 0) * 100) + '|' + (g.moneda || 'ARS'));
+    if (!key || !g.descripcion) return;
+    map[key] = (map[key] || 0) + 1;
+  });
+  return Object.values(map).filter(function(n){ return n > 1; }).length;
+}
+
+function buildFinancialInsights(kind) {
+  var gastos = state.gastos || [];
+  var ingresos = state.ingresos || [];
+  var totalInc = ingresos.reduce(function(a,i){ return a + moneyValue(i, getActiveBaseCurrency()); }, 0);
+  var totalGas = gastos.reduce(function(a,g){ return a + moneyValue(g, getActiveBaseCurrency()); }, 0);
+  var fijos = gastos.filter(function(g){ return g.tipo === 'fijo'; }).reduce(function(a,g){ return a + moneyValue(g, getActiveBaseCurrency()); }, 0);
+  var variables = gastos.filter(function(g){ return g.tipo === 'variable'; }).reduce(function(a,g){ return a + moneyValue(g, getActiveBaseCurrency()); }, 0);
+  var tarjeta = gastos.filter(function(g){ return isCardPayment(g); }).reduce(function(a,g){ return a + moneyValue(g, getActiveBaseCurrency()); }, 0);
+  var saldo = totalInc - totalGas;
+  var pctGas = totalInc > 0 ? Math.round(totalGas / totalInc * 100) : 0;
+  var pctFijosInc = totalInc > 0 ? Math.round(fijos / totalInc * 100) : 0;
+  var pctTarjeta = totalInc > 0 ? Math.round(tarjeta / totalInc * 100) : 0;
+  var cuotasFuturas = calcFutureInstallmentsAmount(gastos);
+  var pctCuotas = totalInc > 0 ? Math.round(cuotasFuturas / totalInc * 100) : 0;
+  var dupes = findLikelyDuplicates(gastos);
+  var catTotals = {};
+  gastos.forEach(function(g){ catTotals[g.cat] = (catTotals[g.cat] || 0) + moneyValue(g, getActiveBaseCurrency()); });
+  var topCat = Object.entries(catTotals).sort(function(a,b){ return b[1] - a[1]; })[0];
+  var tips = [];
+  function add(type, icon, title, text){ tips.push({type:type, icon:icon, title:title, text:text}); }
+
+  if (!totalInc && !totalGas) {
+    add('info','AI','Todavía falta información','Cuando cargues ingresos y gastos, el agente va a marcar riesgos, oportunidades de ahorro y señales de deuda.');
+    return tips;
+  }
+  if (pctGas >= 85) add('warn','⚠','Gasto mensual alto','Los gastos consumen ' + pctGas + '% de los ingresos. Conviene revisar variables y compras con tarjeta antes de sumar nuevos compromisos.');
+  else if (pctGas >= 70) add('info','📊','Presupuesto exigido','Los gastos están en ' + pctGas + '% del ingreso. Hay margen, pero el flujo puede quedar sensible ante gastos imprevistos.');
+  else add('ok','✓','Flujo saludable','El gasto total está por debajo del 70% del ingreso. Es una buena base para sostener ahorro o cancelar deuda.');
+
+  if (pctFijosInc > 50) add('warn','📌','Fijos pesados','Los gastos fijos representan ' + pctFijosInc + '% del ingreso. Si superan el 50%, reducen mucho la flexibilidad mensual.');
+  if (pctCuotas > 30) add('warn','💳','Cuotas futuras elevadas','Las cuotas pendientes equivalen aprox. al ' + pctCuotas + '% del ingreso. Antes de financiar nuevas compras, revisá vencimientos próximos.');
+  else if (cuotasFuturas > 0) add('info','💳','Cuotas bajo control','Hay ' + fmtInt(cuotasFuturas) + ' en cuotas futuras registradas. Por ahora no supera el umbral crítico del 30% del ingreso.');
+  if (pctTarjeta > 45) add('warn','💳','Uso alto de tarjeta','Los gastos con tarjeta pesan ' + pctTarjeta + '% del ingreso. Puede afectar el flujo del próximo vencimiento.');
+  if (saldo < 0) add('warn','↘','Déficit mensual','El mes queda negativo en ' + fmtInt(Math.abs(saldo)) + '. La prioridad sería recortar gasto variable o diferir compras no esenciales.');
+  else if (totalInc > 0 && saldo / totalInc < .10) add('info','💰','Ahorro bajo','El saldo libre queda por debajo del 10% del ingreso. Una meta realista sería recuperar margen de a poco, no de golpe.');
+  else add('ok','💰','Ahorro razonable','El saldo libre supera el 10% del ingreso. Podés asignar una parte a ahorro o colchón de emergencia.');
+  if (topCat && topCat[1] > 0) add('info','🔎','Categoría principal', (typeof catLabel === 'function' ? catLabel(topCat[0]) : topCat[0]) + ' concentra ' + fmtInt(topCat[1]) + '. Es el primer lugar para revisar si buscás optimizar.');
+  if (dupes > 0) add('warn','⧉','Posibles repetidos','Detecté ' + dupes + ' gasto(s) con mismo nombre, monto y moneda. No los borro automáticamente, pero vale revisarlos.');
+  return tips.slice(0, kind === 'flujo' ? 5 : 6);
+}
+
+function renderAIAdvicePanel(kind) {
+  var tips = buildFinancialInsights(kind);
+  return '<div class="ai-advice-panel ' + (nfAdviceOpen[kind] ? 'open' : '') + '">' +
+    '<div class="ai-advice-head"><div class="ai-advice-title">Consejos inteligentes</div><div class="ai-advice-badge">MVP sin API</div></div>' +
+    '<div class="ai-advice-list">' + tips.map(function(t){
+      return '<div class="ai-advice-item ' + t.type + '"><div class="ai-advice-ico">' + t.icon + '</div><div><strong>' + t.title + '</strong><span>' + t.text + '</span></div></div>';
+    }).join('') + '</div></div>';
+}
+
 function renderFlujo() {
   var el = document.getElementById('flujoContent');
   if (!el || !state) return;
@@ -8295,7 +8389,7 @@ function renderFlujo() {
   }
   var html = '';
   // HERO
-  html += '<div style="background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:20px 18px;margin-bottom:14px;box-shadow:var(--shadow)">';
+  html += '<div style="position:relative;background:linear-gradient(135deg,#1a3a6e,var(--secondary));border-radius:22px;padding:20px 18px;margin-bottom:14px;box-shadow:var(--shadow)">' + aiAdviceButton('flujo');
   html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.6;margin-bottom:8px">'+L('flujoTitulo')+'</div>';
   html += '<div style="font-size:clamp(32px,9vw,36px);font-weight:800;letter-spacing:-1.5px;color:'+(sl>=0?'#7effd4':'#ffb3a0')+';white-space:nowrap;line-height:1.02">'+fmtInt(sl)+'</div>';
   html += '<div style="font-size:12px;opacity:.65;margin-top:2px">'+(sl>=0?L('balDisponible'):L('balDeficit'))+'</div>';
@@ -8305,6 +8399,7 @@ function renderFlujo() {
   html += '<div style="min-width:0;text-align:center"><div style="font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;opacity:.6">'+L('balGastos')+'</div><div style="font-size:clamp(12px,3.7vw,15px);font-weight:800;color:#ffb3a0;white-space:nowrap;line-height:1.08">'+fmtInt(tG)+'</div><div style="font-size:9px;opacity:.55;line-height:1.15">'+pctIncomeText(pctG)+'</div></div>';
   html += '<div style="min-width:0;text-align:right"><div style="font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;opacity:.6">'+L('balFijos')+'</div><div style="font-size:clamp(12px,3.7vw,15px);font-weight:800;color:#c4b5fd;white-space:nowrap;line-height:1.08">'+fmtInt(fj)+'</div><div style="font-size:9px;opacity:.55;line-height:1.15">'+pctExpensesText(pctF)+'</div></div>';
   html += '</div></div>';
+  html += renderAIAdvicePanel('flujo');
   // DESGLOSE
   html += '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">'+L('flujoDesglose')+'</div>';
   html += '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
