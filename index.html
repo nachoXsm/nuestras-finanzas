@@ -222,6 +222,24 @@
     .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
     .sec-title{font-size:18px;font-weight:800;letter-spacing:-.3px}
     .sec-action{background:linear-gradient(135deg,var(--primary),var(--secondary));color:white;border:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer}
+    .sec-actions-row{display:flex;align-items:center;gap:8px;flex-shrink:0}
+    .expense-tools{display:flex;align-items:center;gap:7px}
+    .expense-tool-btn{width:40px;height:40px;border-radius:14px;border:1px solid rgba(18,199,183,.24);background:rgba(18,199,183,.08);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16);transition:transform .18s,border-color .18s,background .18s,color .18s}
+    .expense-tool-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round}
+    .expense-tool-btn:hover,.expense-tool-btn.active{background:rgba(18,199,183,.18);border-color:rgba(18,199,183,.55);transform:translateY(-1px);color:#5ff7e7}
+    .expense-tools-panel{display:none;align-items:center;gap:8px;margin:-4px 0 14px;flex-wrap:wrap}
+    .expense-tools-panel.search-open,.expense-tools-panel.filter-open{display:flex}
+    .expense-search-pill,.expense-filter-pill{display:none;align-items:center;gap:8px;min-height:42px;border:1px solid rgba(18,199,183,.18);background:rgba(255,255,255,.045);border-radius:16px;padding:6px 9px;box-shadow:0 12px 28px rgba(0,0,0,.12)}
+    .expense-tools-panel.search-open .expense-search-pill,.expense-tools-panel.filter-open .expense-filter-pill{display:flex}
+    .expense-search-pill{flex:1 1 210px;min-width:0}
+    .expense-search-pill svg,.expense-filter-pill svg{width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+    .expense-search-pill input,.expense-filter-pill select{background:transparent;border:none;color:var(--text);font-size:13px;font-weight:700;min-width:0;outline:none;width:100%}
+    .expense-search-pill input::placeholder{color:var(--muted);font-weight:600}
+    .expense-filter-pill{flex:0 1 220px;min-width:180px}
+    .expense-filter-pill select option{background:var(--card);color:white}
+    .expense-clear-btn{width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0}
+    .expense-clear-btn:hover{color:white;background:rgba(255,255,255,.1)}
+    @media(max-width:430px){.sec-title{font-size:17px}.sec-actions-row{gap:6px}.expense-tools{gap:6px}.expense-tool-btn{width:38px;height:38px;border-radius:13px}.sec-action{padding:8px 13px}.expense-filter-pill{flex:1 1 100%}}
 
     /* FORM */
     .form-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-top:2px solid var(--primary);border-radius:20px;padding:18px;margin-bottom:14px;display:none}
@@ -955,7 +973,29 @@
 
       <div class="sec-head" style="margin-top:24px">
         <div class="sec-title">💸 Gastos</div>
-        <button class="sec-action" onclick="toggleForm('fGasto')">+ Agregar</button>
+        <div class="sec-actions-row">
+          <div class="expense-tools" aria-label="Herramientas de gastos">
+            <button type="button" class="expense-tool-btn" id="btnExpenseSearch" onclick="toggleExpenseSearch()" aria-label="Buscar gastos" title="Buscar gastos">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>
+            </button>
+            <button type="button" class="expense-tool-btn" id="btnExpenseFilter" onclick="toggleExpenseFilter()" aria-label="Filtrar por categoría" title="Filtrar por categoría">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><circle cx="9" cy="7" r="2"></circle><path d="M4 12h16"></path><circle cx="15" cy="12" r="2"></circle><path d="M4 17h16"></path><circle cx="11" cy="17" r="2"></circle></svg>
+            </button>
+          </div>
+          <button class="sec-action" onclick="toggleForm('fGasto')">+ Agregar</button>
+        </div>
+      </div>
+      <div class="expense-tools-panel" id="expenseToolsPanel">
+        <div class="expense-search-pill" id="expenseSearchPill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>
+          <input id="expenseSearchInput" type="search" placeholder="Buscar gasto..." oninput="setExpenseSearchQuery(this.value)" autocomplete="off">
+          <button type="button" class="expense-clear-btn" onclick="clearExpenseSearch()" aria-label="Limpiar búsqueda">×</button>
+        </div>
+        <div class="expense-filter-pill" id="expenseFilterPill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><circle cx="9" cy="7" r="2"></circle><path d="M4 12h16"></path><circle cx="15" cy="12" r="2"></circle><path d="M4 17h16"></path><circle cx="11" cy="17" r="2"></circle></svg>
+          <select id="expenseCategoryFilter" onchange="setExpenseCategoryFilter(this.value)" aria-label="Filtrar gastos por categoría"></select>
+          <button type="button" class="expense-clear-btn" onclick="clearExpenseCategoryFilter()" aria-label="Quitar filtro">×</button>
+        </div>
       </div>
       <div class="form-panel" id="fGasto">
         <div class="form-grid">
@@ -2599,9 +2639,12 @@ function renderAll() {
 
   // GASTOS
   const gEl = document.getElementById('gastoList');
+  refreshExpenseToolsUI();
+  const visibleGastos = getFilteredExpenses(gastos);
   if (gastos.length===0) { gEl.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">${L('emptyGastos')}</div></div>`; }
+  else if (visibleGastos.length===0) { gEl.innerHTML = expenseFilterEmptyHtml(); }
   else {
-    const sorted = [...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
+    const sorted = [...visibleGastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
     gEl.innerHTML = sorted.map(g=>{
       const tarjeta = getExpenseCardId(g)?tarjetas.find(t=>t.id===getExpenseCardId(g)):null;
       const isCuota = g.cuotas>1;
@@ -3220,6 +3263,107 @@ function toggleBalancePrivacy() {
   setBalancePrivacyUI();
 }
 
+var nfExpenseSearchOpen = false;
+var nfExpenseFilterOpen = false;
+var nfExpenseSearchQuery = '';
+var nfExpenseCategoryFilter = 'all';
+
+function normalizeExpenseFilterText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function expenseSearchText(g) {
+  return [
+    g && g.descripcion,
+    (typeof gastoDisplayDescription === 'function') ? gastoDisplayDescription(g || {}) : '',
+    g && g.cat,
+    g && g.quien,
+    g && g.medio,
+    g && g.moneda
+  ].join(' ');
+}
+
+function expenseMatchesFilters(g) {
+  const query = normalizeExpenseFilterText(nfExpenseSearchQuery || (document.getElementById('expenseSearchInput') || {}).value || '');
+  const selectedCat = nfExpenseCategoryFilter || (document.getElementById('expenseCategoryFilter') || {}).value || 'all';
+  const matchesSearch = !query || normalizeExpenseFilterText(expenseSearchText(g)).includes(query);
+  const matchesCategory = selectedCat === 'all' || String((g && g.cat) || '') === selectedCat;
+  return matchesSearch && matchesCategory;
+}
+
+function getFilteredExpenses(list) {
+  return (list || []).filter(expenseMatchesFilters);
+}
+
+function expenseFilterEmptyHtml() {
+  return '<div class="empty"><div class="empty-icon">🔎</div><div class="empty-text">No hay gastos que coincidan</div></div>';
+}
+
+function expenseCategoryOptionsHtml(selected) {
+  const names = [];
+  Object.keys((typeof CAT_COLORS !== 'undefined') ? CAT_COLORS : {}).forEach(function(cat){ names.push(cat); });
+  (state.gastos || []).forEach(function(g){ if (g && g.cat && !names.includes(g.cat)) names.push(g.cat); });
+  return '<option value="all">Todas las categorías</option>' + names.map(function(cat) {
+    const label = (typeof catLabel === 'function') ? catLabel(cat) : cat;
+    return '<option value="' + cat + '"' + (cat === selected ? ' selected' : '') + '>' + label + '</option>';
+  }).join('');
+}
+
+function refreshExpenseToolsUI() {
+  const panel = document.getElementById('expenseToolsPanel');
+  const searchBtn = document.getElementById('btnExpenseSearch');
+  const filterBtn = document.getElementById('btnExpenseFilter');
+  const input = document.getElementById('expenseSearchInput');
+  const select = document.getElementById('expenseCategoryFilter');
+  if (!panel) return;
+  panel.classList.toggle('search-open', nfExpenseSearchOpen);
+  panel.classList.toggle('filter-open', nfExpenseFilterOpen);
+  if (searchBtn) searchBtn.classList.toggle('active', nfExpenseSearchOpen || !!nfExpenseSearchQuery);
+  if (filterBtn) filterBtn.classList.toggle('active', nfExpenseFilterOpen || nfExpenseCategoryFilter !== 'all');
+  if (input && input.value !== nfExpenseSearchQuery) input.value = nfExpenseSearchQuery;
+  if (select) {
+    const current = select.value || nfExpenseCategoryFilter;
+    select.innerHTML = expenseCategoryOptionsHtml(nfExpenseCategoryFilter);
+    select.value = nfExpenseCategoryFilter || current || 'all';
+  }
+}
+
+function toggleExpenseSearch() {
+  nfExpenseSearchOpen = !nfExpenseSearchOpen;
+  refreshExpenseToolsUI();
+  if (nfExpenseSearchOpen) setTimeout(function(){ const input = document.getElementById('expenseSearchInput'); if (input) input.focus(); }, 0);
+}
+
+function setExpenseSearchQuery(value) {
+  nfExpenseSearchQuery = value || '';
+  renderAll();
+}
+
+function clearExpenseSearch() {
+  nfExpenseSearchQuery = '';
+  renderAll();
+  setTimeout(function(){ const input = document.getElementById('expenseSearchInput'); if (input) input.focus(); }, 0);
+}
+
+function toggleExpenseFilter() {
+  nfExpenseFilterOpen = !nfExpenseFilterOpen;
+  refreshExpenseToolsUI();
+}
+
+function setExpenseCategoryFilter(value) {
+  nfExpenseCategoryFilter = value || 'all';
+  renderAll();
+}
+
+function clearExpenseCategoryFilter() {
+  nfExpenseCategoryFilter = 'all';
+  renderAll();
+}
+
 // Override renderAll to use new CSS classes
 const _origRenderAll = renderAll;
 renderAll = function() {
@@ -3317,10 +3461,14 @@ renderAll = function() {
 
   // GASTOS
   const gEl = document.getElementById('gastoList');
+  refreshExpenseToolsUI();
+  const visibleGastos = getFilteredExpenses(gastos);
   if (!gastos.length) {
     gEl.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">${L('emptyGastos')}</div></div>`;
+  } else if (!visibleGastos.length) {
+    gEl.innerHTML = expenseFilterEmptyHtml();
   } else {
-    const sorted = [...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
+    const sorted = [...visibleGastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
     gEl.innerHTML = sorted.map(g=>{
       const t = getExpenseCardId(g)?tarjetas.find(tc=>tc.id===getExpenseCardId(g)):null;
       const isCuota = g.cuotas>1;
@@ -3631,10 +3779,14 @@ function renderAllGrupo() {
   // RENDERIZAR LISTA DE GASTOS (solo gastos, sin ingresos)
   var gastoList2 = document.getElementById('gastoList');
   if (gastoList2) {
+    refreshExpenseToolsUI();
+    var visibleGs = getFilteredExpenses(gs);
     if (gs.length === 0) {
       gastoList2.innerHTML = '<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">' + L('groupNoExpenses') + '</div></div>';
+    } else if (visibleGs.length === 0) {
+      gastoList2.innerHTML = expenseFilterEmptyHtml();
     } else {
-      const sorted = [...gs].sort(function(a,b){ return fechaGastoDate(b) - fechaGastoDate(a); });
+      const sorted = [...visibleGs].sort(function(a,b){ return fechaGastoDate(b) - fechaGastoDate(a); });
       var lastDate = '';
       gastoList2.innerHTML = sorted.map(function(g) {
         const catIcon = categoryIconInner(g.cat);
