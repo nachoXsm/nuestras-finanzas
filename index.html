@@ -1541,13 +1541,28 @@ function getCurrencyStore(table){ try { return JSON.parse(localStorage.getItem(c
 function rememberRecordCurrency(table, id, code){ if(!id || !code) return; var m=getCurrencyStore(table); m[id]=code; localStorage.setItem(currencyStoreKey(table), JSON.stringify(m)); }
 function applyRecordCurrencies(table, rows){
   var m=getCurrencyStore(table);
-  (rows||[]).forEach(function(r){ if(r && !r.moneda && m[r.id]) r.moneda = m[r.id]; });
+  (rows||[]).forEach(function(r){
+    if(!r) return;
+    var fromMedio = currencyFromPaymentMedium(r.medio);
+    if(fromMedio) r.moneda = fromMedio;
+    else if(!r.moneda && m[r.id]) r.moneda = m[r.id];
+  });
   return rows;
 }
-function encodeCardPaymentMedium(tarjetaId){ return tarjetaId ? ('tarjeta:' + tarjetaId) : 'tarjeta'; }
+function encodeCardPaymentMedium(tarjetaId, moneda){
+  var base = tarjetaId ? ('tarjeta:' + tarjetaId) : 'tarjeta';
+  var code = String(moneda || '').toUpperCase();
+  return code ? (base + '|moneda:' + code) : base;
+}
 function cardIdFromPaymentMedium(medio){
   var s = String(medio || '');
-  return s.indexOf('tarjeta:') === 0 ? s.slice(8) : null;
+  if (s.indexOf('tarjeta:') !== 0) return null;
+  return s.slice(8).split('|')[0] || null;
+}
+function currencyFromPaymentMedium(medio){
+  var s = String(medio || '');
+  var m = s.match(/(?:^|\|)moneda:([A-Z]{3})/i);
+  return m ? m[1].toUpperCase() : null;
 }
 function isCardPayment(value){
   var medio = (value && typeof value === 'object') ? value.medio : value;
@@ -1590,20 +1605,24 @@ function markMigratedCardRelation(table, id){
 async function migrateLocalCardRelationsToPersistentMedium(){
   try {
     var localMap = getCardRelationStore('gastos');
-    var migrated = getMigratedCardRelationStore('gastos');
+    var currencyMap = getCurrencyStore('gastos');
     var rows = state.gastos || [];
     for (var i=0; i<rows.length; i++) {
       var g = rows[i];
-      if(!g || !g.id || migrated[g.id]) continue;
+      if(!g || !g.id) continue;
       var cardId = localMap[g.id] || getExpenseCardId(g);
       if(!cardId) continue;
-      if(cardIdFromPaymentMedium(g.medio) === cardId) { markMigratedCardRelation('gastos', g.id); continue; }
+      var code = String(g.moneda || currencyMap[g.id] || getDefaultCurrency()).toUpperCase();
+      var encodedMedio = encodeCardPaymentMedium(cardId, code);
+      if(String(g.medio || '') === encodedMedio) continue;
       var body = Object.assign({}, g, {
-        medio: encodeCardPaymentMedium(cardId),
+        medio: encodedMedio,
+        moneda: code,
         tarjeta_id: cardId
       });
       await dbPatchMoney('gastos', g.id, body);
       g.tarjeta_id = cardId;
+      g.moneda = code;
       g.medio = 'tarjeta';
       markMigratedCardRelation('gastos', g.id);
     }
@@ -2298,7 +2317,7 @@ async function saveGasto() {
     const tSel = document.getElementById('g_tarjeta');
     tarjeta_id = (tSel && tSel.value) ? tSel.value : null;
   }
-  const medioPersist = isCardPayment(medio) ? encodeCardPaymentMedium(tarjeta_id) : medio;
+  const medioPersist = isCardPayment(medio) ? encodeCardPaymentMedium(tarjeta_id, moneda) : medio;
 
   setSyncing('syncing');
   try {
@@ -6200,7 +6219,6 @@ async function importCardStatementExpenses(items, setProgress) {
   const activePayer = (state.personas && state.personas[0]) || state.persona1 || selectedQuien || 'Persona 1';
   const quien = selectedQuien && selectedQuien !== 'Todos' ? selectedQuien : activePayer;
   const tarjeta_id = tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null;
-  const medio = encodeCardPaymentMedium(tarjeta_id);
   const existingStatementExpenses = (state.gastos || []).slice();
   const targetStatementCounts = countStatementExpenseKeys(list);
   const existingStatementCounts = countStatementExpenseKeys(existingStatementExpenses);
@@ -6225,7 +6243,7 @@ async function importCardStatementExpenses(items, setProgress) {
       moneda: item.moneda || getDefaultCurrency(),
       cat: 'Otros',
       tipo: 'variable',
-      medio,
+      medio: encodeCardPaymentMedium(tarjeta_id, item.moneda || getDefaultCurrency()),
       tarjeta_id,
       quien,
       dia: item.dia,
