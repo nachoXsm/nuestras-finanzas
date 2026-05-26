@@ -4903,11 +4903,18 @@ function isCardStatementConsumptionRow(row) {
   if (!desc) return false;
   if (statementLineHasNegativeAmount(row._sourceLine || '') && amount > 0) return false;
 
+  const sourceUpper = String(row._sourceLine || '').toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (/\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|PAGO\s+MINIMO|SALDO\s+PENDIENTE|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|SUBTOTAL|TOTAL\s+(?:CONSUMOS|DEL\s+MES|TITULAR|TARJETA|RESUMEN)|TOTAL\s+DE|TOTAL\s+A\s+PAGAR)\b/.test(sourceUpper)) {
+    return false;
+  }
+
   const upper = desc.toUpperCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-  if (/\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|PAGO\s+MINIMO|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|TOTAL\s+CONSUMOS|TOTAL\s+DE|CONSOLIDADO|VENCIMIENTO|CIERRE\s+ACTUAL|PROXIMO\s+CIERRE|LIMITES?|TASAS?|LEGALES?|AVISOS?|RESUMEN|CUENTA|TARJETA\s+CREDITO)\b/.test(upper)) {
+  if (/\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|PAGO\s+MINIMO|SALDO\s+PENDIENTE|SALDO\s+ACTUAL|SALDO\s+ANTERIOR|SUBTOTAL|TOTAL\s+CONSUMOS|TOTAL\s+DEL\s+MES|TOTAL\s+TITULAR|TOTAL\s+TARJETA|TOTAL\s+RESUMEN|TOTAL\s+DE|TOTAL\s+A\s+PAGAR|CONSOLIDADO|VENCIMIENTO|CIERRE\s+ACTUAL|PROXIMO\s+CIERRE|LIMITES?|TASAS?|LEGALES?|AVISOS?|RESUMEN|CUENTA|TARJETA\s+CREDITO)\b/.test(upper)) {
     return false;
   }
 
@@ -5742,6 +5749,7 @@ function normalizeStatementMatchText(value) {
     .replace(/\b\d{1,2}\s*[-\/]\s*[a-z]{3,}\.?\s*[-\/]\s*\d{2,4}\b/gi, ' ')
     .replace(/mercado\s*pago/g, 'merpago')
     .replace(/mercadopago/g, 'merpago')
+    .replace(/(?:us\$|u\$s|usd|ars|\$)/gi, ' ')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\b(c|cuota|cuotas)\b/g, ' ')
     .replace(/\s+/g, ' ')
@@ -6168,7 +6176,7 @@ function cleanStatementImportDescription(desc) {
     .replace(/\b\d{1,2}\s*[-\/]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/]\s*\d{2,4}\b/g, ' ')
     .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
     .replace(/\b\d{1,2}\s*\/\s*\d{1,2}\b/g, ' ')
-    .replace(/\b(?:US\$|U\$S|USD|ARS)\b/gi, ' ')
+    .replace(/(?:US\$|U\$S|USD|ARS|\$)/gi, ' ')
     .replace(/(?:(?:US\$|U\$S|USD|\$)\s*)?-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?/gi, ' ')
     .replace(/(?:(?:US\$|U\$S|USD|\$)\s*)?-?\d+[,\.]\d{2}/gi, ' ')
     .replace(/\b\d{5,15}\b/g, ' ')
@@ -6333,7 +6341,7 @@ function parseCardStatementRowsByTableLines(text) {
 
   lines.forEach(function(line) {
     if (isStatementHeaderLine(line)) return;
-    if (/\b(SALDO|TOTAL\s+A\s+PAGAR|TOTAL\s+CONSUMOS|PAGO\s+MINIMO|SU\s+PAGO|L[IÍ]MITES?|CIERRE|VENCIMIENTO|TASAS?|CUOTAS\s+A\s+VENCER|PLAN\s+V)\b/i.test(line)) return;
+    if (/\b(SALDO|SALDO\s+PENDIENTE|SUBTOTAL|TOTAL\s+A\s+PAGAR|TOTAL\s+CONSUMOS|TOTAL\s+DEL\s+MES|TOTAL\s+TITULAR|TOTAL\s+TARJETA|TOTAL\s+RESUMEN|PAGO\s+MINIMO|SU\s+PAGO|L[IÍ]MITES?|CIERRE|VENCIMIENTO|TASAS?|CUOTAS\s+A\s+VENCER|PLAN\s+V)\b/i.test(line)) return;
 
     const match = line.match(dateRx);
     if (!match) return;
