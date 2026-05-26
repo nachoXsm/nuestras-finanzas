@@ -1544,6 +1544,20 @@ function applyRecordCurrencies(table, rows){
   (rows||[]).forEach(function(r){ if(r && !r.moneda && m[r.id]) r.moneda = m[r.id]; });
   return rows;
 }
+function encodeCardPaymentMedium(tarjetaId){ return tarjetaId ? ('tarjeta:' + tarjetaId) : 'tarjeta'; }
+function cardIdFromPaymentMedium(medio){
+  var s = String(medio || '');
+  return s.indexOf('tarjeta:') === 0 ? s.slice(8) : null;
+}
+function isCardPayment(value){
+  var medio = (value && typeof value === 'object') ? value.medio : value;
+  return String(medio || '') === 'tarjeta' || String(medio || '').indexOf('tarjeta:') === 0;
+}
+function getExpenseCardId(g){
+  if(!g) return null;
+  return g.tarjeta_id || cardIdFromPaymentMedium(g.medio);
+}
+function normalizedPaymentMedium(value){ return isCardPayment(value) ? 'tarjeta' : String((value && value.medio) || value || 'efectivo'); }
 function cardRelationStoreKey(table){ return 'nf_card_relations_' + table; }
 function getCardRelationStore(table){ try { return JSON.parse(localStorage.getItem(cardRelationStoreKey(table)) || '{}'); } catch(e) { return {}; } }
 function rememberRecordCardRelation(table, id, record){
@@ -1556,9 +1570,46 @@ function applyRecordCardRelations(table, rows){
   var m = getCardRelationStore(table);
   (rows||[]).forEach(function(r){
     if(!r || !r.id) return;
-    if(!r.tarjeta_id && m[r.id]) r.tarjeta_id = m[r.id];
+    if(!r.tarjeta_id) {
+      var fromMedio = cardIdFromPaymentMedium(r.medio);
+      if(fromMedio) r.tarjeta_id = fromMedio;
+      else if(m[r.id]) r.tarjeta_id = m[r.id];
+    }
+    if(isCardPayment(r)) r.medio = 'tarjeta';
   });
   return rows;
+}
+function migratedCardRelationStoreKey(table){ return 'nf_card_relations_migrated_' + table; }
+function getMigratedCardRelationStore(table){ try { return JSON.parse(localStorage.getItem(migratedCardRelationStoreKey(table)) || '{}'); } catch(e) { return {}; } }
+function markMigratedCardRelation(table, id){
+  if(!id) return;
+  var m = getMigratedCardRelationStore(table);
+  m[id] = true;
+  localStorage.setItem(migratedCardRelationStoreKey(table), JSON.stringify(m));
+}
+async function migrateLocalCardRelationsToPersistentMedium(){
+  try {
+    var localMap = getCardRelationStore('gastos');
+    var migrated = getMigratedCardRelationStore('gastos');
+    var rows = state.gastos || [];
+    for (var i=0; i<rows.length; i++) {
+      var g = rows[i];
+      if(!g || !g.id || migrated[g.id]) continue;
+      var cardId = localMap[g.id] || getExpenseCardId(g);
+      if(!cardId) continue;
+      if(cardIdFromPaymentMedium(g.medio) === cardId) { markMigratedCardRelation('gastos', g.id); continue; }
+      var body = Object.assign({}, g, {
+        medio: encodeCardPaymentMedium(cardId),
+        tarjeta_id: cardId
+      });
+      await dbPatchMoney('gastos', g.id, body);
+      g.tarjeta_id = cardId;
+      g.medio = 'tarjeta';
+      markMigratedCardRelation('gastos', g.id);
+    }
+  } catch(e) {
+    console.warn('No se pudo migrar relacion tarjeta-gasto:', e);
+  }
 }
 function installmentStoreKey(table){ return 'nf_installments_' + table; }
 function getInstallmentStore(table){ try { return JSON.parse(localStorage.getItem(installmentStoreKey(table)) || '{}'); } catch(e) { return {}; } }
@@ -2054,6 +2105,7 @@ async function loadAll() {
     if (state.grupoId !== gid || (!modoGrupo && (state.mes !== mes || state.anio !== anio))) return;
     state.tarjetas=tarjetas; state.ingresos=applyRecordCurrencies('ingresos', ingresos); state.gastos=applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', gastos)));
     setSyncing('ok');
+    setTimeout(function(){ migrateLocalCardRelationsToPersistentMedium(); }, 250);
     setTimeout(checkTarjetasVencimiento, 1500); // Verificar vencimientos
   } catch(e) {
     setSyncing('error'); toast('❌ Error de conexión'); return;
@@ -2235,17 +2287,18 @@ async function saveGasto() {
   if (!desc || !monto) return toast('Completá descripción y monto');
 
   const medio = document.getElementById('g_medio').value;
-  const cuotas = medio==='tarjeta' ? parseInt(document.getElementById('g_cuotas').value)||1 : 1;
+  const cuotas = isCardPayment(medio) ? parseInt(document.getElementById('g_cuotas').value)||1 : 1;
   const cuotaMonto = monto; // Opción A: monto ya es el valor por cuota
   const _fd = document.getElementById('g_fecha'); const _fdv = _fd ? _fd.value : ''; const _fdate = _fdv ? new Date(_fdv+'T12:00:00') : new Date();
   const gMes = _fdate.getMonth()+1; const gAnio = _fdate.getFullYear();
 
   // Get tarjeta_id safely
   let tarjeta_id = null;
-  if (medio === 'tarjeta') {
+  if (isCardPayment(medio)) {
     const tSel = document.getElementById('g_tarjeta');
     tarjeta_id = (tSel && tSel.value) ? tSel.value : null;
   }
+  const medioPersist = isCardPayment(medio) ? encodeCardPaymentMedium(tarjeta_id) : medio;
 
   setSyncing('syncing');
   try {
@@ -2257,7 +2310,7 @@ async function saveGasto() {
         moneda: moneda,
         cat: document.getElementById('g_cat').value,
         tipo: document.getElementById('g_tipo').value,
-        medio: medio,
+        medio: medioPersist,
         tarjeta_id: tarjeta_id,
         quien: document.getElementById('g_quien').value,
         dia: _fdate.getDate(),
@@ -2307,7 +2360,7 @@ async function saveGasto() {
           descripcion: desc,
           monto: cuotaMonto,
           moneda: moneda,
-          cat: cat, tipo: tipo, medio: medio, tarjeta_id: tarjeta_id,
+          cat: cat, tipo: tipo, medio: medioPersist, tarjeta_id: tarjeta_id,
           quien: 'Todos',
           dia: diaVal,
           cuotas: 1, cuota_actual: 1, gasto_origen_id: null,
@@ -2370,7 +2423,7 @@ function editGasto(id) {
   document.getElementById('g_cat').value=g.cat||'Otros';
   updateCategoryPreview();
   document.getElementById('g_tipo').value=g.tipo||'variable';
-  document.getElementById('g_medio').value=g.medio||'efectivo';
+  document.getElementById('g_medio').value=normalizedPaymentMedium(g);
   document.getElementById('g_quien').value=g.quien||'Todos';
   toggleDivision();
   if (g.division) {
@@ -2385,10 +2438,11 @@ function editGasto(id) {
   // g_dia ya no existe como campo separado
   toggleCardFields();
   // Set tarjeta after populating select
-  if (g.tarjeta_id && g.medio==='tarjeta') {
+  const editCardId = getExpenseCardId(g);
+  if (editCardId && isCardPayment(g)) {
     setTimeout(()=>{ 
       const sel = document.getElementById('g_tarjeta');
-      if(sel) sel.value=g.tarjeta_id; 
+      if(sel) sel.value=editCardId; 
     }, 50);
   }
   document.getElementById('btnSaveGasto').textContent='Actualizar';
@@ -2471,7 +2525,7 @@ function renderAll() {
   const totalGas = gastos.reduce((a,g)=>a+parseFloat(g.monto),0);
   const fijos = gastos.filter(g=>g.tipo==='fijo').reduce((a,g)=>a+parseFloat(g.monto),0);
   const variables = gastos.filter(g=>g.tipo==='variable').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const enTarjeta = gastos.filter(g=>g.medio==='tarjeta').reduce((a,g)=>a+parseFloat(g.monto),0);
+  const enTarjeta = gastos.filter(g=>isCardPayment(g)).reduce((a,g)=>a+parseFloat(g.monto),0);
   const saldo = totalInc-totalGas;
   const pct = totalInc>0?Math.min(100,Math.round(totalGas/totalInc*100)):0;
 
@@ -2530,7 +2584,7 @@ function renderAll() {
   else {
     const sorted = [...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
     gEl.innerHTML = sorted.map(g=>{
-      const tarjeta = g.tarjeta_id?tarjetas.find(t=>t.id===g.tarjeta_id):null;
+      const tarjeta = getExpenseCardId(g)?tarjetas.find(t=>t.id===getExpenseCardId(g)):null;
       const isCuota = g.cuotas>1;
       const catIcon = categoryIconInner(g.cat);
       const catColor = CAT_COLORS[g.cat]||'#888';
@@ -2542,7 +2596,7 @@ function renderAll() {
           <div class="item-name">${gastoDisplayDescription(g)}</div>
           <div class="item-meta">
             <span class="chip chip-${g.tipo==='fijo'?'fixed':'var'}">${g.tipo==='fijo'?'FIJO':'VAR'}</span>
-            <span class="chip chip-${g.medio==='tarjeta'?'card':'cash'}">${g.medio==='tarjeta'?(tarjeta?tarjeta.nombre:L('fTarjeta')):L('fEfectivo').split(' / ')[0]}</span>
+            <span class="chip chip-${isCardPayment(g)?'card':'cash'}">${isCardPayment(g)?(tarjeta?tarjeta.nombre:L('fTarjeta')):L('fEfectivo').split(' / ')[0]}</span>
             ${cuotaBadgeHtml(g, 'chip chip-cuota')}
             <span style="font-size:0.7rem;color:var(--text3)">${g.quien}</span>
             ${g.dia?`<span style="font-size:0.7rem;color:var(--text3)">día ${g.dia}</span>`:''}
@@ -2764,8 +2818,8 @@ function exportExcel() {
 
   const ws3=XLSX.utils.aoa_to_sheet([['Descripción','Monto','Categoría','Tipo','Medio','Quién','Día','Cuotas'],
     ...[...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99)).map(g=>{
-      const t=g.tarjeta_id?tarjetas.find(t=>t.id===g.tarjeta_id)?.nombre||'Tarjeta':'—';
-      return [g.descripcion,parseFloat(g.monto),g.cat,g.tipo,g.medio==='tarjeta'?t:'Efectivo/Déb.',g.quien,g.dia||'',g.cuotas>1?`${g.cuota_actual}/${g.cuotas}`:''];
+      const t=getExpenseCardId(g)?tarjetas.find(t=>t.id===getExpenseCardId(g))?.nombre||'Tarjeta':'—';
+      return [g.descripcion,parseFloat(g.monto),g.cat,g.tipo,isCardPayment(g)?t:'Efectivo/Déb.',g.quien,g.dia||'',g.cuotas>1?`${g.cuota_actual}/${g.cuotas}`:''];
     }),[],['TOTAL',totalGas]]);
   XLSX.utils.book_append_sheet(wb,ws3,'Gastos');
 
@@ -3156,7 +3210,7 @@ renderAll = function() {
   const totalGas = gastos.reduce((a,g)=>a+parseFloat(g.monto),0);
   const fijos = gastos.filter(g=>g.tipo==='fijo').reduce((a,g)=>a+parseFloat(g.monto),0);
   const variables = gastos.filter(g=>g.tipo==='variable').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const enTarjeta = gastos.filter(g=>g.medio==='tarjeta').reduce((a,g)=>a+parseFloat(g.monto),0);
+  const enTarjeta = gastos.filter(g=>isCardPayment(g)).reduce((a,g)=>a+parseFloat(g.monto),0);
   const saldo = totalInc-totalGas;
   const pct = totalInc>0?Math.min(100,Math.round(totalGas/totalInc*100)):0;
 
@@ -3245,10 +3299,10 @@ renderAll = function() {
   } else {
     const sorted = [...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
     gEl.innerHTML = sorted.map(g=>{
-      const t = g.tarjeta_id?tarjetas.find(tc=>tc.id===g.tarjeta_id):null;
+      const t = getExpenseCardId(g)?tarjetas.find(tc=>tc.id===getExpenseCardId(g)):null;
       const isCuota = g.cuotas>1;
       const barColor = CAT_COLORS[g.cat]||'#888';
-      const tarjetaNombre = g.medio==='tarjeta'?(t?t.nombre:'Tarjeta'):'';
+      const tarjetaNombre = isCardPayment(g)?(t?t.nombre:'Tarjeta'):'';
       return `<div class="nf-item">
         <div class="nf-item-bar" style="background:${barColor}"></div>
         <div class="nf-item-body">
@@ -3260,7 +3314,7 @@ renderAll = function() {
           </div>
           <div class="nf-item-tags">
             <span class="tag ${g.tipo==='fijo'?'tag-fijo':'tag-var'}">${g.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
-            <span class="tag ${g.medio==='tarjeta'?'tag-card':'tag-cash'}">${g.medio==='tarjeta'?('💳 '+tarjetaNombre):L('tagEfectivo')}</span>
+            <span class="tag ${isCardPayment(g)?'tag-card':'tag-cash'}">${isCardPayment(g)?('💳 '+tarjetaNombre):L('tagEfectivo')}</span>
             ${cuotaBadgeHtml(g)}
             <span class="tag tag-quien">👤 ${g.quien}</span>
             ${g.dia?`<span class="tag tag-dia">día ${g.dia}</span>`:''}
@@ -6142,7 +6196,7 @@ async function importCardStatementExpenses(items, setProgress) {
   const activePayer = (state.personas && state.personas[0]) || state.persona1 || selectedQuien || 'Persona 1';
   const quien = selectedQuien && selectedQuien !== 'Todos' ? selectedQuien : activePayer;
   const tarjeta_id = tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null;
-  const medio = 'tarjeta';
+  const medio = encodeCardPaymentMedium(tarjeta_id);
   const existingStatementExpenses = (state.gastos || []).slice();
   const targetStatementCounts = countStatementExpenseKeys(list);
   const existingStatementCounts = countStatementExpenseKeys(existingStatementExpenses);
@@ -6188,7 +6242,7 @@ async function importCardStatementExpenses(items, setProgress) {
       const needsPatch =
         duplicate.quien !== body.quien ||
         duplicate.cat !== body.cat ||
-        duplicate.medio !== body.medio ||
+        normalizedPaymentMedium(duplicate) !== normalizedPaymentMedium(body) ||
         Number(duplicate.cuotas || 1) !== Number(body.cuotas || 1) ||
         Number(duplicate.cuota_actual || 1) !== Number(body.cuota_actual || 1) ||
         duplicate.division != null ||
@@ -8051,7 +8105,7 @@ function renderFlujo() {
   var tG = gs.reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
   var fj = gs.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
   var vr = gs.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var eT = gs.filter(function(g){return g.medio==='tarjeta';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var eT = gs.filter(function(g){return isCardPayment(g);}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
   var sl = tI - tG;
   var pctG = tI>0?Math.round(tG/tI*100):0;
   var pctF = tG>0?Math.round(fj/tG*100):0;
