@@ -2651,6 +2651,7 @@ function renderAll() {
       <div class="sum-val ${saldo>=0?'orange':'red'}">${fmtInt(saldo)}</div>
       <div class="sum-sub">${saldo>=0?L('disponibleCorto'):L('deficitCorto')}</div>
     </div>`;
+  setBalancePrivacyUI();
 
   // INGRESOS
   const iEl = document.getElementById('ingresoList');
@@ -3292,6 +3293,10 @@ function setBalancePrivacyUI() {
   const realValue = total.getAttribute('data-real-value') || total.textContent || '$0';
   card.classList.toggle('privacy-hidden', hidden);
   total.textContent = hidden ? '••••••' : realValue;
+  document.querySelectorAll('[data-private-balance]').forEach(function(el) {
+    const value = el.getAttribute('data-real-value') || el.textContent || '$0';
+    el.textContent = hidden ? '••••••' : value;
+  });
   if (btn) {
     btn.innerHTML = nfEyeIcon(hidden);
     btn.setAttribute('aria-label', hidden ? 'Mostrar saldo' : 'Ocultar saldo');
@@ -3469,23 +3474,23 @@ renderAll = function() {
   document.getElementById('summary').innerHTML = `
     <div class="sum-card">
       <span class="sum-label">${L('sumIngresos')}</span>
-      <span class="sum-val green">${fmtInt(totalInc)}</span>
+      <span class="sum-val green" data-private-balance data-real-value="${fmtInt(totalInc)}">${fmtInt(totalInc)}</span>
       <span class="sum-sub">${personas.join(' + ')}</span>
     </div>
     <div class="sum-card">
       <span class="sum-label">${L('sumGastos')}</span>
-      <span class="sum-val red">${fmtInt(totalGas)}</span>
+      <span class="sum-val red" data-private-balance data-real-value="${fmtInt(totalGas)}">${fmtInt(totalGas)}</span>
       <span class="sum-sub">${pct}${L('sumDelIngreso')}</span>
       <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${pct>80?'var(--danger)':pct>60?'var(--accent)':'var(--success)'}"></div></div>
     </div>
     <div class="sum-card filterable ${nfExpenseTypeFilter==='fijo'?'active':''}" onclick="setExpenseTypeFilter('fijo')" role="button" tabindex="0" aria-label="Filtrar gastos fijos">
       <span class="sum-label">${L('sumFijos')}</span>
-      <span class="sum-val blue">${fmtInt(fijos)}</span>
+      <span class="sum-val blue" data-private-balance data-real-value="${fmtInt(fijos)}">${fmtInt(fijos)}</span>
       <span class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}${L('sumDelTotal')}</span>
     </div>
     <div class="sum-card filterable ${nfExpenseTypeFilter==='variable'?'active':''}" onclick="setExpenseTypeFilter('variable')" role="button" tabindex="0" aria-label="Filtrar gastos variables">
       <span class="sum-label">${L('sumVariables')}</span>
-      <span class="sum-val purple">${fmtInt(variables)}</span>
+      <span class="sum-val purple" data-private-balance data-real-value="${fmtInt(variables)}">${fmtInt(variables)}</span>
       <span class="sum-sub">${totalGas>0?Math.round(variables/totalGas*100):0}${L('sumDelTotal')}</span>
     </div>`;
 
