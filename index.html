@@ -199,7 +199,7 @@
     /* SUMMARY */
     #summary{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 18px;margin-bottom:20px}
     .sum-card{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.04);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
-    .sum-card.filterable{cursor:pointer;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+    .sum-card.filterable{cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
     .sum-card.filterable:active{transform:scale(.985)}
     .sum-card.filterable.active{border-color:rgba(18,199,183,.58);box-shadow:0 16px 38px rgba(18,199,183,.16),inset 0 1px 0 rgba(255,255,255,.12)}
     .sum-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;display:block}
@@ -456,6 +456,10 @@
     :root{--green:#1ec98f;--red:#ff7a59;--yellow:#f7c948;--orange:#f7c948;--teal:#12c7b7;--blue:#6c63ff;--lavender:#6c63ff;--surf:rgba(255,255,255,.05);--surf2:rgba(255,255,255,.08);--text3:#95a6c7;--mono:#12c7b7;--sun:#f7c948;--brand:#12c7b7}
     body.dark{--bg:#08111f;--card:#101a2f;--card-2:#15233d;--text:#fff;--muted:#95a6c7;--border:rgba(255,255,255,.06)}
     body:not(.dark){--bg:#f0f4ff;--bg-soft:#e8eeff;--card:#fff;--card-2:#f5f7ff;--text:#14213d;--muted:#7b8798;--surf:rgba(20,33,61,.04);--surf2:rgba(20,33,61,.06);--text3:#7b8798;--green:#0ea572;--teal:#0fa89b;--border:rgba(20,33,61,.08)}
+    body:not(.dark) .toast{background:#fff!important;color:#14213d!important;border-color:rgba(20,33,61,.15)!important;box-shadow:0 8px 28px rgba(20,33,61,.14)!important}
+    body:not(.dark) #ocrActionSheet{background:#fff!important}
+    body:not(.dark) #ocrActionSheet button{background:rgba(20,33,61,.05)!important;border-color:rgba(20,33,61,.1)!important;color:#14213d!important}
+    body:not(.dark) #ocrActionSheet button:active{background:rgba(20,33,61,.1)!important}
     body{background:radial-gradient(circle at top,var(--bg-soft,#0d1830),var(--bg))!important;color:var(--text)!important}
     body:not(.dark) .balance-card{background:linear-gradient(135deg,#1a3a6e,var(--secondary))!important}
     body:not(.dark) .tcard{background:linear-gradient(135deg,#1e3a8a,#3b4fd4)!important;color:white!important}
@@ -1021,7 +1025,8 @@
               <input type="text" id="g_desc" placeholder="Alquiler, Supermercado…" style="flex:1">
               <button onclick="triggerOCR()" title="Leer factura o subir archivo" aria-label="Leer factura o subir archivo" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 14px;border-radius:13px;font-size:1.1rem;cursor:pointer" id="btnCamera">📷</button>
             </div>
-            <input type="file" id="ocrInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv" style="display:none" onchange="processOCR(this)">
+            <input type="file" id="ocrInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv" style="display:none" onchange="processOCR(this)">
+            <input type="file" id="ocrCameraInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
           </div>
           <div class="field"><label id="g_monto_label">Monto</label><div class="amount-currency-row"><select id="g_moneda" class="currency-select-mini"></select><input type="number" id="g_monto" placeholder="0"></div></div>
           <div class="field"><label id="g_cat_label">Categoría</label>
@@ -1292,6 +1297,19 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- OCR ACTION SHEET -->
+<div id="ocrActionOverlay" onclick="closeOcrActionSheet()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;backdrop-filter:blur(4px)"></div>
+<div id="ocrActionSheet" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(430px,100%);background:var(--card);border-radius:24px 24px 0 0;z-index:2001;padding:20px 20px 36px;box-shadow:0 -8px 40px rgba(0,0,0,.35)">
+  <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);margin:0 auto 20px"></div>
+  <div style="font-size:.8rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Seleccionar una acción</div>
+  <button onclick="ocrChooseCamera()" style="display:flex;align-items:center;gap:16px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:16px 18px;border-radius:16px;font-size:1rem;font-weight:600;cursor:pointer;margin-bottom:10px;text-align:left">
+    <span style="font-size:1.6rem">📷</span><span>Cámara</span>
+  </button>
+  <button onclick="ocrChooseFiles()" style="display:flex;align-items:center;gap:16px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:16px 18px;border-radius:16px;font-size:1rem;font-weight:600;cursor:pointer;text-align:left">
+    <span style="font-size:1.6rem">🗂️</span><span>Fotos y archivos</span>
+  </button>
+</div>
 
 <script>
 
@@ -4154,6 +4172,21 @@ function getMutedColor(){return document.documentElement.getAttribute('data-them
 // ============================================
 
 function triggerOCR() {
+  const overlay = document.getElementById('ocrActionOverlay');
+  const sheet = document.getElementById('ocrActionSheet');
+  if (overlay) overlay.style.display = 'block';
+  if (sheet) sheet.style.display = 'block';
+}
+function closeOcrActionSheet() {
+  document.getElementById('ocrActionOverlay').style.display = 'none';
+  document.getElementById('ocrActionSheet').style.display = 'none';
+}
+function ocrChooseCamera() {
+  closeOcrActionSheet();
+  document.getElementById('ocrCameraInput').click();
+}
+function ocrChooseFiles() {
+  closeOcrActionSheet();
   document.getElementById('ocrInput').click();
 }
 
