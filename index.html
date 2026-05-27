@@ -199,6 +199,9 @@
     /* SUMMARY */
     #summary{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 18px;margin-bottom:20px}
     .sum-card{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid rgba(255,255,255,.04);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+    .sum-card.filterable{cursor:pointer;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+    .sum-card.filterable:active{transform:scale(.985)}
+    .sum-card.filterable.active{border-color:rgba(18,199,183,.58);box-shadow:0 16px 38px rgba(18,199,183,.16),inset 0 1px 0 rgba(255,255,255,.12)}
     .sum-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;display:block}
     .sum-val{font-size:20px;font-weight:800;letter-spacing:-.5px;display:block}
     .sum-val.green{color:var(--success)}.sum-val.red{color:var(--danger)}
@@ -3305,6 +3308,7 @@ var nfExpenseSearchOpen = false;
 var nfExpenseFilterOpen = false;
 var nfExpenseSearchQuery = '';
 var nfExpenseCategoryFilter = 'all';
+var nfExpenseTypeFilter = 'all';
 
 function normalizeExpenseFilterText(value) {
   return String(value || '')
@@ -3328,9 +3332,11 @@ function expenseSearchText(g) {
 function expenseMatchesFilters(g) {
   const query = normalizeExpenseFilterText(nfExpenseSearchQuery || (document.getElementById('expenseSearchInput') || {}).value || '');
   const selectedCat = nfExpenseCategoryFilter || (document.getElementById('expenseCategoryFilter') || {}).value || 'all';
+  const selectedType = nfExpenseTypeFilter || 'all';
   const matchesSearch = !query || normalizeExpenseFilterText(expenseSearchText(g)).includes(query);
   const matchesCategory = selectedCat === 'all' || String((g && g.cat) || '') === selectedCat;
-  return matchesSearch && matchesCategory;
+  const matchesType = selectedType === 'all' || String((g && g.tipo) || '').toLowerCase() === selectedType;
+  return matchesSearch && matchesCategory && matchesType;
 }
 
 function getFilteredExpenses(list) {
@@ -3411,6 +3417,12 @@ function clearExpenseCategoryFilter(event) {
   renderAll();
 }
 
+function setExpenseTypeFilter(type) {
+  const next = String(type || 'all').toLowerCase();
+  nfExpenseTypeFilter = nfExpenseTypeFilter === next ? 'all' : next;
+  renderAll();
+}
+
 // Override renderAll to use new CSS classes
 const _origRenderAll = renderAll;
 renderAll = function() {
@@ -3466,12 +3478,12 @@ renderAll = function() {
       <span class="sum-sub">${pct}${L('sumDelIngreso')}</span>
       <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${pct>80?'var(--danger)':pct>60?'var(--accent)':'var(--success)'}"></div></div>
     </div>
-    <div class="sum-card">
+    <div class="sum-card filterable ${nfExpenseTypeFilter==='fijo'?'active':''}" onclick="setExpenseTypeFilter('fijo')" role="button" tabindex="0" aria-label="Filtrar gastos fijos">
       <span class="sum-label">${L('sumFijos')}</span>
       <span class="sum-val blue">${fmtInt(fijos)}</span>
       <span class="sum-sub">${totalGas>0?Math.round(fijos/totalGas*100):0}${L('sumDelTotal')}</span>
     </div>
-    <div class="sum-card">
+    <div class="sum-card filterable ${nfExpenseTypeFilter==='variable'?'active':''}" onclick="setExpenseTypeFilter('variable')" role="button" tabindex="0" aria-label="Filtrar gastos variables">
       <span class="sum-label">${L('sumVariables')}</span>
       <span class="sum-val purple">${fmtInt(variables)}</span>
       <span class="sum-sub">${totalGas>0?Math.round(variables/totalGas*100):0}${L('sumDelTotal')}</span>
