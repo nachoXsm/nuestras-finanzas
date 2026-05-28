@@ -1813,14 +1813,24 @@ function rememberRecordInstallments(table, id, record){
 }
 function applyRecordInstallments(table, rows){
   var m = getInstallmentStore(table);
+  var toRepair = [];
   (rows||[]).forEach(function(r){
     if(!r || !r.id) return;
     var stored = m[r.id];
     if(stored && Number(r.cuotas || 1) <= 1) {
       r.cuotas = stored.cuotas || 1;
       r.cuota_actual = stored.cuota_actual || 1;
+      if (r.descripcion != null && !/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/i.test(r.descripcion)) {
+        toRepair.push({ id: r.id, descripcion: r.descripcion, cuotas: stored.cuotas, cuota_actual: stored.cuota_actual });
+      }
     }
   });
+  if (toRepair.length) {
+    toRepair.forEach(function(item){
+      var newDesc = item.descripcion.trim() + ' C. ' + item.cuota_actual + '/' + item.cuotas;
+      dbPatch(table, item.id, { descripcion: newDesc }).catch(function(){});
+    });
+  }
   return rows;
 }
 function isUnknownColumnError(e){
@@ -1847,6 +1857,10 @@ async function dbPostMoney(table, body){
     ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
     if (body.tarjeta_id && table === 'gastos') {
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
+    }
+    if ((body.cuotas || 1) > 1 && clean.descripcion != null) {
+      var descBase = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
+      clean.descripcion = descBase + ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
     }
     var res = await dbPost(table, clean);
     if(res && res[0]) {
@@ -1880,6 +1894,10 @@ async function dbPatchMoney(table, id, body){
     ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
     if (body.tarjeta_id && table === 'gastos') {
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
+    }
+    if ((body.cuotas || 1) > 1 && clean.descripcion != null) {
+      var descBase = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
+      clean.descripcion = descBase + ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
     }
     var res = await dbPatch(table, id, clean);
     if(res && res[0]) {
@@ -3711,10 +3729,10 @@ renderAll = function() {
         <div class="nfi-body">
           <div class="nfi-name">${gastoDisplayDescription(g)}</div>
           <div class="nfi-meta">${g.quien} · ${medio}</div>
+          ${cuotaHtml}
         </div>
         <div class="nfi-right">
           <div class="nfi-amt-exp">${fmtCurrency(g.monto, g.moneda)}</div>
-          ${cuotaHtml}
           <div class="${tipoClass}">${tipoLabel}</div>
           <div class="nfi-acts">
             <button class="nf-btn-edit" onclick="editGasto('${g.id}')" title="Editar">✏️</button>
