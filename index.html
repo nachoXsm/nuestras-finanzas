@@ -1815,17 +1815,22 @@ function applyRecordInstallments(table, rows){
   var m = getInstallmentStore(table);
   var toRepair = [];
   var NON_DB = ['cuotas','cuota_actual','moneda','tarjeta_id','gasto_origen_id','division'];
+  var _dbHasCuotas=0, _lsHasCuotas=0, _noCuotas=0, _needRepair=0;
   (rows||[]).forEach(function(r){
     if(!r || !r.id) return;
     var stored = m[r.id];
+    if (Number(r.cuotas || 0) > 1) { _dbHasCuotas++; return; }
     if(stored && Number(r.cuotas || 1) <= 1) {
+      _lsHasCuotas++;
       r.cuotas = stored.cuotas || 1;
       r.cuota_actual = stored.cuota_actual || 1;
       if (r.descripcion != null && !/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/i.test(r.descripcion)) {
+        _needRepair++;
         toRepair.push({ row: r, cuotas: stored.cuotas, cuota_actual: stored.cuota_actual });
       }
-    }
+    } else { _noCuotas++; }
   });
+  console.log('[cuota-diag] '+table+': DB='+_dbHasCuotas+' LS='+_lsHasCuotas+' sinDatos='+_noCuotas+' aReparar='+_needRepair+' total='+rows.length);
   if (toRepair.length) {
     var repaired = 0;
     Promise.all(toRepair.map(function(item){
