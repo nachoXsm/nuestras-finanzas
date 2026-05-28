@@ -1814,6 +1814,7 @@ function rememberRecordInstallments(table, id, record){
 function applyRecordInstallments(table, rows){
   var m = getInstallmentStore(table);
   var toRepair = [];
+  var NON_DB = ['cuotas','cuota_actual','moneda','tarjeta_id','gasto_origen_id','division'];
   (rows||[]).forEach(function(r){
     if(!r || !r.id) return;
     var stored = m[r.id];
@@ -1821,7 +1822,7 @@ function applyRecordInstallments(table, rows){
       r.cuotas = stored.cuotas || 1;
       r.cuota_actual = stored.cuota_actual || 1;
       if (r.descripcion != null && !/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/i.test(r.descripcion)) {
-        toRepair.push({ id: r.id, descripcion: r.descripcion, cuotas: stored.cuotas, cuota_actual: stored.cuota_actual });
+        toRepair.push({ row: r, cuotas: stored.cuotas, cuota_actual: stored.cuota_actual });
       }
     }
   });
@@ -1829,21 +1830,26 @@ function applyRecordInstallments(table, rows){
     var repaired = 0;
     Promise.all(toRepair.map(function(item){
       var suffix = ' C. ' + item.cuota_actual + '/' + item.cuotas;
-      var newDesc = item.descripcion.trim().slice(0, 80 - suffix.length) + suffix;
-      var url = API + '/' + table + '?id=eq.' + item.id;
-      var hMin = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'return=minimal' };
-      return fetch(url, { method:'PATCH', headers:hMin, body:JSON.stringify({ descripcion: newDesc }) })
+      var newDesc = item.row.descripcion.trim().slice(0, 80 - suffix.length) + suffix;
+      // Construir body limpio (solo columnas DB) con descripcion actualizada
+      var body = {};
+      Object.keys(item.row).forEach(function(k){ if(NON_DB.indexOf(k) === -1) body[k] = item.row[k]; });
+      body.descripcion = newDesc;
+      var url = API + '/' + table + '?on_conflict=id';
+      var h = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'resolution=merge-duplicates,return=minimal' };
+      return fetch(url, { method:'POST', headers:h, body:JSON.stringify(body) })
         .then(function(res){
           if (!res.ok) return res.text().then(function(t){ throw new Error(t); });
           repaired++;
+          item.row.descripcion = newDesc;
         })
-        .catch(function(e){ console.error('[cuota-repair] Error PATCH:', e.message); });
+        .catch(function(e){ console.error('[cuota-repair] Error upsert:', e.message); });
     })).then(function(){
       if (repaired > 0 && typeof renderAll === 'function') {
         toast('✅ ' + repaired + ' cuotas sincronizadas. Refrescá el celular.');
         renderAll();
       } else if (repaired === 0) {
-        console.error('[cuota-repair] 0/' + toRepair.length + ' patches OK');
+        console.error('[cuota-repair] 0/' + toRepair.length + ' upserts OK');
       }
     });
   }
