@@ -7096,34 +7096,43 @@ function parseTicketText(text) {
   const result = { descripcion: '', monto: '', categoria: 'Otros', dia: '', fecha: '' };
 
   // ---- FIND TOTAL ----
-  // Look for patterns like: TOTAL $1.234,56 | Total: 1234.56 | IMPORTE TOTAL 5000
-  const totalPatterns = [
-    /total\s*:?\s*\$?\s*([\d.,]+)/i,
-    /importe\s*total\s*:?\s*\$?\s*([\d.,]+)/i,
-    /a\s*pagar\s*:?\s*\$?\s*([\d.,]+)/i,
-    /monto\s*total\s*:?\s*\$?\s*([\d.,]+)/i,
-    /total\s+a\s+abonar\s*:?\s*\$?\s*([\d.,]+)/i,
-    /subtotal\s*:?\s*\$?\s*([\d.,]+)/i,
-  ];
+  // Strategy: find ALL occurrences of a real TOTAL line (excluding TOTAL NETO,
+  // TOTAL S/IVA, column headers, etc.) and take the LAST one (bottom of receipt).
+  // Falls back to other labeled patterns, then to the largest plausible number.
 
-  for (const pattern of totalPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      result.monto = parseOCRMoney(match[1]) || '';
-      break;
+  // Negative lookahead excludes "TOTAL NETO", "TOTAL S/IVA", "TOTAL BRUTO", etc.
+  const realTotalRx = /\bTOTAL(?!\s+(?:NETO|S\/IVA|C\/IVA|ITEMS?|SIN|CON|COMPRAS?|BRUTO|PARCIAL|DE|DEL|TITULAR))\s*:?\s*\$?\s*([\d.,]+)/gi;
+  const allTotals = [...text.matchAll(realTotalRx)]
+    .map(m => parseOCRMoney(m[1]))
+    .filter(n => n > 0);
+
+  if (allTotals.length) {
+    // Take the last match: final total is at the bottom of the receipt
+    result.monto = allTotals[allTotals.length - 1];
+  }
+
+  if (!result.monto) {
+    const fallbackPatterns = [
+      /importe\s*total\s*:?\s*\$?\s*([\d.,]+)/i,
+      /a\s*pagar\s*:?\s*\$?\s*([\d.,]+)/i,
+      /monto\s*total\s*:?\s*\$?\s*([\d.,]+)/i,
+      /total\s+a\s+abonar\s*:?\s*\$?\s*([\d.,]+)/i,
+    ];
+    for (const pattern of fallbackPatterns) {
+      const m = text.match(pattern);
+      if (m) { result.monto = parseOCRMoney(m[1]) || ''; break; }
     }
   }
 
-  // If no total found, look for the largest number in the text
+  // Last resort: largest number in text (exclude values that are likely CUITs, dates, times)
   if (!result.monto) {
-    const numbers = [...text.matchAll(/\$?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)/g)]
+    const numbers = [...text.matchAll(/\$\s*([\d.,]+)/g)]
       .map(m => parseOCRMoney(m[1]))
-      .filter(n => n > 0 && n < 10000000);
+      .filter(n => n >= 100 && n < 10000000);
     if (numbers.length) result.monto = Math.max(...numbers);
   }
 
   // ---- FIND DESCRIPTION ----
-  // Usually the first meaningful line (store name / business)
   const skipWords = ['ticket','factura','recibo','fecha','cuit','iva','subtotal',
     'total','tel','direccion','domicilio','gracias','vuelto','efectivo','tarjeta'];
 
@@ -7164,16 +7173,36 @@ function parseTicketText(text) {
   }
 
   // ---- FIND DATE ----
-  const dateMatch = text.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
-  if (dateMatch) {
-    const dd = parseInt(dateMatch[1], 10);
-    const mm = parseInt(dateMatch[2], 10);
-    let yy = parseInt(dateMatch[3], 10);
-    if (yy < 100) yy += 2000;
-    result.dia = dd;
-    if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
-      result.fecha = yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+  // Prefer dates labeled as transaction/emission date, or dates followed by a time.
+  // This avoids picking up "Fecha Inicio de Actividades" or other business dates.
+  const parseDateParts = function(dd, mm, yy) {
+    const d = parseInt(dd, 10), m = parseInt(mm, 10);
+    let y = parseInt(yy, 10);
+    if (y < 100) y += 2000;
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+      result.dia = d;
+      result.fecha = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      return true;
     }
+    return false;
+  };
+
+  // 1. Try labeled date (FECHA EMISION, FECHA DE COMPRA, FECHA OPERACION, etc.)
+  const labeledDate = text.match(/(?:fecha\s*emisi[oó]n|fecha\s*de?\s*emisi[oó]n|fecha\s*de?\s*compra|fecha\s*operaci[oó]n|fecha\s*transacci[oó]n)\s*[:\s]+(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/i);
+  if (labeledDate) {
+    parseDateParts(labeledDate[1], labeledDate[2], labeledDate[3]);
+  }
+
+  // 2. Date followed by time HH:MM (very likely a transaction timestamp)
+  if (!result.fecha) {
+    const dateWithTime = text.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\s+\d{1,2}:\d{2}/);
+    if (dateWithTime) parseDateParts(dateWithTime[1], dateWithTime[2], dateWithTime[3]);
+  }
+
+  // 3. Fallback: first date in text
+  if (!result.fecha) {
+    const anyDate = text.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+    if (anyDate) parseDateParts(anyDate[1], anyDate[2], anyDate[3]);
   }
 
   return result;
