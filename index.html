@@ -1292,7 +1292,7 @@
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav" id="bottomNav">
-  <div class="nav-item active" id="nav-gastos" onclick="switchTab('gastos');setNavActive('nav-gastos')">
+  <div class="nav-item active" id="nav-gastos" onclick="switchTab('gastos');setNavActive('nav-gastos');setTimeout(function(){window.scrollTo({top:0,behavior:'smooth'});},50)">
     <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 4h8"/><path d="M9 2h6a2 2 0 0 1 2 2v1h1.5A1.5 1.5 0 0 1 20 6.5v13A1.5 1.5 0 0 1 18.5 21h-13A1.5 1.5 0 0 1 4 19.5v-13A1.5 1.5 0 0 1 5.5 5H7V4a2 2 0 0 1 2-2Z"/><path d="M8 10h8M8 14h6"/></svg></span>Gastos
   </div>
   <div class="nav-item" id="nav-amigos" onclick="openFriendsPanel();setNavActive('nav-amigos')" style="display:none">
