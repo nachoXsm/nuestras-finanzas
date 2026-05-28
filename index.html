@@ -1854,7 +1854,8 @@ function nfSetLang(c){
 
   // Header / greeting
   T('monthLabel', m[typeof state!=='undefined'?state.mes-1:0] + ' ' + (typeof state!=='undefined'?state.anio:''));
-  T('greetingText', LD.greeting + ' 👋');
+  var _greetName = (typeof getPersonaPrincipal === 'function' ? getPersonaPrincipal() : '') || '';
+  T('greetingText', LD.greeting + (_greetName ? ' ' + _greetName : '') + ' 👋');
   T('greetingMonth', LD.thisMonth);
 
   // Balance card labels
@@ -8029,6 +8030,11 @@ function activarModoHogar() {
   document.getElementById('appMain').setAttribute('data-modo', 'hogar');
   var gmHogar = document.getElementById('greetingMonth');
   if (gmHogar) gmHogar.textContent = L('thisMonth') || 'este mes';
+  var greetEl = document.getElementById('greetingText');
+  if (greetEl) {
+    var _nombre = (typeof getPersonaPrincipal === 'function' ? getPersonaPrincipal() : '') || '';
+    greetEl.textContent = (L('greeting') || 'Hola') + (_nombre ? ' ' + _nombre : '') + ' 👋';
+  }
   // Tabs completos
   var tabsWrap = document.getElementById('tabsWrap');
   if (tabsWrap) {
