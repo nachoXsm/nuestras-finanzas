@@ -205,7 +205,7 @@
     .sum-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;display:block}
     .sum-val{font-size:20px;font-weight:800;letter-spacing:-.5px;display:block}
     .sum-val.green{color:var(--success)}.sum-val.red{color:var(--danger)}
-    .sum-val.blue,.sum-val.orange{color:var(--primary)}.sum-val.purple{color:var(--secondary)}
+    .sum-val.blue,.sum-val.orange{color:#60a5fa}.sum-val.purple{color:#c084fc}
     .sum-sub{font-size:11px;color:var(--muted);margin-top:4px;display:block}
     .progress{height:4px;background:rgba(255,255,255,.06);border-radius:999px;margin-top:10px;overflow:hidden}
     .progress-fill{height:100%;border-radius:999px}
@@ -278,8 +278,26 @@
     .nf-item-footer{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:10px}
     /* Tags */
     .tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.4px;text-transform:uppercase}
-    .tag-fijo{background:rgba(108,99,255,.18);color:#b0a8ff;border:1px solid rgba(108,99,255,.3)}
-    .tag-var{background:rgba(247,201,72,.13);color:#f7c948;border:1px solid rgba(247,201,72,.28)}
+    .tag-fijo{background:rgba(96,165,250,.15);color:#60a5fa;border:1px solid rgba(96,165,250,.28)}
+    .tag-var{background:rgba(192,132,252,.13);color:#c084fc;border:1px solid rgba(192,132,252,.28)}
+    /* ── nuevo layout de items (Modelo D) ── */
+    .nfi{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);background:transparent}
+    .nfi:last-child{border-bottom:none}
+    .nfi-date{width:28px;flex-shrink:0;text-align:center;line-height:1.1}
+    .nfi-date-mo{font-size:8px;font-weight:700;color:rgba(149,166,199,.5);text-transform:uppercase;letter-spacing:.5px}
+    .nfi-date-dy{font-size:15px;font-weight:800;color:#fff}
+    .nfi-icon{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .nfi-icon img{width:100%;height:100%;object-fit:contain;border-radius:8px}
+    .nfi-body{flex:1;min-width:0}
+    .nfi-name{font-size:14px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.3}
+    .nfi-cuota{font-size:9px;font-weight:800;color:#f7c948;background:rgba(247,201,72,.12);border:1px solid rgba(247,201,72,.25);padding:1px 5px;border-radius:5px;flex-shrink:0;white-space:nowrap}
+    .nfi-meta{font-size:12px;color:var(--muted);font-weight:500;margin-top:2px}
+    .nfi-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+    .nfi-amt-exp{font-size:15px;font-weight:800;letter-spacing:-.4px;color:#ff7a59}
+    .nfi-amt-inc{font-size:15px;font-weight:800;letter-spacing:-.4px;color:#12c7b7}
+    .nfi-tipo-fijo{font-size:8px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:rgba(96,165,250,.6)}
+    .nfi-tipo-var{font-size:8px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:rgba(192,132,252,.6)}
+    .nfi-acts{display:flex;gap:5px}
     .tag-card{background:rgba(18,199,183,.12);color:#12c7b7;border:1px solid rgba(18,199,183,.25)}
     .tag-cash{background:rgba(30,201,143,.1);color:#1ec98f;border:1px solid rgba(30,201,143,.22)}
     .tag-cuota{background:rgba(247,201,72,.1);color:#f7c948;border:1px solid rgba(247,201,72,.22)}
@@ -478,7 +496,7 @@
     .sum-label{font-size:11px!important;color:var(--muted)!important;text-transform:uppercase!important;letter-spacing:1.2px!important;display:block!important;margin-bottom:8px!important;font-weight:600!important}
     .sum-val{font-size:22px!important;font-weight:800!important;display:block!important;letter-spacing:-.5px!important}
     .sum-val.green{color:#1ec98f!important}.sum-val.red{color:#ff7a59!important}
-    .sum-val.blue,.sum-val.orange{color:#12c7b7!important}.sum-val.purple{color:#6c63ff!important}
+    .sum-val.blue,.sum-val.orange{color:#60a5fa!important}.sum-val.purple{color:#c084fc!important}
     .sum-sub{font-size:11px!important;color:var(--muted)!important;display:block!important;margin-top:4px!important}
     .cat-row{display:flex!important;align-items:center!important;gap:10px!important;margin-bottom:14px!important}
     .cat-name{font-size:13px!important;font-weight:600!important;min-width:130px!important;flex-shrink:0!important}
@@ -3636,23 +3654,29 @@ renderAll = function() {
     ingresos.forEach(i=>{ if(!incGroups[i.quien]) incGroups[i.quien]=[]; incGroups[i.quien].push(i); });
     iEl.innerHTML = Object.entries(incGroups).map(([quien,items])=>`
       <div class="nf-group-label">${quien}</div>
-      ${items.map(i=>`
-        <div class="nf-item">
-          <div class="nf-item-bar" style="background:#1ec98f"></div>
-          <div class="nf-item-body">
-            <div class="nf-item-top">
-              <div class="nf-item-name">${i.descripcion||''}</div>
-              <div class="nf-item-amount inc">${fmtCurrency(i.monto, i.moneda)}</div>
-            </div>
-            <div class="nf-item-tags">
-              <span class="tag ${i.tipo==='fijo'?'tag-fijo':'tag-var'}">${i.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
-            </div>
-            <div class="nf-item-footer">
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:18px;overflow:hidden;margin-bottom:10px">
+      ${items.map(i=>{
+        const tipoClass = i.tipo==='fijo'?'nfi-tipo-fijo':'nfi-tipo-var';
+        const tipoLabel = i.tipo==='fijo'?L('tagFijo'):L('tagVar');
+        return `<div class="nfi">
+          <div class="nfi-icon" style="background:rgba(18,199,183,.15);width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 24 24" style="width:55%;height:55%;fill:none;stroke:#12c7b7;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+          </div>
+          <div class="nfi-body">
+            <div class="nfi-name">${i.descripcion||''}</div>
+            <div class="nfi-meta">${i.quien}</div>
+          </div>
+          <div class="nfi-right">
+            <div class="nfi-amt-inc">${fmtCurrency(i.monto, i.moneda)}</div>
+            <div class="${tipoClass}">${tipoLabel}</div>
+            <div class="nfi-acts">
               <button class="nf-btn-edit" onclick="editIngreso('${i.id}')" title="Editar">✏️</button>
               <button class="nf-btn-del" onclick="deleteIngreso('${i.id}')" title="Eliminar">🗑</button>
             </div>
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
+      </div>
     `).join('');
   }
 
@@ -3666,34 +3690,32 @@ renderAll = function() {
     gEl.innerHTML = expenseFilterEmptyHtml();
   } else {
     const sorted = [...visibleGastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
-    gEl.innerHTML = sorted.map(g=>{
+    const moAbrev = MONTHS_SHORT[(state.mes||1)-1]||'';
+    gEl.innerHTML = '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:18px;overflow:hidden">' + sorted.map(g=>{
       const t = getExpenseCardId(g)?tarjetas.find(tc=>tc.id===getExpenseCardId(g)):null;
-      const isCuota = g.cuotas>1;
-      const barColor = CAT_COLORS[g.cat]||'#888';
       const tarjetaNombre = isCardPayment(g)?(t?t.nombre:'Tarjeta'):'';
-      return `<div class="nf-item">
-        <div class="nf-item-bar" style="background:${barColor}"></div>
-        <div class="nf-item-body">
-          <div class="nf-item-top">
-            <div class="nf-item-name">
-              ${gastoDisplayDescription(g)}
-            </div>
-            <div class="nf-item-amount exp">${fmtCurrency(g.monto, g.moneda)}</div>
-          </div>
-          <div class="nf-item-tags">
-            <span class="tag ${g.tipo==='fijo'?'tag-fijo':'tag-var'}">${g.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
-            <span class="tag ${isCardPayment(g)?'tag-card':'tag-cash'}">${isCardPayment(g)?('💳 '+tarjetaNombre):L('tagEfectivo')}</span>
-            ${cuotaBadgeHtml(g)}
-            <span class="tag tag-quien">👤 ${g.quien}</span>
-            ${g.dia?`<span class="tag tag-dia">día ${g.dia}</span>`:''}
-          </div>
-          <div class="nf-item-footer">
+      const medio = isCardPayment(g)?('💳 '+tarjetaNombre):(g.medio||'Efectivo');
+      const tipoClass = g.tipo==='fijo'?'nfi-tipo-fijo':'nfi-tipo-var';
+      const tipoLabel = g.tipo==='fijo'?L('tagFijo'):L('tagVar');
+      const cuotaHtml = g.cuotas>1?`<span class="nfi-cuota">${g.cuota_actual||1}/${g.cuotas}</span>`:'';
+      const iconBg = categoryIconBg(g.cat);
+      return `<div class="nfi">
+        <div class="nfi-date"><div class="nfi-date-mo">${moAbrev}</div><div class="nfi-date-dy">${g.dia||'—'}</div></div>
+        <div class="nfi-icon" style="background:${iconBg}">${categoryIconInner(g.cat)}</div>
+        <div class="nfi-body">
+          <div class="nfi-name">${gastoDisplayDescription(g)}${cuotaHtml}</div>
+          <div class="nfi-meta">${g.quien} · ${medio}</div>
+        </div>
+        <div class="nfi-right">
+          <div class="nfi-amt-exp">${fmtCurrency(g.monto, g.moneda)}</div>
+          <div class="${tipoClass}">${tipoLabel}</div>
+          <div class="nfi-acts">
             <button class="nf-btn-edit" onclick="editGasto('${g.id}')" title="Editar">✏️</button>
             <button class="nf-btn-del" onclick="deleteGasto('${g.id}')" title="Eliminar">🗑</button>
           </div>
         </div>
       </div>`;
-    }).join('');
+    }).join('') + '</div>';
   }
 
   // TARJETAS
