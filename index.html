@@ -205,7 +205,7 @@
     .sum-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;display:block}
     .sum-val{font-size:20px;font-weight:800;letter-spacing:-.5px;display:block}
     .sum-val.green{color:var(--success)}.sum-val.red{color:var(--danger)}
-    .sum-val.blue,.sum-val.orange{color:var(--primary)}.sum-val.purple{color:var(--secondary)}
+    .sum-val.blue,.sum-val.orange{color:#60a5fa}.sum-val.purple{color:#c084fc}
     .sum-sub{font-size:11px;color:var(--muted);margin-top:4px;display:block}
     .progress{height:4px;background:rgba(255,255,255,.06);border-radius:999px;margin-top:10px;overflow:hidden}
     .progress-fill{height:100%;border-radius:999px}
@@ -278,8 +278,25 @@
     .nf-item-footer{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:10px}
     /* Tags */
     .tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.4px;text-transform:uppercase}
-    .tag-fijo{background:rgba(108,99,255,.18);color:#b0a8ff;border:1px solid rgba(108,99,255,.3)}
-    .tag-var{background:rgba(247,201,72,.13);color:#f7c948;border:1px solid rgba(247,201,72,.28)}
+    .tag-fijo{background:rgba(96,165,250,.15);color:#60a5fa;border:1px solid rgba(96,165,250,.28)}
+    .tag-var{background:rgba(192,132,252,.13);color:#c084fc;border:1px solid rgba(192,132,252,.28)}
+    /* ── layout items Opción A: ícono + fecha debajo ── */
+    .nfi{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.04);background:transparent}
+    .nfi:last-child{border-bottom:none}
+    .nfi-iconwrap{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;width:44px}
+    .nfi-icon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .nfi-icon img{width:100%;height:100%;object-fit:contain;border-radius:9px}
+    .nfi-date{font-size:9px;font-weight:700;color:rgba(149,166,199,.55);letter-spacing:.3px;white-space:nowrap;text-align:center}
+    .nfi-body{flex:1;min-width:0}
+    .nfi-name{font-size:13.5px;font-weight:700;letter-spacing:-.15px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.3;margin-bottom:3px}
+    .nfi-cuota{font-size:9px;font-weight:800;color:#f7c948;background:rgba(247,201,72,.12);border:1px solid rgba(247,201,72,.25);padding:2px 6px;border-radius:5px;white-space:nowrap;text-align:right}
+    .nfi-meta{font-size:11.5px;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .nfi-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+    .nfi-amt-exp{font-size:15px;font-weight:800;letter-spacing:-.4px;color:#ff7a59}
+    .nfi-amt-inc{font-size:15px;font-weight:800;letter-spacing:-.4px;color:#12c7b7}
+    .nfi-tipo-fijo{font-size:8px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#60a5fa}
+    .nfi-tipo-var{font-size:8px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#c084fc}
+    .nfi-acts{display:flex;gap:5px}
     .tag-card{background:rgba(18,199,183,.12);color:#12c7b7;border:1px solid rgba(18,199,183,.25)}
     .tag-cash{background:rgba(30,201,143,.1);color:#1ec98f;border:1px solid rgba(30,201,143,.22)}
     .tag-cuota{background:rgba(247,201,72,.1);color:#f7c948;border:1px solid rgba(247,201,72,.22)}
@@ -478,7 +495,7 @@
     .sum-label{font-size:11px!important;color:var(--muted)!important;text-transform:uppercase!important;letter-spacing:1.2px!important;display:block!important;margin-bottom:8px!important;font-weight:600!important}
     .sum-val{font-size:22px!important;font-weight:800!important;display:block!important;letter-spacing:-.5px!important}
     .sum-val.green{color:#1ec98f!important}.sum-val.red{color:#ff7a59!important}
-    .sum-val.blue,.sum-val.orange{color:#12c7b7!important}.sum-val.purple{color:#6c63ff!important}
+    .sum-val.blue,.sum-val.orange{color:#60a5fa!important}.sum-val.purple{color:#c084fc!important}
     .sum-sub{font-size:11px!important;color:var(--muted)!important;display:block!important;margin-top:4px!important}
     .cat-row{display:flex!important;align-items:center!important;gap:10px!important;margin-bottom:14px!important}
     .cat-name{font-size:13px!important;font-weight:600!important;min-width:130px!important;flex-shrink:0!important}
@@ -1038,9 +1055,19 @@
                 <option value="Educación">Educación</option><option value="Entretenimiento">Entretenimiento</option>
                 <option value="Servicios">Servicios</option><option value="Ropa">Ropa</option>
                 <option value="Mascota">Mascota</option><option value="Suscripciones">Suscripciones</option>
+                <option value="Viajes">Viajes</option><option value="Seguros">Seguros</option><option value="Regalos">Regalos</option>
                 <option value="Tarjeta">Tarjeta</option><option value="Otros">Otros</option>
               </select>
             </div>
+          </div>
+          <div style="grid-column:1/-1;margin-top:-4px">
+            <div id="newCatForm" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;margin-bottom:6px">
+              <input type="text" id="newCatEmoji" placeholder="😀" maxlength="2" style="width:42px;height:36px;text-align:center;font-size:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:white;outline:none;flex-shrink:0">
+              <input type="text" id="newCatName" placeholder="Nombre de la categoría" maxlength="24" style="flex:1;height:36px;padding:0 10px;font-size:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:white;outline:none" onkeydown="if(event.key==='Enter')saveCustomCat()">
+              <button type="button" onclick="saveCustomCat()" style="height:36px;padding:0 14px;background:var(--primary);border:none;border-radius:8px;color:white;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">OK</button>
+              <button type="button" onclick="cancelCustomCat()" style="height:36px;width:36px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">✕</button>
+            </div>
+            <button type="button" id="addCatBtn" onclick="showNewCatForm()" style="width:100%;padding:9px;background:transparent;border:1.5px dashed rgba(255,255,255,.15);border-radius:12px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.2px">＋ Añadir categoría personalizada</button>
           </div>
           <div class="field"><label id="g_tipo_label">Tipo</label><select id="g_tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select></div>
           <div class="field"><label id="g_medio_label">Medio de pago</label>
@@ -1374,7 +1401,7 @@ var NF_LANGS={
     pctIngreso:'% del ingreso', pctGastos:'% de gastos', disponibleCorto:'disponible', deficitCorto:'déficit',
     informeResumen:'RESUMEN DEL MES', informeComposicion:'COMPOSICIÓN DE GASTOS', informeFijosVar:'Fijos vs Variables', informePorIntegrante:'POR INTEGRANTE', informeGastosCat:'Gastos por categoría', informeSinDatosMes:'Sin datos este mes', informeGastosPersona:'Gastos', informeSinGastos:'Sin gastos registrados',
     grupoAporto:'Aportó', grupoAlDia:'Al día', grupoDebe:'Debe', grupoLeDeben:'Le deben', grupoLiquidacion:'Liquidación', optTodos:'Todos', optCompartido:'Compartido', optCompartida:'Compartida', pagoDividido:'Pago dividido', pagadoPor:'Pagado por', sinDefinir:'Sin definir', convRatesTitle:'Cotizaciones vs ARS', groupPanelTitle:'👥 Mis espacios', groupPanelSub:'Hogar y grupos de gastos', groupMode:'Modo grupo de gastos', groupGreeting:'el grupo', groupMyHome:'Mi hogar', groupExpenses:'Grupos de gastos', groupCreate:'Crear grupo de gastos', groupCreateSub:'Amigos, viajes, casa compartida', groupJoin:'Unirse con código', groupJoinSub:'Tengo un código de invitación', groupBackHome:'Volver a Mi Hogar', groupLeave:'Salir del grupo de gastos', groupInvite:'Invitar', groupDelete:'Eliminar', groupActive:'Activo', groupNoName:'Sin nombre', groupBalance:'BALANCE DEL GRUPO', groupParticipants:'participantes', groupEach:'c/u', groupSpent:'Gastado', groupSettleAccounts:'Liquidar cuentas', groupNoExpenses:'Sin gastos en este grupo', groupNoDebts:'No hay deudas pendientes', groupOwesTo:'le debe a', groupSettleHint:'Para dejar el grupo equilibrado', groupSummary:'RESUMEN DEL GRUPO', groupTotal:'Total', groupPerPerson:'Parte c/u', groupMovements:'Movimientos', groupExpensesLoaded:'gastos cargados', incomeByPerson:'Ingresos por persona', sharedExpenses:'Gastos compartidos', ambosLabel:'Ambos', sinDescripcion:'Sin descripción',
-    catVivienda:'Vivienda', catAlimentacion:'Alimentación', catTransporte:'Transporte', catSalud:'Salud', catEducacion:'Educación', catEntretenimiento:'Entretenimiento', catServicios:'Servicios', catRopa:'Ropa', catMascota:'Mascota', catSuscripciones:'Suscripciones', catTarjeta:'Tarjeta', catOtros:'Otros',
+    catVivienda:'Vivienda', catAlimentacion:'Alimentación', catTransporte:'Transporte', catSalud:'Salud', catEducacion:'Educación', catEntretenimiento:'Entretenimiento', catServicios:'Servicios', catRopa:'Ropa', catMascota:'Mascota', catSuscripciones:'Suscripciones', catViajes:'Viajes', catSeguros:'Seguros', catRegalos:'Regalos', catTarjeta:'Tarjeta', catOtros:'Otros',
     // Toasts
     toastGuardado:'✅ Guardado', toastActualizado:'✅ Actualizado', toastError:'❌ Error al guardar',
     toastConexion:'❌ Error de conexión', toastCopiado:'✅ Código copiado', toastFoto:'✅ Foto actualizada',
@@ -1424,7 +1451,7 @@ var NF_LANGS={
     pctIngreso:'% of income', pctGastos:'% of expenses', disponibleCorto:'available', deficitCorto:'deficit',
     informeResumen:'MONTH SUMMARY', informeComposicion:'EXPENSE BREAKDOWN', informeFijosVar:'Fixed vs Variable', informePorIntegrante:'BY MEMBER', informeGastosCat:'Expenses by category', informeSinDatosMes:'No data this month', informeGastosPersona:'Expenses', informeSinGastos:'No expenses recorded',
     grupoAporto:'Paid', grupoAlDia:'Settled', grupoDebe:'Owes', grupoLeDeben:'Is owed', grupoLiquidacion:'Settlement', optTodos:'Everyone', optCompartido:'Shared', optCompartida:'Shared', pagoDividido:'Split payment', pagadoPor:'Paid by', sinDefinir:'Not set', convRatesTitle:'Rates vs ARS', groupPanelTitle:'👥 My spaces', groupPanelSub:'Home and expense groups', groupMode:'Expense group mode', groupGreeting:'the group', groupMyHome:'My home', groupExpenses:'Expense groups', groupCreate:'Create expense group', groupCreateSub:'Friends, trips, shared home', groupJoin:'Join with code', groupJoinSub:'I have an invitation code', groupBackHome:'Back to My Home', groupLeave:'Leave expense group', groupInvite:'Invite', groupDelete:'Delete', groupActive:'Active', groupNoName:'No name', groupBalance:'GROUP BALANCE', groupParticipants:'participants', groupEach:'each', groupSpent:'Spent', groupSettleAccounts:'Settle up', groupNoExpenses:'No expenses in this group', groupNoDebts:'No pending debts', groupOwesTo:'owes', groupSettleHint:'To balance the group', groupSummary:'GROUP SUMMARY', groupTotal:'Total', groupPerPerson:'Share each', groupMovements:'Movements', groupExpensesLoaded:'expenses added', incomeByPerson:'Income by person', sharedExpenses:'Shared expenses', ambosLabel:'Shared', sinDescripcion:'No description',
-    catVivienda:'Housing', catAlimentacion:'Food', catTransporte:'Transport', catSalud:'Health', catEducacion:'Education', catEntretenimiento:'Entertainment', catServicios:'Utilities', catRopa:'Clothing', catMascota:'Pets', catSuscripciones:'Subscriptions', catTarjeta:'Card', catOtros:'Other',
+    catVivienda:'Housing', catAlimentacion:'Food', catTransporte:'Transport', catSalud:'Health', catEducacion:'Education', catEntretenimiento:'Entertainment', catServicios:'Utilities', catRopa:'Clothing', catMascota:'Pets', catSuscripciones:'Subscriptions', catViajes:'Travel', catSeguros:'Insurance', catRegalos:'Gifts', catTarjeta:'Card', catOtros:'Other',
     toastGuardado:'✅ Saved', toastActualizado:'✅ Updated', toastError:'❌ Error saving',
     toastConexion:'❌ Connection error', toastCopiado:'✅ Code copied', toastFoto:'✅ Photo updated',
     toastExcel:'✅ Excel downloaded'
@@ -1473,7 +1500,7 @@ var NF_LANGS={
     pctIngreso:'% da receita', pctGastos:'% das despesas', disponibleCorto:'disponível', deficitCorto:'déficit',
     informeResumen:'RESUMO DO MÊS', informeComposicion:'COMPOSIÇÃO DAS DESPESAS', informeFijosVar:'Fixos vs Variáveis', informePorIntegrante:'POR INTEGRANTE', informeGastosCat:'Despesas por categoria', informeSinDatosMes:'Sem dados este mês', informeGastosPersona:'Despesas', informeSinGastos:'Sem despesas registradas',
     grupoAporto:'Pagou', grupoAlDia:'Em dia', grupoDebe:'Deve', grupoLeDeben:'Tem a receber', grupoLiquidacion:'Acerto', optTodos:'Todos', optCompartido:'Compartilhado', optCompartida:'Compartilhada', pagoDividido:'Pagamento dividido', pagadoPor:'Pago por', sinDefinir:'Sem definir', convRatesTitle:'Cotações vs ARS', groupPanelTitle:'👥 Meus espaços', groupPanelSub:'Casa e grupos de despesas', groupMode:'Modo grupo de despesas', groupGreeting:'o grupo', groupMyHome:'Minha casa', groupExpenses:'Grupos de despesas', groupCreate:'Criar grupo de despesas', groupCreateSub:'Amigos, viagens, casa compartilhada', groupJoin:'Entrar com código', groupJoinSub:'Tenho um código de convite', groupBackHome:'Voltar para Minha Casa', groupLeave:'Sair do grupo de despesas', groupInvite:'Convidar', groupDelete:'Excluir', groupActive:'Ativo', groupNoName:'Sem nome', groupBalance:'SALDO DO GRUPO', groupParticipants:'participantes', groupEach:'cada', groupSpent:'Gasto', groupSettleAccounts:'Acertar contas', groupNoExpenses:'Sem despesas neste grupo', groupNoDebts:'Sem dívidas pendentes', groupOwesTo:'deve a', groupSettleHint:'Para equilibrar o grupo', groupSummary:'RESUMO DO GRUPO', groupTotal:'Total', groupPerPerson:'Parte por pessoa', groupMovements:'Movimentos', groupExpensesLoaded:'despesas lançadas', incomeByPerson:'Receitas por pessoa', sharedExpenses:'Despesas compartilhadas', ambosLabel:'Ambos', sinDescripcion:'Sem descrição',
-    catVivienda:'Moradia', catAlimentacion:'Alimentação', catTransporte:'Transporte', catSalud:'Saúde', catEducacion:'Educação', catEntretenimiento:'Entretenimento', catServicios:'Serviços', catRopa:'Roupas', catMascota:'Pets', catSuscripciones:'Assinaturas', catTarjeta:'Cartão', catOtros:'Outros',
+    catVivienda:'Moradia', catAlimentacion:'Alimentação', catTransporte:'Transporte', catSalud:'Saúde', catEducacion:'Educação', catEntretenimiento:'Entretenimento', catServicios:'Serviços', catRopa:'Roupas', catMascota:'Pets', catSuscripciones:'Assinaturas', catViajes:'Viagens', catSeguros:'Seguros', catRegalos:'Presentes', catTarjeta:'Cartão', catOtros:'Outros',
     toastGuardado:'✅ Salvo', toastActualizado:'✅ Atualizado', toastError:'❌ Erro ao salvar',
     toastConexion:'❌ Erro de conexão', toastCopiado:'✅ Código copiado', toastFoto:'✅ Foto atualizada',
     toastExcel:'✅ Excel baixado'
@@ -1495,8 +1522,69 @@ function nfUiIcon(name){
 function navIcon(name){return '<span class="nav-icon">'+nfUiIcon(name)+'</span>';}
 
 
-const CAT_LABEL_KEYS = {'Vivienda':'catVivienda','Alimentación':'catAlimentacion','Transporte':'catTransporte','Salud':'catSalud','Educación':'catEducacion','Entretenimiento':'catEntretenimiento','Servicios':'catServicios','Ropa':'catRopa','Mascota':'catMascota','Suscripciones':'catSuscripciones','Tarjeta':'catTarjeta','Otros':'catOtros'};
-function catLabel(cat){ return L(CAT_LABEL_KEYS[cat] || '') || cat || ''; }
+const CAT_LABEL_KEYS = {'Vivienda':'catVivienda','Alimentación':'catAlimentacion','Transporte':'catTransporte','Salud':'catSalud','Educación':'catEducacion','Entretenimiento':'catEntretenimiento','Servicios':'catServicios','Ropa':'catRopa','Mascota':'catMascota','Suscripciones':'catSuscripciones','Viajes':'catViajes','Seguros':'catSeguros','Regalos':'catRegalos','Tarjeta':'catTarjeta','Otros':'catOtros'};
+function catLabel(cat) {
+  var cc = getCustomCat(cat);
+  if (cc) return cc.name;
+  return L(CAT_LABEL_KEYS[cat] || '') || cat || '';
+}
+function getCustomCats() {
+  try { return JSON.parse(localStorage.getItem('nf_custom_cats') || '[]'); } catch(e) { return []; }
+}
+function saveCustomCats(cats) {
+  localStorage.setItem('nf_custom_cats', JSON.stringify(cats));
+}
+function getCustomCat(name) {
+  return getCustomCats().find(function(c){ return c.name === name; });
+}
+function loadCustomCatsIntoSelect() {
+  var sel = document.getElementById('g_cat');
+  if (!sel) return;
+  Array.from(sel.options).forEach(function(o){ if (o.dataset.custom) o.remove(); });
+  var otrosIdx = Array.from(sel.options).findIndex(function(o){ return o.value === 'Otros'; });
+  var insertAt = otrosIdx >= 0 ? otrosIdx : sel.options.length;
+  getCustomCats().forEach(function(cc, i) {
+    var opt = document.createElement('option');
+    opt.value = cc.name;
+    opt.textContent = (cc.emoji ? cc.emoji + ' ' : '') + cc.name;
+    opt.dataset.custom = '1';
+    sel.add(opt, insertAt + i);
+  });
+}
+function showNewCatForm() {
+  var form = document.getElementById('newCatForm');
+  var btn = document.getElementById('addCatBtn');
+  if (form) form.style.display = 'flex';
+  if (btn) btn.style.display = 'none';
+  setTimeout(function(){ var e = document.getElementById('newCatEmoji'); if (e) e.focus(); }, 80);
+}
+function cancelCustomCat() {
+  var form = document.getElementById('newCatForm');
+  var btn = document.getElementById('addCatBtn');
+  if (form) {
+    form.style.display = 'none';
+    var e = document.getElementById('newCatEmoji'); if (e) e.value = '';
+    var n = document.getElementById('newCatName'); if (n) n.value = '';
+  }
+  if (btn) btn.style.display = '';
+}
+function saveCustomCat() {
+  var emojiEl = document.getElementById('newCatEmoji');
+  var nameEl = document.getElementById('newCatName');
+  var emoji = emojiEl ? emojiEl.value.trim() : '';
+  var name = nameEl ? nameEl.value.trim() : '';
+  if (!name) { if (nameEl) nameEl.focus(); return; }
+  if (!emoji) emoji = '📌';
+  var cats = getCustomCats();
+  if (!cats.find(function(c){ return c.name === name; })) {
+    cats.push({name: name, emoji: emoji});
+    saveCustomCats(cats);
+  }
+  loadCustomCatsIntoSelect();
+  var sel = document.getElementById('g_cat');
+  if (sel) { sel.value = name; updateCategoryPreview(); }
+  cancelCustomCat();
+}
 function optionLabel(value){ if(value==='Todos') return L('optTodos'); if(value==='Ambos'||value==='Compartido') return L('optCompartido'); if(value==='Compartida') return L('optCompartida'); return value || ''; }
 function pctIncomeText(pct){ return pct + L('pctIngreso'); }
 function pctTotalText(pct){ return pct + L('sumDelTotal'); }
@@ -1725,14 +1813,24 @@ function rememberRecordInstallments(table, id, record){
 }
 function applyRecordInstallments(table, rows){
   var m = getInstallmentStore(table);
+  var toRepair = [];
   (rows||[]).forEach(function(r){
     if(!r || !r.id) return;
     var stored = m[r.id];
     if(stored && Number(r.cuotas || 1) <= 1) {
       r.cuotas = stored.cuotas || 1;
       r.cuota_actual = stored.cuota_actual || 1;
+      if (r.descripcion != null && !/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/i.test(r.descripcion)) {
+        toRepair.push({ id: r.id, descripcion: r.descripcion, cuotas: stored.cuotas, cuota_actual: stored.cuota_actual });
+      }
     }
   });
+  if (toRepair.length) {
+    toRepair.forEach(function(item){
+      var newDesc = item.descripcion.trim() + ' C. ' + item.cuota_actual + '/' + item.cuotas;
+      dbPatch(table, item.id, { descripcion: newDesc }).catch(function(){});
+    });
+  }
   return rows;
 }
 function isUnknownColumnError(e){
@@ -1759,6 +1857,10 @@ async function dbPostMoney(table, body){
     ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
     if (body.tarjeta_id && table === 'gastos') {
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
+    }
+    if ((body.cuotas || 1) > 1 && clean.descripcion != null) {
+      var descBase = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
+      clean.descripcion = descBase + ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
     }
     var res = await dbPost(table, clean);
     if(res && res[0]) {
@@ -1792,6 +1894,10 @@ async function dbPatchMoney(table, id, body){
     ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
     if (body.tarjeta_id && table === 'gastos') {
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
+    }
+    if ((body.cuotas || 1) > 1 && clean.descripcion != null) {
+      var descBase = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
+      clean.descripcion = descBase + ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
     }
     var res = await dbPatch(table, id, clean);
     if(res && res[0]) {
@@ -1854,7 +1960,8 @@ function nfSetLang(c){
 
   // Header / greeting
   T('monthLabel', m[typeof state!=='undefined'?state.mes-1:0] + ' ' + (typeof state!=='undefined'?state.anio:''));
-  T('greetingText', LD.greeting + ' 👋');
+  var _greetName = (typeof getPersonaPrincipal === 'function' ? getPersonaPrincipal() : '') || '';
+  T('greetingText', LD.greeting + (_greetName ? ' ' + _greetName : '') + ' 👋');
   T('greetingMonth', LD.thisMonth);
 
   // Balance card labels
@@ -2036,11 +2143,12 @@ const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct
 const CAT_COLORS = {
   'Vivienda':'#1a2b5e','Alimentación':'#00b4a6','Transporte':'#f5c842','Salud':'#ef4444',
   'Educación':'#7b8fd4','Entretenimiento':'#f97316','Servicios':'#a78bfa','Ropa':'#ec4899',
-  'Mascota':'#2dd4bf','Suscripciones':'#f59e0b','Tarjeta':'#2563eb','Otros':'#6b7280'
+  'Mascota':'#2dd4bf','Suscripciones':'#f59e0b','Tarjeta':'#2563eb',
+  'Viajes':'#0ea5e9','Seguros':'#10b981','Regalos':'#d946ef','Otros':'#6b7280'
 };
 const CAT_BACKGROUNDS = {
   'Vivienda':'#D9F8E8',
-  'Alimentación':'#FFF0C8',
+  'Alimentación':'#FFE0CC',
   'Transporte':'#DDEBFF',
   'Salud':'#FFE0EA',
   'Educación':'#E9E3FF',
@@ -2051,6 +2159,9 @@ const CAT_BACKGROUNDS = {
   'Mascotas':'#D9F8E8',
   'Suscripciones':'#E8E2FF',
   'Tarjeta':'#DDE8FF',
+  'Viajes':'#E0F2FE',
+  'Seguros':'#D1FAE5',
+  'Regalos':'#FAE8FF',
   'Otros':'#EAE5FF'
 };
 function categoryIconBg(cat) {
@@ -2074,6 +2185,15 @@ const CAT_ICONS = {
 function cardStatementIconSvg() {
   return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:62%;height:62%;fill:none;stroke:#2563eb;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M3 9h18"></path><path d="M7 15h5"></path><path d="M16 15h2"></path></svg>';
 }
+function viajesIconSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:62%;height:62%;fill:#0ea5e9"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
+}
+function segurosIconSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:62%;height:62%;fill:none;stroke:#10b981;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>';
+}
+function regalosIconSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:62%;height:62%;fill:none;stroke:#d946ef;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>';
+}
 
 function gastoDisplayDescription(g) {
   return String((g && (g.descripcion || g.desc)) || '')
@@ -2096,6 +2216,11 @@ function cuotaBadgeHtml(g, cls) {
 
 function categoryIconInner(cat) {
   if (cat === 'Tarjeta') return cardStatementIconSvg();
+  if (cat === 'Viajes') return viajesIconSvg();
+  if (cat === 'Seguros') return segurosIconSvg();
+  if (cat === 'Regalos') return regalosIconSvg();
+  var customCat = (typeof getCustomCat === 'function') ? getCustomCat(cat) : null;
+  if (customCat) return '<span style="font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%">' + (customCat.emoji || '📌') + '</span>';
   const icon = (typeof CAT_ICONS !== 'undefined' && CAT_ICONS[cat]) ? CAT_ICONS[cat] : '';
   return icon ? '<img src="' + icon + '" style="width:100%;height:100%;object-fit:contain;border-radius:8px" alt="">' : '';
 }
@@ -2106,6 +2231,11 @@ function catIconHtml(cat, className) {
   const bg = categoryIconBg(cat);
   const cls = className || 'cat-icon';
   if (cat === 'Tarjeta') return `<span class="${cls}" style="background:${bg};color:${color}">${cardStatementIconSvg()}</span>`;
+  if (cat === 'Viajes') return `<span class="${cls}" style="background:${bg};color:${color}">${viajesIconSvg()}</span>`;
+  if (cat === 'Seguros') return `<span class="${cls}" style="background:${bg};color:${color}">${segurosIconSvg()}</span>`;
+  if (cat === 'Regalos') return `<span class="${cls}" style="background:${bg};color:${color}">${regalosIconSvg()}</span>`;
+  var customCat = (typeof getCustomCat === 'function') ? getCustomCat(cat) : null;
+  if (customCat) return `<span class="${cls}" style="background:#EAE5FF;display:flex;align-items:center;justify-content:center;font-size:15px">${customCat.emoji || '📌'}</span>`;
   if (!icon) return `<span class="${cls}" style="background:${bg}"></span>`;
   return `<span class="${cls}" style="background:${bg};color:${color}"><img src="${icon}" alt=""></span>`;
 }
@@ -2115,8 +2245,20 @@ function updateCategoryPreview() {
   const prev = document.getElementById('g_cat_preview');
   if (!sel || !prev) return;
   const cat = sel.value || 'Otros';
-  const icon = (typeof CAT_ICONS !== 'undefined' && CAT_ICONS[cat]) ? CAT_ICONS[cat] : '';
+  const customCat = (typeof getCustomCat === 'function') ? getCustomCat(cat) : null;
+  if (customCat) {
+    prev.style.background = '#EAE5FF';
+    prev.style.display = 'flex';
+    prev.innerHTML = '<span style="font-size:18px;line-height:1">' + (customCat.emoji || '📌') + '</span>';
+    return;
+  }
   prev.style.background = categoryIconBg(cat);
+  prev.style.display = 'flex';
+  if (cat === 'Tarjeta') { prev.innerHTML = cardStatementIconSvg(); return; }
+  if (cat === 'Viajes')  { prev.innerHTML = viajesIconSvg(); return; }
+  if (cat === 'Seguros') { prev.innerHTML = segurosIconSvg(); return; }
+  if (cat === 'Regalos') { prev.innerHTML = regalosIconSvg(); return; }
+  const icon = (typeof CAT_ICONS !== 'undefined' && CAT_ICONS[cat]) ? CAT_ICONS[cat] : '';
   prev.innerHTML = icon ? `<img src="${icon}" alt="">` : '';
 }
 
@@ -2261,6 +2403,7 @@ function toggleForm(id) {
         _gf.value = _hoy.getFullYear()+'-'+String(_mesDefault).padStart(2,'0')+'-'+String(_hoy.getDate()).padStart(2,'0');
       }
       // g_mes y g_anio ya no existen como campos separados
+      if (typeof loadCustomCatsIntoSelect === 'function') loadCustomCatsIntoSelect();
       updateCategoryPreview();
     }
     if (id==='fTarjeta') {
@@ -3152,11 +3295,18 @@ async function initApp() {
   // Tiene grupo — cargar app
   try {
     state.grupoId = grupo.id;
+    if (typeof updatePersonaNames === 'function') updatePersonaNames();
     await loadAll();
     addGroupBadge();
     document.getElementById('loader').style.display = 'none';
     document.getElementById('appMain').style.display = 'block';
     document.querySelector('.bottom-nav').style.display = 'flex';
+    if (typeof nfSetLang === 'function') nfSetLang(nfLang);
+    if (typeof esModoGrupo === 'function' && esModoGrupo()) {
+      if (typeof activarModoGrupo === 'function') activarModoGrupo();
+    } else {
+      if (typeof activarModoHogar === 'function') activarModoHogar();
+    }
   } catch(e) {
     console.error('initApp error:', e);
     var sub = document.querySelector('.ld-sub');
@@ -3521,23 +3671,31 @@ renderAll = function() {
     ingresos.forEach(i=>{ if(!incGroups[i.quien]) incGroups[i.quien]=[]; incGroups[i.quien].push(i); });
     iEl.innerHTML = Object.entries(incGroups).map(([quien,items])=>`
       <div class="nf-group-label">${quien}</div>
-      ${items.map(i=>`
-        <div class="nf-item">
-          <div class="nf-item-bar" style="background:#1ec98f"></div>
-          <div class="nf-item-body">
-            <div class="nf-item-top">
-              <div class="nf-item-name">${i.descripcion||''}</div>
-              <div class="nf-item-amount inc">${fmtCurrency(i.monto, i.moneda)}</div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:18px;overflow:hidden;margin-bottom:10px">
+      ${items.map(i=>{
+        const tipoClass = i.tipo==='fijo'?'nfi-tipo-fijo':'nfi-tipo-var';
+        const tipoLabel = i.tipo==='fijo'?L('tagFijo'):L('tagVar');
+        return `<div class="nfi">
+          <div class="nfi-iconwrap">
+            <div class="nfi-icon" style="background:rgba(18,199,183,.15)">
+              <svg viewBox="0 0 24 24" style="width:55%;height:55%;fill:none;stroke:#12c7b7;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
             </div>
-            <div class="nf-item-tags">
-              <span class="tag ${i.tipo==='fijo'?'tag-fijo':'tag-var'}">${i.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
-            </div>
-            <div class="nf-item-footer">
+          </div>
+          <div class="nfi-body">
+            <div class="nfi-name">${i.descripcion||''}</div>
+            <div class="nfi-meta">${i.quien}</div>
+          </div>
+          <div class="nfi-right">
+            <div class="nfi-amt-inc">${fmtCurrency(i.monto, i.moneda)}</div>
+            <div class="${tipoClass}">${tipoLabel}</div>
+            <div class="nfi-acts">
               <button class="nf-btn-edit" onclick="editIngreso('${i.id}')" title="Editar">✏️</button>
               <button class="nf-btn-del" onclick="deleteIngreso('${i.id}')" title="Eliminar">🗑</button>
             </div>
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
+      </div>
     `).join('');
   }
 
@@ -3551,34 +3709,38 @@ renderAll = function() {
     gEl.innerHTML = expenseFilterEmptyHtml();
   } else {
     const sorted = [...visibleGastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
-    gEl.innerHTML = sorted.map(g=>{
+    const moAbrev = MONTHS_SHORT[(state.mes||1)-1]||'';
+    gEl.innerHTML = '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:18px;overflow:hidden">' + sorted.map(g=>{
       const t = getExpenseCardId(g)?tarjetas.find(tc=>tc.id===getExpenseCardId(g)):null;
-      const isCuota = g.cuotas>1;
-      const barColor = CAT_COLORS[g.cat]||'#888';
       const tarjetaNombre = isCardPayment(g)?(t?t.nombre:'Tarjeta'):'';
-      return `<div class="nf-item">
-        <div class="nf-item-bar" style="background:${barColor}"></div>
-        <div class="nf-item-body">
-          <div class="nf-item-top">
-            <div class="nf-item-name">
-              ${gastoDisplayDescription(g)}
-            </div>
-            <div class="nf-item-amount exp">${fmtCurrency(g.monto, g.moneda)}</div>
-          </div>
-          <div class="nf-item-tags">
-            <span class="tag ${g.tipo==='fijo'?'tag-fijo':'tag-var'}">${g.tipo==='fijo'?L('tagFijo'):L('tagVar')}</span>
-            <span class="tag ${isCardPayment(g)?'tag-card':'tag-cash'}">${isCardPayment(g)?('💳 '+tarjetaNombre):L('tagEfectivo')}</span>
-            ${cuotaBadgeHtml(g)}
-            <span class="tag tag-quien">👤 ${g.quien}</span>
-            ${g.dia?`<span class="tag tag-dia">día ${g.dia}</span>`:''}
-          </div>
-          <div class="nf-item-footer">
+      const medio = isCardPayment(g)?('💳 '+tarjetaNombre):(g.medio||'Efectivo');
+      const tipoClass = g.tipo==='fijo'?'nfi-tipo-fijo':'nfi-tipo-var';
+      const tipoLabel = g.tipo==='fijo'?L('tagFijo'):L('tagVar');
+      const cuotaVal = cuotaDisplayValue(g);
+      const cuotaHtml = cuotaVal ? `<span class="nfi-cuota">${cuotaVal}</span>` : '';
+      const esTarjeta = isCardPayment(g);
+      const iconBg = esTarjeta ? '#DDE8FF' : categoryIconBg(g.cat);
+      const iconInner = esTarjeta ? cardStatementIconSvg() : categoryIconInner(g.cat);
+      return `<div class="nfi">
+        <div class="nfi-iconwrap">
+          <div class="nfi-icon" style="background:${iconBg}">${iconInner}</div>
+          <div class="nfi-date">${moAbrev} ${g.dia||'—'}</div>
+        </div>
+        <div class="nfi-body">
+          <div class="nfi-name">${gastoDisplayDescription(g)}</div>
+          <div class="nfi-meta">${g.quien} · ${medio}</div>
+          ${cuotaHtml}
+        </div>
+        <div class="nfi-right">
+          <div class="nfi-amt-exp">${fmtCurrency(g.monto, g.moneda)}</div>
+          <div class="${tipoClass}">${tipoLabel}</div>
+          <div class="nfi-acts">
             <button class="nf-btn-edit" onclick="editGasto('${g.id}')" title="Editar">✏️</button>
             <button class="nf-btn-del" onclick="deleteGasto('${g.id}')" title="Eliminar">🗑</button>
           </div>
         </div>
       </div>`;
-    }).join('');
+    }).join('') + '</div>';
   }
 
   // TARJETAS
@@ -7557,21 +7719,27 @@ async function joinGroup() {
     }
     // Unirse con código = es un grupo de gastos, no el hogar
     grupo.tipo = grupo.tipo || 'grupo';
-    saveGroupLocal(grupo);
-    // Agregar a lista de grupos extra (no reemplazar el hogar)
     const hogarId = getHogarId();
     if (hogarId) {
-      // Ya hay un hogar — agregar como grupo extra
-      const extras = getGruposGuardados();
-      if (!extras.find(function(g){ return g.id === grupo.id; })) {
-        extras.push(grupo);
-        saveGruposExtra(extras);
+      // Preservar el hogar en extras ANTES de cambiar el grupo activo
+      const grupoHogar = loadGroup();
+      const extrasActuales = getGruposGuardados();
+      if (grupoHogar && !extrasActuales.find(function(g){ return g.id === grupoHogar.id; })) {
+        extrasActuales.push(grupoHogar);
+        saveGruposExtra(extrasActuales);
       }
-      // Volver al hogar, no cambiar el grupo activo
+      // Agregar el nuevo grupo a extras
+      const extrasConNuevo = getGruposGuardados();
+      if (!extrasConNuevo.find(function(g){ return g.id === grupo.id; })) {
+        extrasConNuevo.push(grupo);
+        saveGruposExtra(extrasConNuevo);
+      }
+      saveGroupLocal(grupo);
       toast('✅ Grupo agregado a tu lista de grupos');
       document.getElementById('groupScreen').style.display = 'none';
       startApp();
     } else {
+      saveGroupLocal(grupo);
       enterApp();
     }
   } catch(e) {
@@ -8023,6 +8191,11 @@ function activarModoHogar() {
   document.getElementById('appMain').setAttribute('data-modo', 'hogar');
   var gmHogar = document.getElementById('greetingMonth');
   if (gmHogar) gmHogar.textContent = L('thisMonth') || 'este mes';
+  var greetEl = document.getElementById('greetingText');
+  if (greetEl) {
+    var _nombre = (typeof getPersonaPrincipal === 'function' ? getPersonaPrincipal() : '') || '';
+    greetEl.textContent = (L('greeting') || 'Hola') + (_nombre ? ' ' + _nombre : '') + ' 👋';
+  }
   // Tabs completos
   var tabsWrap = document.getElementById('tabsWrap');
   if (tabsWrap) {
@@ -8321,6 +8494,12 @@ async function volverAlHogar() {
         hogar = res[0];
         try { hogar.personasArray = JSON.parse(hogar.personas || '[]'); } catch(e) {}
         if (!hogar.personasArray.length) hogar.personasArray = [hogar.persona1, hogar.persona2].filter(Boolean);
+        // Guardar en extras para que switchToGrupo pueda encontrarlo
+        const extrasActuales = getGruposGuardados();
+        if (!extrasActuales.find(function(g){ return g.id === hogar.id; })) {
+          extrasActuales.push(hogar);
+          saveGruposExtra(extrasActuales);
+        }
       }
     } catch(e) { toast('❌ Error al cargar el hogar'); return; }
   }
