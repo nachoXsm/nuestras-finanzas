@@ -1038,6 +1038,7 @@
                 <option value="Educación">Educación</option><option value="Entretenimiento">Entretenimiento</option>
                 <option value="Servicios">Servicios</option><option value="Ropa">Ropa</option>
                 <option value="Mascota">Mascota</option><option value="Suscripciones">Suscripciones</option>
+                <option value="Viajes">Viajes</option><option value="Seguros">Seguros</option><option value="Regalos">Regalos</option>
                 <option value="Tarjeta">Tarjeta</option><option value="Otros">Otros</option>
               </select>
             </div>
@@ -1374,7 +1375,7 @@ var NF_LANGS={
     pctIngreso:'% del ingreso', pctGastos:'% de gastos', disponibleCorto:'disponible', deficitCorto:'déficit',
     informeResumen:'RESUMEN DEL MES', informeComposicion:'COMPOSICIÓN DE GASTOS', informeFijosVar:'Fijos vs Variables', informePorIntegrante:'POR INTEGRANTE', informeGastosCat:'Gastos por categoría', informeSinDatosMes:'Sin datos este mes', informeGastosPersona:'Gastos', informeSinGastos:'Sin gastos registrados',
     grupoAporto:'Aportó', grupoAlDia:'Al día', grupoDebe:'Debe', grupoLeDeben:'Le deben', grupoLiquidacion:'Liquidación', optTodos:'Todos', optCompartido:'Compartido', optCompartida:'Compartida', pagoDividido:'Pago dividido', pagadoPor:'Pagado por', sinDefinir:'Sin definir', convRatesTitle:'Cotizaciones vs ARS', groupPanelTitle:'👥 Mis espacios', groupPanelSub:'Hogar y grupos de gastos', groupMode:'Modo grupo de gastos', groupGreeting:'el grupo', groupMyHome:'Mi hogar', groupExpenses:'Grupos de gastos', groupCreate:'Crear grupo de gastos', groupCreateSub:'Amigos, viajes, casa compartida', groupJoin:'Unirse con código', groupJoinSub:'Tengo un código de invitación', groupBackHome:'Volver a Mi Hogar', groupLeave:'Salir del grupo de gastos', groupInvite:'Invitar', groupDelete:'Eliminar', groupActive:'Activo', groupNoName:'Sin nombre', groupBalance:'BALANCE DEL GRUPO', groupParticipants:'participantes', groupEach:'c/u', groupSpent:'Gastado', groupSettleAccounts:'Liquidar cuentas', groupNoExpenses:'Sin gastos en este grupo', groupNoDebts:'No hay deudas pendientes', groupOwesTo:'le debe a', groupSettleHint:'Para dejar el grupo equilibrado', groupSummary:'RESUMEN DEL GRUPO', groupTotal:'Total', groupPerPerson:'Parte c/u', groupMovements:'Movimientos', groupExpensesLoaded:'gastos cargados', incomeByPerson:'Ingresos por persona', sharedExpenses:'Gastos compartidos', ambosLabel:'Ambos', sinDescripcion:'Sin descripción',
-    catVivienda:'Vivienda', catAlimentacion:'Alimentación', catTransporte:'Transporte', catSalud:'Salud', catEducacion:'Educación', catEntretenimiento:'Entretenimiento', catServicios:'Servicios', catRopa:'Ropa', catMascota:'Mascota', catSuscripciones:'Suscripciones', catTarjeta:'Tarjeta', catOtros:'Otros',
+    catVivienda:'Vivienda', catAlimentacion:'Alimentación', catTransporte:'Transporte', catSalud:'Salud', catEducacion:'Educación', catEntretenimiento:'Entretenimiento', catServicios:'Servicios', catRopa:'Ropa', catMascota:'Mascota', catSuscripciones:'Suscripciones', catViajes:'Viajes', catSeguros:'Seguros', catRegalos:'Regalos', catTarjeta:'Tarjeta', catOtros:'Otros',
     // Toasts
     toastGuardado:'✅ Guardado', toastActualizado:'✅ Actualizado', toastError:'❌ Error al guardar',
     toastConexion:'❌ Error de conexión', toastCopiado:'✅ Código copiado', toastFoto:'✅ Foto actualizada',
@@ -1424,7 +1425,7 @@ var NF_LANGS={
     pctIngreso:'% of income', pctGastos:'% of expenses', disponibleCorto:'available', deficitCorto:'deficit',
     informeResumen:'MONTH SUMMARY', informeComposicion:'EXPENSE BREAKDOWN', informeFijosVar:'Fixed vs Variable', informePorIntegrante:'BY MEMBER', informeGastosCat:'Expenses by category', informeSinDatosMes:'No data this month', informeGastosPersona:'Expenses', informeSinGastos:'No expenses recorded',
     grupoAporto:'Paid', grupoAlDia:'Settled', grupoDebe:'Owes', grupoLeDeben:'Is owed', grupoLiquidacion:'Settlement', optTodos:'Everyone', optCompartido:'Shared', optCompartida:'Shared', pagoDividido:'Split payment', pagadoPor:'Paid by', sinDefinir:'Not set', convRatesTitle:'Rates vs ARS', groupPanelTitle:'👥 My spaces', groupPanelSub:'Home and expense groups', groupMode:'Expense group mode', groupGreeting:'the group', groupMyHome:'My home', groupExpenses:'Expense groups', groupCreate:'Create expense group', groupCreateSub:'Friends, trips, shared home', groupJoin:'Join with code', groupJoinSub:'I have an invitation code', groupBackHome:'Back to My Home', groupLeave:'Leave expense group', groupInvite:'Invite', groupDelete:'Delete', groupActive:'Active', groupNoName:'No name', groupBalance:'GROUP BALANCE', groupParticipants:'participants', groupEach:'each', groupSpent:'Spent', groupSettleAccounts:'Settle up', groupNoExpenses:'No expenses in this group', groupNoDebts:'No pending debts', groupOwesTo:'owes', groupSettleHint:'To balance the group', groupSummary:'GROUP SUMMARY', groupTotal:'Total', groupPerPerson:'Share each', groupMovements:'Movements', groupExpensesLoaded:'expenses added', incomeByPerson:'Income by person', sharedExpenses:'Shared expenses', ambosLabel:'Shared', sinDescripcion:'No description',
-    catVivienda:'Housing', catAlimentacion:'Food', catTransporte:'Transport', catSalud:'Health', catEducacion:'Education', catEntretenimiento:'Entertainment', catServicios:'Utilities', catRopa:'Clothing', catMascota:'Pets', catSuscripciones:'Subscriptions', catTarjeta:'Card', catOtros:'Other',
+    catVivienda:'Housing', catAlimentacion:'Food', catTransporte:'Transport', catSalud:'Health', catEducacion:'Education', catEntretenimiento:'Entertainment', catServicios:'Utilities', catRopa:'Clothing', catMascota:'Pets', catSuscripciones:'Subscriptions', catViajes:'Travel', catSeguros:'Insurance', catRegalos:'Gifts', catTarjeta:'Card', catOtros:'Other',
     toastGuardado:'✅ Saved', toastActualizado:'✅ Updated', toastError:'❌ Error saving',
     toastConexion:'❌ Connection error', toastCopiado:'✅ Code copied', toastFoto:'✅ Photo updated',
     toastExcel:'✅ Excel downloaded'
@@ -1473,7 +1474,7 @@ var NF_LANGS={
     pctIngreso:'% da receita', pctGastos:'% das despesas', disponibleCorto:'disponível', deficitCorto:'déficit',
     informeResumen:'RESUMO DO MÊS', informeComposicion:'COMPOSIÇÃO DAS DESPESAS', informeFijosVar:'Fixos vs Variáveis', informePorIntegrante:'POR INTEGRANTE', informeGastosCat:'Despesas por categoria', informeSinDatosMes:'Sem dados este mês', informeGastosPersona:'Despesas', informeSinGastos:'Sem despesas registradas',
     grupoAporto:'Pagou', grupoAlDia:'Em dia', grupoDebe:'Deve', grupoLeDeben:'Tem a receber', grupoLiquidacion:'Acerto', optTodos:'Todos', optCompartido:'Compartilhado', optCompartida:'Compartilhada', pagoDividido:'Pagamento dividido', pagadoPor:'Pago por', sinDefinir:'Sem definir', convRatesTitle:'Cotações vs ARS', groupPanelTitle:'👥 Meus espaços', groupPanelSub:'Casa e grupos de despesas', groupMode:'Modo grupo de despesas', groupGreeting:'o grupo', groupMyHome:'Minha casa', groupExpenses:'Grupos de despesas', groupCreate:'Criar grupo de despesas', groupCreateSub:'Amigos, viagens, casa compartilhada', groupJoin:'Entrar com código', groupJoinSub:'Tenho um código de convite', groupBackHome:'Voltar para Minha Casa', groupLeave:'Sair do grupo de despesas', groupInvite:'Convidar', groupDelete:'Excluir', groupActive:'Ativo', groupNoName:'Sem nome', groupBalance:'SALDO DO GRUPO', groupParticipants:'participantes', groupEach:'cada', groupSpent:'Gasto', groupSettleAccounts:'Acertar contas', groupNoExpenses:'Sem despesas neste grupo', groupNoDebts:'Sem dívidas pendentes', groupOwesTo:'deve a', groupSettleHint:'Para equilibrar o grupo', groupSummary:'RESUMO DO GRUPO', groupTotal:'Total', groupPerPerson:'Parte por pessoa', groupMovements:'Movimentos', groupExpensesLoaded:'despesas lançadas', incomeByPerson:'Receitas por pessoa', sharedExpenses:'Despesas compartilhadas', ambosLabel:'Ambos', sinDescripcion:'Sem descrição',
-    catVivienda:'Moradia', catAlimentacion:'Alimentação', catTransporte:'Transporte', catSalud:'Saúde', catEducacion:'Educação', catEntretenimiento:'Entretenimento', catServicios:'Serviços', catRopa:'Roupas', catMascota:'Pets', catSuscripciones:'Assinaturas', catTarjeta:'Cartão', catOtros:'Outros',
+    catVivienda:'Moradia', catAlimentacion:'Alimentação', catTransporte:'Transporte', catSalud:'Saúde', catEducacion:'Educação', catEntretenimiento:'Entretenimento', catServicios:'Serviços', catRopa:'Roupas', catMascota:'Pets', catSuscripciones:'Assinaturas', catViajes:'Viagens', catSeguros:'Seguros', catRegalos:'Presentes', catTarjeta:'Cartão', catOtros:'Outros',
     toastGuardado:'✅ Salvo', toastActualizado:'✅ Atualizado', toastError:'❌ Erro ao salvar',
     toastConexion:'❌ Erro de conexão', toastCopiado:'✅ Código copiado', toastFoto:'✅ Foto atualizada',
     toastExcel:'✅ Excel baixado'
@@ -1495,7 +1496,7 @@ function nfUiIcon(name){
 function navIcon(name){return '<span class="nav-icon">'+nfUiIcon(name)+'</span>';}
 
 
-const CAT_LABEL_KEYS = {'Vivienda':'catVivienda','Alimentación':'catAlimentacion','Transporte':'catTransporte','Salud':'catSalud','Educación':'catEducacion','Entretenimiento':'catEntretenimiento','Servicios':'catServicios','Ropa':'catRopa','Mascota':'catMascota','Suscripciones':'catSuscripciones','Tarjeta':'catTarjeta','Otros':'catOtros'};
+const CAT_LABEL_KEYS = {'Vivienda':'catVivienda','Alimentación':'catAlimentacion','Transporte':'catTransporte','Salud':'catSalud','Educación':'catEducacion','Entretenimiento':'catEntretenimiento','Servicios':'catServicios','Ropa':'catRopa','Mascota':'catMascota','Suscripciones':'catSuscripciones','Viajes':'catViajes','Seguros':'catSeguros','Regalos':'catRegalos','Tarjeta':'catTarjeta','Otros':'catOtros'};
 function catLabel(cat){ return L(CAT_LABEL_KEYS[cat] || '') || cat || ''; }
 function optionLabel(value){ if(value==='Todos') return L('optTodos'); if(value==='Ambos'||value==='Compartido') return L('optCompartido'); if(value==='Compartida') return L('optCompartida'); return value || ''; }
 function pctIncomeText(pct){ return pct + L('pctIngreso'); }
@@ -2037,7 +2038,8 @@ const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct
 const CAT_COLORS = {
   'Vivienda':'#1a2b5e','Alimentación':'#00b4a6','Transporte':'#f5c842','Salud':'#ef4444',
   'Educación':'#7b8fd4','Entretenimiento':'#f97316','Servicios':'#a78bfa','Ropa':'#ec4899',
-  'Mascota':'#2dd4bf','Suscripciones':'#f59e0b','Tarjeta':'#2563eb','Otros':'#6b7280'
+  'Mascota':'#2dd4bf','Suscripciones':'#f59e0b','Tarjeta':'#2563eb',
+  'Viajes':'#0ea5e9','Seguros':'#10b981','Regalos':'#d946ef','Otros':'#6b7280'
 };
 const CAT_BACKGROUNDS = {
   'Vivienda':'#D9F8E8',
@@ -2052,6 +2054,9 @@ const CAT_BACKGROUNDS = {
   'Mascotas':'#D9F8E8',
   'Suscripciones':'#E8E2FF',
   'Tarjeta':'#DDE8FF',
+  'Viajes':'#E0F2FE',
+  'Seguros':'#D1FAE5',
+  'Regalos':'#FAE8FF',
   'Otros':'#EAE5FF'
 };
 function categoryIconBg(cat) {
@@ -2075,6 +2080,15 @@ const CAT_ICONS = {
 function cardStatementIconSvg() {
   return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:62%;height:62%;fill:none;stroke:#2563eb;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M3 9h18"></path><path d="M7 15h5"></path><path d="M16 15h2"></path></svg>';
 }
+function viajesIconSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:62%;height:62%;fill:none;stroke:#0ea5e9;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5S18 2 16.5 3.5L13 7 4.8 5.2 3.5 6.5l7 3.5-4 3.5H3.5L2 15l3.5 1 1 3.5 1.5-1.5V14l3.5-4 3.5 7 1.3-1.3z"></path></svg>';
+}
+function segurosIconSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:62%;height:62%;fill:none;stroke:#10b981;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>';
+}
+function regalosIconSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:62%;height:62%;fill:none;stroke:#d946ef;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>';
+}
 
 function gastoDisplayDescription(g) {
   return String((g && (g.descripcion || g.desc)) || '')
@@ -2097,6 +2111,9 @@ function cuotaBadgeHtml(g, cls) {
 
 function categoryIconInner(cat) {
   if (cat === 'Tarjeta') return cardStatementIconSvg();
+  if (cat === 'Viajes') return viajesIconSvg();
+  if (cat === 'Seguros') return segurosIconSvg();
+  if (cat === 'Regalos') return regalosIconSvg();
   const icon = (typeof CAT_ICONS !== 'undefined' && CAT_ICONS[cat]) ? CAT_ICONS[cat] : '';
   return icon ? '<img src="' + icon + '" style="width:100%;height:100%;object-fit:contain;border-radius:8px" alt="">' : '';
 }
@@ -2107,6 +2124,9 @@ function catIconHtml(cat, className) {
   const bg = categoryIconBg(cat);
   const cls = className || 'cat-icon';
   if (cat === 'Tarjeta') return `<span class="${cls}" style="background:${bg};color:${color}">${cardStatementIconSvg()}</span>`;
+  if (cat === 'Viajes') return `<span class="${cls}" style="background:${bg};color:${color}">${viajesIconSvg()}</span>`;
+  if (cat === 'Seguros') return `<span class="${cls}" style="background:${bg};color:${color}">${segurosIconSvg()}</span>`;
+  if (cat === 'Regalos') return `<span class="${cls}" style="background:${bg};color:${color}">${regalosIconSvg()}</span>`;
   if (!icon) return `<span class="${cls}" style="background:${bg}"></span>`;
   return `<span class="${cls}" style="background:${bg};color:${color}"><img src="${icon}" alt=""></span>`;
 }
