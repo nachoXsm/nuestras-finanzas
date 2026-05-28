@@ -1826,9 +1826,19 @@ function applyRecordInstallments(table, rows){
     }
   });
   if (toRepair.length) {
-    toRepair.forEach(function(item){
+    var repaired = 0;
+    Promise.all(toRepair.map(function(item){
       var newDesc = item.descripcion.trim() + ' C. ' + item.cuota_actual + '/' + item.cuotas;
-      dbPatch(table, item.id, { descripcion: newDesc }).catch(function(){});
+      return dbPatch(table, item.id, { descripcion: newDesc })
+        .then(function(){ repaired++; })
+        .catch(function(e){ console.warn('[cuota-repair] fallo patch', item.id, e); });
+    })).then(function(){
+      if (repaired > 0 && typeof renderAll === 'function') {
+        toast('✅ ' + repaired + ' cuotas sincronizadas con Supabase. Refrescá el celular.');
+        renderAll();
+      } else if (repaired === 0) {
+        console.warn('[cuota-repair] todos los patches fallaron (' + toRepair.length + ' intentos)');
+      }
     });
   }
   return rows;
