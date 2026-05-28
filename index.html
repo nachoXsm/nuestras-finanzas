@@ -3698,7 +3698,8 @@ renderAll = function() {
       const medio = isCardPayment(g)?('💳 '+tarjetaNombre):(g.medio||'Efectivo');
       const tipoClass = g.tipo==='fijo'?'nfi-tipo-fijo':'nfi-tipo-var';
       const tipoLabel = g.tipo==='fijo'?L('tagFijo'):L('tagVar');
-      const cuotaHtml = g.cuotas>1?`<span class="nfi-cuota">${g.cuota_actual||1}/${g.cuotas}</span>`:'';
+      const cuotaVal = cuotaDisplayValue(g);
+      const cuotaHtml = cuotaVal ? `<span class="nfi-cuota">${cuotaVal}</span>` : '';
       const esTarjeta = isCardPayment(g);
       const iconBg = esTarjeta ? '#DDE8FF' : categoryIconBg(g.cat);
       const iconInner = esTarjeta ? cardStatementIconSvg() : categoryIconInner(g.cat);
