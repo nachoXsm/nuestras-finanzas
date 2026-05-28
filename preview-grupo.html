@@ -23,223 +23,176 @@
     min-height: 100vh;
     padding: 24px 16px 40px;
   }
-  h2 { font-size: 13px; font-weight: 800; color: var(--muted); letter-spacing: .8px;
-       text-transform: uppercase; margin: 28px 0 12px; }
+  h2 { font-size: 11px; font-weight: 800; color: var(--primary); letter-spacing: .8px;
+       text-transform: uppercase; margin: 32px 0 10px; }
   h2:first-child { margin-top: 0; }
-  .label { font-size: 10px; font-weight: 700; color: var(--primary); letter-spacing: .6px;
-           text-transform: uppercase; margin-bottom: 6px; opacity: .8; }
 
-  /* ── ACTUAL (group-expense-item) ───────────────────────── */
-  .group-expense-item {
+  .date-head {
+    font-size: 16px; font-weight: 800; color: var(--text);
+    margin: 0 4px 12px; text-transform: capitalize;
+  }
+
+  /* ── item ── */
+  .gi {
     display: grid;
     grid-template-columns: 52px minmax(0,1fr) max-content;
     align-items: start;
     column-gap: 12px;
-    padding: 14px 0 14px;
+    padding: 14px 4px;
     border-bottom: 1px solid rgba(255,255,255,.05);
   }
-  .group-expense-item:last-child { border-bottom: none; }
-  .item-cat-icon {
+  .gi:last-child { border-bottom: none; }
+
+  .gi-icon {
     width: 44px; height: 44px; border-radius: 13px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
+    font-size: 20px; flex-shrink: 0;
   }
-  .group-expense-main { min-width: 0; padding-top: 2px; }
-  .group-expense-title { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
-  .group-expense-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .tag { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
-  .tag-quien { background: rgba(108,99,255,.15); color: #a89bff; }
-  .tag-cuota { background: rgba(247,201,72,.12); color: #f7c948; border: 1px solid rgba(247,201,72,.25); font-size: 10px; font-weight: 800; }
-  .group-expense-side { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; padding-top: 2px; white-space: nowrap; }
-  .group-expense-amount { font-size: 16px; font-weight: 900; color: var(--danger); letter-spacing: -.2px; }
-  .group-expense-tipo-var { font-size: 8px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #c084fc; }
-  .group-expense-tipo-fijo { font-size: 8px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #60a5fa; }
-  .group-expense-tipo-cuota { font-size: 8px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #f7c948; }
-  .group-expense-actions { display: flex; gap: 6px; }
-  .action-btn {
-    width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; font-size: 13px;
-  }
-  .action-btn.edit { background: rgba(18,199,183,.12); color: var(--primary); }
-  .action-btn.del  { background: rgba(255,122,89,.1);  color: #ff7a59; }
 
-  /* ── NUEVO (nfi) ───────────────────────────────────────── */
-  .wrap {
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.06);
-    border-radius: 18px;
-    overflow: hidden;
+  .gi-main { min-width: 0; padding-top: 2px; }
+  .gi-title { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+
+  .gi-meta {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   }
-  .nfi { display: flex; align-items: center; gap: 11px; padding: 12px 14px;
-          border-bottom: 1px solid rgba(255,255,255,.04); }
-  .nfi:last-child { border-bottom: none; }
-  .nfi-iconwrap { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 44px; }
-  .nfi-icon { width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-  .nfi-date { font-size: 9px; font-weight: 700; color: rgba(149,166,199,.55); letter-spacing: .3px; white-space: nowrap; text-align: center; }
-  .nfi-body { flex: 1; min-width: 0; }
-  .nfi-name { font-size: 13.5px; font-weight: 700; letter-spacing: -.15px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.3; margin-bottom: 3px; }
-  .nfi-meta { font-size: 11.5px; color: var(--muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nfi-cuota { display: inline-block; margin-top: 4px; font-size: 9px; font-weight: 800; color: #f7c948; background: rgba(247,201,72,.12); border: 1px solid rgba(247,201,72,.25); padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
-  .nfi-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
-  .nfi-amt-exp { font-size: 15px; font-weight: 800; letter-spacing: -.4px; color: #ff7a59; }
-  .nfi-tipo-fijo  { font-size: 8px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #60a5fa; }
-  .nfi-tipo-var   { font-size: 8px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #c084fc; }
-  .nfi-tipo-cuota { font-size: 8px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #f7c948; }
-  .nfi-acts { display: flex; gap: 5px; }
-  .nf-btn-edit, .nf-btn-del { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .tag-quien {
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+    background: rgba(108,99,255,.15); color: #a89bff; white-space: nowrap;
+  }
+  .tag-medio {
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+    background: rgba(255,255,255,.07); color: var(--muted); white-space: nowrap;
+  }
+  .tag-dividido {
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+    background: rgba(18,199,183,.12); color: var(--primary); white-space: nowrap;
+  }
+
+  /* cuota badge — debajo del meta, izquierda */
+  .gi-cuota {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 9px; font-weight: 800;
+    color: #f7c948;
+    background: rgba(247,201,72,.12);
+    border: 1px solid rgba(247,201,72,.25);
+    padding: 2px 7px; border-radius: 5px;
+    white-space: nowrap;
+  }
+
+  /* side derecho */
+  .gi-side {
+    display: flex; flex-direction: column; align-items: flex-end;
+    gap: 8px; padding-top: 2px; white-space: nowrap;
+  }
+  .gi-amount {
+    font-size: 16px; font-weight: 900; color: var(--danger); letter-spacing: -.2px;
+  }
+  /* sin tipo label */
+  .gi-acts { display: flex; gap: 6px; }
+  .nf-btn-edit, .nf-btn-del {
+    width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
   .nf-btn-edit { background: rgba(18,199,183,.12); color: var(--primary); }
   .nf-btn-del  { background: rgba(255,122,89,.1);  color: #ff7a59; }
-  .date-head { font-size: 16px; font-weight: 800; color: var(--text); margin: 20px 4px 10px; text-transform: capitalize; }
+
+  .note {
+    font-size: 11px; color: var(--muted); margin: 10px 4px 0;
+    border-left: 2px solid rgba(18,199,183,.3); padding-left: 8px; line-height: 1.5;
+  }
 </style>
 </head>
 <body>
 
-<h2>ACTUAL — Modo Grupo</h2>
-<div class="label">group-expense-item · sin fecha por ítem</div>
+<h2>PROPUESTO — Modo Grupo</h2>
 <div class="date-head">28 de mayo de 2025</div>
-<div style="padding: 0 4px">
-  <div class="group-expense-item">
-    <div class="item-cat-icon" style="background:#fff3e8;color:#f97316">🛒</div>
-    <div class="group-expense-main">
-      <div class="group-expense-title">Coto</div>
-      <div class="group-expense-tags">
-        <span class="tag tag-quien">👤 Nacho pagó $183.245</span>
-        <span class="tag tag-quien">Efectivo</span>
-      </div>
-    </div>
-    <div class="group-expense-side">
-      <span class="group-expense-amount">$91.622</span>
-      <span class="group-expense-tipo-var">VARIABLE</span>
-      <div class="group-expense-actions">
-        <button class="action-btn edit">✏️</button>
-        <button class="action-btn del">🗑</button>
-      </div>
-    </div>
-  </div>
 
-  <div class="group-expense-item">
-    <div class="item-cat-icon" style="background:#1e293b;color:#facc15">⚡</div>
-    <div class="group-expense-main">
-      <div class="group-expense-title">Naturgy</div>
-      <div class="group-expense-tags">
-        <span class="tag tag-quien">👤 Celi pagó $86.146</span>
-        <span class="tag tag-quien">Débito</span>
-      </div>
+<!-- Caso 1: pago normal (uno paga, se divide en 2) -->
+<div class="gi">
+  <div class="gi-icon" style="background:#fff3e8">🛒</div>
+  <div class="gi-main">
+    <div class="gi-title">Coto</div>
+    <div class="gi-meta">
+      <span class="tag-quien">Nacho pagó $183.245</span>
+      <span class="tag-medio">Efectivo</span>
     </div>
-    <div class="group-expense-side">
-      <span class="group-expense-amount">$43.073</span>
-      <span class="group-expense-tipo-fijo">FIJO</span>
-      <div class="group-expense-actions">
-        <button class="action-btn edit">✏️</button>
-        <button class="action-btn del">🗑</button>
-      </div>
-    </div>
+    <!-- sin cuota, no se muestra nada debajo -->
   </div>
-
-  <div class="group-expense-item">
-    <div class="item-cat-icon" style="background:#ede9fe;color:#7c3aed">🖥</div>
-    <div class="group-expense-main">
-      <div class="group-expense-title">Silla bici</div>
-      <div class="group-expense-tags">
-        <span class="tag tag-quien">👤 Nacho pagó $108.532</span>
-        <span class="tag tag-quien">Visa</span>
-        <span class="tag tag-cuota">03/18</span>
-      </div>
-    </div>
-    <div class="group-expense-side">
-      <span class="group-expense-amount">$54.266</span>
-      <span class="group-expense-tipo-cuota">CUOTA</span>
-      <div class="group-expense-actions">
-        <button class="action-btn edit">✏️</button>
-        <button class="action-btn del">🗑</button>
-      </div>
+  <div class="gi-side">
+    <div class="gi-amount">$91.622</div>
+    <!-- sin VARIABLE/FIJO -->
+    <div class="gi-acts">
+      <button class="nf-btn-edit">✏️</button>
+      <button class="nf-btn-del">🗑</button>
     </div>
   </div>
 </div>
 
-
-<h2>PROPUESTO — Modo Grupo con estilo HOGAR</h2>
-<div class="label">nfi · fecha bajo el ícono · botones circulares</div>
-<div class="wrap">
-
-  <div class="nfi">
-    <div class="nfi-iconwrap">
-      <div class="nfi-icon" style="background:#fff3e8">🛒</div>
-      <div class="nfi-date">May 28</div>
-    </div>
-    <div class="nfi-body">
-      <div class="nfi-name">Coto</div>
-      <div class="nfi-meta">Nacho · Efectivo</div>
-    </div>
-    <div class="nfi-right">
-      <div class="nfi-amt-exp">$91.622</div>
-      <div class="nfi-tipo-var">VARIABLE</div>
-      <div class="nfi-acts">
-        <button class="nf-btn-edit">✏️</button>
-        <button class="nf-btn-del">🗑</button>
-      </div>
+<!-- Caso 2: pago normal fijo -->
+<div class="gi">
+  <div class="gi-icon" style="background:#1e293b">⚡</div>
+  <div class="gi-main">
+    <div class="gi-title">Naturgy</div>
+    <div class="gi-meta">
+      <span class="tag-quien">Celi pagó $86.146</span>
+      <span class="tag-medio">Débito</span>
     </div>
   </div>
-
-  <div class="nfi">
-    <div class="nfi-iconwrap">
-      <div class="nfi-icon" style="background:#1e293b">⚡</div>
-      <div class="nfi-date">May 25</div>
-    </div>
-    <div class="nfi-body">
-      <div class="nfi-name">Naturgy</div>
-      <div class="nfi-meta">Celi · Débito</div>
-    </div>
-    <div class="nfi-right">
-      <div class="nfi-amt-exp">$43.073</div>
-      <div class="nfi-tipo-fijo">FIJO</div>
-      <div class="nfi-acts">
-        <button class="nf-btn-edit">✏️</button>
-        <button class="nf-btn-del">🗑</button>
-      </div>
+  <div class="gi-side">
+    <div class="gi-amount">$43.073</div>
+    <div class="gi-acts">
+      <button class="nf-btn-edit">✏️</button>
+      <button class="nf-btn-del">🗑</button>
     </div>
   </div>
-
-  <div class="nfi">
-    <div class="nfi-iconwrap">
-      <div class="nfi-icon" style="background:#ede9fe">🖥</div>
-      <div class="nfi-date">May 15</div>
-    </div>
-    <div class="nfi-body">
-      <div class="nfi-name">Silla bici</div>
-      <div class="nfi-meta">Nacho · 💳 Visa</div>
-      <span class="nfi-cuota">03/18</span>
-    </div>
-    <div class="nfi-right">
-      <div class="nfi-amt-exp">$54.266</div>
-      <div class="nfi-tipo-cuota">CUOTA</div>
-      <div class="nfi-acts">
-        <button class="nf-btn-edit">✏️</button>
-        <button class="nf-btn-del">🗑</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="nfi">
-    <div class="nfi-iconwrap">
-      <div class="nfi-icon" style="background:#dcfce7">🏠</div>
-      <div class="nfi-date">May 13</div>
-    </div>
-    <div class="nfi-body">
-      <div class="nfi-name">Expensas</div>
-      <div class="nfi-meta">Celi · Transferencia</div>
-    </div>
-    <div class="nfi-right">
-      <div class="nfi-amt-exp">$261.278</div>
-      <div class="nfi-tipo-fijo">FIJO</div>
-      <div class="nfi-acts">
-        <button class="nf-btn-edit">✏️</button>
-        <button class="nf-btn-del">🗑</button>
-      </div>
-    </div>
-  </div>
-
 </div>
+
+<!-- Caso 3: con cuotas — badge debajo del meta -->
+<div class="gi">
+  <div class="gi-icon" style="background:#ede9fe">🖥</div>
+  <div class="gi-main">
+    <div class="gi-title">Silla bici</div>
+    <div class="gi-meta">
+      <span class="tag-quien">Nacho pagó $108.532</span>
+      <span class="tag-medio">💳 Visa</span>
+    </div>
+    <span class="gi-cuota">03/18</span>  <!-- ← cuota abajo del meta -->
+  </div>
+  <div class="gi-side">
+    <div class="gi-amount">$54.266</div>
+    <div class="gi-acts">
+      <button class="nf-btn-edit">✏️</button>
+      <button class="nf-btn-del">🗑</button>
+    </div>
+  </div>
+</div>
+
+<!-- Caso 4: pago dividido (cada uno puso distinto) -->
+<div class="gi">
+  <div class="gi-icon" style="background:#dcfce7">🏠</div>
+  <div class="gi-main">
+    <div class="gi-title">Expensas</div>
+    <div class="gi-meta">
+      <span class="tag-dividido">Pago dividido $261.278</span>
+      <span class="tag-medio">Transferencia</span>
+    </div>
+  </div>
+  <div class="gi-side">
+    <!-- monto = lo que puso el usuario actual (ej: Nacho puso $130.000) -->
+    <div class="gi-amount">$130.000</div>
+    <div class="gi-acts">
+      <button class="nf-btn-edit">✏️</button>
+      <button class="nf-btn-del">🗑</button>
+    </div>
+  </div>
+</div>
+
+<p class="note">
+  ↑ <strong>Caso 4 — lógica:</strong> total del gasto = $261.278 (pago dividido).<br>
+  El monto derecho muestra <strong>lo que puso el usuario actual</strong> (su división).<br>
+  Si no hay división guardada, se muestra la mitad del total.
+</p>
 
 </body>
 </html>
