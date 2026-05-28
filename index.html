@@ -280,19 +280,17 @@
     .tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.4px;text-transform:uppercase}
     .tag-fijo{background:rgba(96,165,250,.15);color:#60a5fa;border:1px solid rgba(96,165,250,.28)}
     .tag-var{background:rgba(192,132,252,.13);color:#c084fc;border:1px solid rgba(192,132,252,.28)}
-    /* ── nuevo layout de items (Modelo D) ── */
-    .nfi{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);background:transparent}
+    /* ── layout items Opción A: ícono + fecha debajo ── */
+    .nfi{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.04);background:transparent}
     .nfi:last-child{border-bottom:none}
-    .nfi-date{width:28px;flex-shrink:0;text-align:center;line-height:1.1}
-    .nfi-date-mo{font-size:8px;font-weight:700;color:rgba(149,166,199,.5);text-transform:uppercase;letter-spacing:.5px}
-    .nfi-date-dy{font-size:15px;font-weight:800;color:#fff}
-    .nfi-icon{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
-    .nfi-icon img{width:100%;height:100%;object-fit:contain;border-radius:8px}
+    .nfi-iconwrap{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;width:44px}
+    .nfi-icon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .nfi-icon img{width:100%;height:100%;object-fit:contain;border-radius:9px}
+    .nfi-date{font-size:9px;font-weight:700;color:rgba(149,166,199,.55);letter-spacing:.3px;white-space:nowrap;text-align:center}
     .nfi-body{flex:1;min-width:0}
-    .nfi-name{font-size:14px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:6px;min-width:0;line-height:1.3}
-    .nfi-name-text{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0}
-    .nfi-cuota{font-size:9px;font-weight:800;color:#f7c948;background:rgba(247,201,72,.12);border:1px solid rgba(247,201,72,.25);padding:1px 5px;border-radius:5px;flex-shrink:0;white-space:nowrap}
-    .nfi-meta{font-size:12px;color:var(--muted);font-weight:500;margin-top:2px}
+    .nfi-name{font-size:13.5px;font-weight:700;letter-spacing:-.15px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.3;margin-bottom:3px}
+    .nfi-cuota{font-size:9px;font-weight:800;color:#f7c948;background:rgba(247,201,72,.12);border:1px solid rgba(247,201,72,.25);padding:2px 6px;border-radius:5px;white-space:nowrap;text-align:right}
+    .nfi-meta{font-size:11.5px;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .nfi-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
     .nfi-amt-exp{font-size:15px;font-weight:800;letter-spacing:-.4px;color:#ff7a59}
     .nfi-amt-inc{font-size:15px;font-weight:800;letter-spacing:-.4px;color:#12c7b7}
@@ -3660,8 +3658,10 @@ renderAll = function() {
         const tipoClass = i.tipo==='fijo'?'nfi-tipo-fijo':'nfi-tipo-var';
         const tipoLabel = i.tipo==='fijo'?L('tagFijo'):L('tagVar');
         return `<div class="nfi">
-          <div class="nfi-icon" style="background:rgba(18,199,183,.15);width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
-            <svg viewBox="0 0 24 24" style="width:55%;height:55%;fill:none;stroke:#12c7b7;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+          <div class="nfi-iconwrap">
+            <div class="nfi-icon" style="background:rgba(18,199,183,.15)">
+              <svg viewBox="0 0 24 24" style="width:55%;height:55%;fill:none;stroke:#12c7b7;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+            </div>
           </div>
           <div class="nfi-body">
             <div class="nfi-name">${i.descripcion||''}</div>
@@ -3704,14 +3704,17 @@ renderAll = function() {
       const iconBg = esTarjeta ? '#DDE8FF' : categoryIconBg(g.cat);
       const iconInner = esTarjeta ? cardStatementIconSvg() : categoryIconInner(g.cat);
       return `<div class="nfi">
-        <div class="nfi-date"><div class="nfi-date-mo">${moAbrev}</div><div class="nfi-date-dy">${g.dia||'—'}</div></div>
-        <div class="nfi-icon" style="background:${iconBg}">${iconInner}</div>
+        <div class="nfi-iconwrap">
+          <div class="nfi-icon" style="background:${iconBg}">${iconInner}</div>
+          <div class="nfi-date">${moAbrev} ${g.dia||'—'}</div>
+        </div>
         <div class="nfi-body">
-          <div class="nfi-name"><span class="nfi-name-text">${gastoDisplayDescription(g)}</span>${cuotaHtml}</div>
+          <div class="nfi-name">${gastoDisplayDescription(g)}</div>
           <div class="nfi-meta">${g.quien} · ${medio}</div>
         </div>
         <div class="nfi-right">
           <div class="nfi-amt-exp">${fmtCurrency(g.monto, g.moneda)}</div>
+          ${cuotaHtml}
           <div class="${tipoClass}">${tipoLabel}</div>
           <div class="nfi-acts">
             <button class="nf-btn-edit" onclick="editGasto('${g.id}')" title="Editar">✏️</button>
