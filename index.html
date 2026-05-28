@@ -1043,6 +1043,15 @@
               </select>
             </div>
           </div>
+          <div style="grid-column:1/-1;margin-top:-4px">
+            <div id="newCatForm" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;margin-bottom:6px">
+              <input type="text" id="newCatEmoji" placeholder="😀" maxlength="2" style="width:42px;height:36px;text-align:center;font-size:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:white;outline:none;flex-shrink:0">
+              <input type="text" id="newCatName" placeholder="Nombre de la categoría" maxlength="24" style="flex:1;height:36px;padding:0 10px;font-size:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:white;outline:none" onkeydown="if(event.key==='Enter')saveCustomCat()">
+              <button type="button" onclick="saveCustomCat()" style="height:36px;padding:0 14px;background:var(--primary);border:none;border-radius:8px;color:white;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">OK</button>
+              <button type="button" onclick="cancelCustomCat()" style="height:36px;width:36px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">✕</button>
+            </div>
+            <button type="button" id="addCatBtn" onclick="showNewCatForm()" style="width:100%;padding:9px;background:transparent;border:1.5px dashed rgba(255,255,255,.15);border-radius:12px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.2px">＋ Añadir categoría personalizada</button>
+          </div>
           <div class="field"><label id="g_tipo_label">Tipo</label><select id="g_tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select></div>
           <div class="field"><label id="g_medio_label">Medio de pago</label>
             <select id="g_medio" onchange="toggleCardFields()"><option value="efectivo">Efectivo / Débito</option><option value="tarjeta">Tarjeta crédito</option></select>
@@ -1497,7 +1506,68 @@ function navIcon(name){return '<span class="nav-icon">'+nfUiIcon(name)+'</span>'
 
 
 const CAT_LABEL_KEYS = {'Vivienda':'catVivienda','Alimentación':'catAlimentacion','Transporte':'catTransporte','Salud':'catSalud','Educación':'catEducacion','Entretenimiento':'catEntretenimiento','Servicios':'catServicios','Ropa':'catRopa','Mascota':'catMascota','Suscripciones':'catSuscripciones','Viajes':'catViajes','Seguros':'catSeguros','Regalos':'catRegalos','Tarjeta':'catTarjeta','Otros':'catOtros'};
-function catLabel(cat){ return L(CAT_LABEL_KEYS[cat] || '') || cat || ''; }
+function catLabel(cat) {
+  var cc = getCustomCat(cat);
+  if (cc) return cc.name;
+  return L(CAT_LABEL_KEYS[cat] || '') || cat || '';
+}
+function getCustomCats() {
+  try { return JSON.parse(localStorage.getItem('nf_custom_cats') || '[]'); } catch(e) { return []; }
+}
+function saveCustomCats(cats) {
+  localStorage.setItem('nf_custom_cats', JSON.stringify(cats));
+}
+function getCustomCat(name) {
+  return getCustomCats().find(function(c){ return c.name === name; });
+}
+function loadCustomCatsIntoSelect() {
+  var sel = document.getElementById('g_cat');
+  if (!sel) return;
+  Array.from(sel.options).forEach(function(o){ if (o.dataset.custom) o.remove(); });
+  var otrosIdx = Array.from(sel.options).findIndex(function(o){ return o.value === 'Otros'; });
+  var insertAt = otrosIdx >= 0 ? otrosIdx : sel.options.length;
+  getCustomCats().forEach(function(cc, i) {
+    var opt = document.createElement('option');
+    opt.value = cc.name;
+    opt.textContent = (cc.emoji ? cc.emoji + ' ' : '') + cc.name;
+    opt.dataset.custom = '1';
+    sel.add(opt, insertAt + i);
+  });
+}
+function showNewCatForm() {
+  var form = document.getElementById('newCatForm');
+  var btn = document.getElementById('addCatBtn');
+  if (form) form.style.display = 'flex';
+  if (btn) btn.style.display = 'none';
+  setTimeout(function(){ var e = document.getElementById('newCatEmoji'); if (e) e.focus(); }, 80);
+}
+function cancelCustomCat() {
+  var form = document.getElementById('newCatForm');
+  var btn = document.getElementById('addCatBtn');
+  if (form) {
+    form.style.display = 'none';
+    var e = document.getElementById('newCatEmoji'); if (e) e.value = '';
+    var n = document.getElementById('newCatName'); if (n) n.value = '';
+  }
+  if (btn) btn.style.display = '';
+}
+function saveCustomCat() {
+  var emojiEl = document.getElementById('newCatEmoji');
+  var nameEl = document.getElementById('newCatName');
+  var emoji = emojiEl ? emojiEl.value.trim() : '';
+  var name = nameEl ? nameEl.value.trim() : '';
+  if (!name) { if (nameEl) nameEl.focus(); return; }
+  if (!emoji) emoji = '📌';
+  var cats = getCustomCats();
+  if (!cats.find(function(c){ return c.name === name; })) {
+    cats.push({name: name, emoji: emoji});
+    saveCustomCats(cats);
+  }
+  loadCustomCatsIntoSelect();
+  var sel = document.getElementById('g_cat');
+  if (sel) { sel.value = name; updateCategoryPreview(); }
+  cancelCustomCat();
+}
 function optionLabel(value){ if(value==='Todos') return L('optTodos'); if(value==='Ambos'||value==='Compartido') return L('optCompartido'); if(value==='Compartida') return L('optCompartida'); return value || ''; }
 function pctIncomeText(pct){ return pct + L('pctIngreso'); }
 function pctTotalText(pct){ return pct + L('sumDelTotal'); }
@@ -2114,6 +2184,8 @@ function categoryIconInner(cat) {
   if (cat === 'Viajes') return viajesIconSvg();
   if (cat === 'Seguros') return segurosIconSvg();
   if (cat === 'Regalos') return regalosIconSvg();
+  var customCat = (typeof getCustomCat === 'function') ? getCustomCat(cat) : null;
+  if (customCat) return '<span style="font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%">' + (customCat.emoji || '📌') + '</span>';
   const icon = (typeof CAT_ICONS !== 'undefined' && CAT_ICONS[cat]) ? CAT_ICONS[cat] : '';
   return icon ? '<img src="' + icon + '" style="width:100%;height:100%;object-fit:contain;border-radius:8px" alt="">' : '';
 }
@@ -2127,6 +2199,8 @@ function catIconHtml(cat, className) {
   if (cat === 'Viajes') return `<span class="${cls}" style="background:${bg};color:${color}">${viajesIconSvg()}</span>`;
   if (cat === 'Seguros') return `<span class="${cls}" style="background:${bg};color:${color}">${segurosIconSvg()}</span>`;
   if (cat === 'Regalos') return `<span class="${cls}" style="background:${bg};color:${color}">${regalosIconSvg()}</span>`;
+  var customCat = (typeof getCustomCat === 'function') ? getCustomCat(cat) : null;
+  if (customCat) return `<span class="${cls}" style="background:#EAE5FF;display:flex;align-items:center;justify-content:center;font-size:15px">${customCat.emoji || '📌'}</span>`;
   if (!icon) return `<span class="${cls}" style="background:${bg}"></span>`;
   return `<span class="${cls}" style="background:${bg};color:${color}"><img src="${icon}" alt=""></span>`;
 }
@@ -2136,8 +2210,20 @@ function updateCategoryPreview() {
   const prev = document.getElementById('g_cat_preview');
   if (!sel || !prev) return;
   const cat = sel.value || 'Otros';
-  const icon = (typeof CAT_ICONS !== 'undefined' && CAT_ICONS[cat]) ? CAT_ICONS[cat] : '';
+  const customCat = (typeof getCustomCat === 'function') ? getCustomCat(cat) : null;
+  if (customCat) {
+    prev.style.background = '#EAE5FF';
+    prev.style.display = 'flex';
+    prev.innerHTML = '<span style="font-size:18px;line-height:1">' + (customCat.emoji || '📌') + '</span>';
+    return;
+  }
   prev.style.background = categoryIconBg(cat);
+  prev.style.display = 'flex';
+  if (cat === 'Tarjeta') { prev.innerHTML = cardStatementIconSvg(); return; }
+  if (cat === 'Viajes')  { prev.innerHTML = viajesIconSvg(); return; }
+  if (cat === 'Seguros') { prev.innerHTML = segurosIconSvg(); return; }
+  if (cat === 'Regalos') { prev.innerHTML = regalosIconSvg(); return; }
+  const icon = (typeof CAT_ICONS !== 'undefined' && CAT_ICONS[cat]) ? CAT_ICONS[cat] : '';
   prev.innerHTML = icon ? `<img src="${icon}" alt="">` : '';
 }
 
@@ -2282,6 +2368,7 @@ function toggleForm(id) {
         _gf.value = _hoy.getFullYear()+'-'+String(_mesDefault).padStart(2,'0')+'-'+String(_hoy.getDate()).padStart(2,'0');
       }
       // g_mes y g_anio ya no existen como campos separados
+      if (typeof loadCustomCatsIntoSelect === 'function') loadCustomCatsIntoSelect();
       updateCategoryPreview();
     }
     if (id==='fTarjeta') {
