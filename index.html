@@ -1828,7 +1828,8 @@ function applyRecordInstallments(table, rows){
   if (toRepair.length) {
     var repaired = 0;
     Promise.all(toRepair.map(function(item){
-      var newDesc = item.descripcion.trim() + ' C. ' + item.cuota_actual + '/' + item.cuotas;
+      var suffix = ' C. ' + item.cuota_actual + '/' + item.cuotas;
+      var newDesc = item.descripcion.trim().slice(0, 80 - suffix.length) + suffix;
       return dbPatch(table, item.id, { descripcion: newDesc })
         .then(function(){ repaired++; })
         .catch(function(e){ console.warn('[cuota-repair] fallo patch', item.id, e); });
@@ -1869,8 +1870,9 @@ async function dbPostMoney(table, body){
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
     }
     if ((body.cuotas || 1) > 1 && clean.descripcion != null) {
-      var descBase = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
-      clean.descripcion = descBase + ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
+      var _sfx = ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
+      var _base = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
+      clean.descripcion = _base.slice(0, 80 - _sfx.length) + _sfx;
     }
     var res = await dbPost(table, clean);
     if(res && res[0]) {
@@ -1906,8 +1908,9 @@ async function dbPatchMoney(table, id, body){
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
     }
     if ((body.cuotas || 1) > 1 && clean.descripcion != null) {
-      var descBase = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
-      clean.descripcion = descBase + ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
+      var _sfx = ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
+      var _base = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
+      clean.descripcion = _base.slice(0, 80 - _sfx.length) + _sfx;
     }
     var res = await dbPatch(table, id, clean);
     if(res && res[0]) {
