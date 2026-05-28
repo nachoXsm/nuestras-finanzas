@@ -3260,11 +3260,18 @@ async function initApp() {
   // Tiene grupo — cargar app
   try {
     state.grupoId = grupo.id;
+    if (typeof updatePersonaNames === 'function') updatePersonaNames();
     await loadAll();
     addGroupBadge();
     document.getElementById('loader').style.display = 'none';
     document.getElementById('appMain').style.display = 'block';
     document.querySelector('.bottom-nav').style.display = 'flex';
+    if (typeof nfSetLang === 'function') nfSetLang(nfLang);
+    if (typeof esModoGrupo === 'function' && esModoGrupo()) {
+      if (typeof activarModoGrupo === 'function') activarModoGrupo();
+    } else {
+      if (typeof activarModoHogar === 'function') activarModoHogar();
+    }
   } catch(e) {
     console.error('initApp error:', e);
     var sub = document.querySelector('.ld-sub');
