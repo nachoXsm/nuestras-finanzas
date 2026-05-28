@@ -7557,21 +7557,27 @@ async function joinGroup() {
     }
     // Unirse con código = es un grupo de gastos, no el hogar
     grupo.tipo = grupo.tipo || 'grupo';
-    saveGroupLocal(grupo);
-    // Agregar a lista de grupos extra (no reemplazar el hogar)
     const hogarId = getHogarId();
     if (hogarId) {
-      // Ya hay un hogar — agregar como grupo extra
-      const extras = getGruposGuardados();
-      if (!extras.find(function(g){ return g.id === grupo.id; })) {
-        extras.push(grupo);
-        saveGruposExtra(extras);
+      // Preservar el hogar en extras ANTES de cambiar el grupo activo
+      const grupoHogar = loadGroup();
+      const extrasActuales = getGruposGuardados();
+      if (grupoHogar && !extrasActuales.find(function(g){ return g.id === grupoHogar.id; })) {
+        extrasActuales.push(grupoHogar);
+        saveGruposExtra(extrasActuales);
       }
-      // Volver al hogar, no cambiar el grupo activo
+      // Agregar el nuevo grupo a extras
+      const extrasConNuevo = getGruposGuardados();
+      if (!extrasConNuevo.find(function(g){ return g.id === grupo.id; })) {
+        extrasConNuevo.push(grupo);
+        saveGruposExtra(extrasConNuevo);
+      }
+      saveGroupLocal(grupo);
       toast('✅ Grupo agregado a tu lista de grupos');
       document.getElementById('groupScreen').style.display = 'none';
       startApp();
     } else {
+      saveGroupLocal(grupo);
       enterApp();
     }
   } catch(e) {
@@ -8321,6 +8327,12 @@ async function volverAlHogar() {
         hogar = res[0];
         try { hogar.personasArray = JSON.parse(hogar.personas || '[]'); } catch(e) {}
         if (!hogar.personasArray.length) hogar.personasArray = [hogar.persona1, hogar.persona2].filter(Boolean);
+        // Guardar en extras para que switchToGrupo pueda encontrarlo
+        const extrasActuales = getGruposGuardados();
+        if (!extrasActuales.find(function(g){ return g.id === hogar.id; })) {
+          extrasActuales.push(hogar);
+          saveGruposExtra(extrasActuales);
+        }
       }
     } catch(e) { toast('❌ Error al cargar el hogar'); return; }
   }
