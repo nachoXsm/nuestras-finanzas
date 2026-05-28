@@ -1798,8 +1798,15 @@ function normalizeInstallmentParts(record){
   if (!record) return { cuota_actual: 1, cuotas: 1 };
   var raw = [record.cuotas, record.cuota_actual_total, record.installments, record.descripcion, record._sourceLine].filter(Boolean).join(' ');
   var m = String(raw || '').match(/(?:C\.?\s*)?(\d{1,2})\s*\/\s*(\d{1,2})/i);
-  var actual = parseInt(record.cuota_actual || record.cuotaActual || record.actual || (m && m[1]) || 1, 10) || 1;
-  var total = parseInt(record.cuotas_total || record.total || record.cuotas || (m && m[2]) || actual, 10) || actual;
+  var actual = parseInt(
+    (Number(record.cuotas) > 1 ? (record.cuota_actual || record.cuotaActual || record.actual) : null) ||
+    (m && m[1]) || 1, 10
+  ) || 1;
+  var total = parseInt(
+    record.cuotas_total || record.total ||
+    (Number(record.cuotas) > 1 ? record.cuotas : null) ||
+    (m && m[2]) || actual, 10
+  ) || actual;
   total = Math.max(actual, total);
   return { cuota_actual: Math.max(1, actual), cuotas: Math.max(1, total) };
 }
@@ -2915,10 +2922,10 @@ function renderAll() {
       const tGBase = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()!=='USD');
       const tTot = tGBase.reduce((a,g)=>a+parseFloat(g.monto||0),0);
       const tUsdTot = tGUsd.reduce((a,g)=>a+parseFloat(g.monto||0),0);
-      const tRows = rows => rows.map(g=>`<div class="card-item">
-            <span>${gastoDisplayDescription(g)} ${g.cuotas>1?`<span style="color:var(--text3);font-size:0.72rem">${cuotaDisplayValue(g)}</span>`:''}</span>
+      const tRows = rows => rows.map(g=>{const _cv=cuotaDisplayValue(g);return`<div class="card-item">
+            <span>${gastoDisplayDescription(g)} ${_cv?`<span style="color:var(--text3);font-size:0.72rem">${_cv}</span>`:''}</span>
             <span style="font-family:var(--mono);font-size:0.82rem">${fmtCurrency(g.monto, g.moneda)}</span>
-          </div>`).join('');
+          </div>`}).join('');
       return `<div class="card-block">
         <div class="card-block-head">
           <div>
@@ -3784,10 +3791,10 @@ renderAll = function() {
       const tGBase = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()!=='USD');
       const tTot = tGBase.reduce((a,g)=>a+parseFloat(g.monto||0),0);
       const tUsdTot = tGUsd.reduce((a,g)=>a+parseFloat(g.monto||0),0);
-      const tRows = rows => rows.map(g=>`<div class="tcard-item">
-            <span>${gastoDisplayDescription(g)} ${g.cuotas>1?`<span style="color:var(--text3);font-size:0.7rem">${cuotaDisplayValue(g)}</span>`:''}</span>
+      const tRows = rows => rows.map(g=>{const _cv=cuotaDisplayValue(g);return`<div class="tcard-item">
+            <span>${gastoDisplayDescription(g)} ${_cv?`<span style="color:var(--text3);font-size:0.7rem">${_cv}</span>`:''}</span>
             <span class="tcard-item-amount">${fmtCurrency(g.monto, g.moneda)}</span>
-          </div>`).join('');
+          </div>`}).join('');
       const cierreStr = t.cierre?(t.cierre+(t.cierre_mes?'/'+MS[t.cierre_mes-1]:'')):'?';
       const vencStr = t.vencimiento?(t.vencimiento+(t.venc_mes?'/'+MS[t.venc_mes-1]:'')):'?';
       return `<div class="tcard">
