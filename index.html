@@ -1830,15 +1830,20 @@ function applyRecordInstallments(table, rows){
     Promise.all(toRepair.map(function(item){
       var suffix = ' C. ' + item.cuota_actual + '/' + item.cuotas;
       var newDesc = item.descripcion.trim().slice(0, 80 - suffix.length) + suffix;
-      return dbPatch(table, item.id, { descripcion: newDesc })
-        .then(function(){ repaired++; })
-        .catch(function(e){ console.warn('[cuota-repair] fallo patch', item.id, e); });
+      var url = API + '/' + table + '?id=eq.' + item.id;
+      var hMin = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'return=minimal' };
+      return fetch(url, { method:'PATCH', headers:hMin, body:JSON.stringify({ descripcion: newDesc }) })
+        .then(function(res){
+          if (!res.ok) return res.text().then(function(t){ throw new Error(t); });
+          repaired++;
+        })
+        .catch(function(e){ console.error('[cuota-repair] Error PATCH:', e.message); });
     })).then(function(){
       if (repaired > 0 && typeof renderAll === 'function') {
-        toast('✅ ' + repaired + ' cuotas sincronizadas con Supabase. Refrescá el celular.');
+        toast('✅ ' + repaired + ' cuotas sincronizadas. Refrescá el celular.');
         renderAll();
       } else if (repaired === 0) {
-        console.warn('[cuota-repair] todos los patches fallaron (' + toRepair.length + ' intentos)');
+        console.error('[cuota-repair] 0/' + toRepair.length + ' patches OK');
       }
     });
   }
