@@ -1004,8 +1004,8 @@
       <button class="tab" onclick="switchTab('conversor')">💱 Conversor</button>
       <button class="tab" id="tab-btn-ia" onclick="switchTab('ia');setNavActive('nav-ia')">🤖 IA</button>
     </div>
-    <div class="tabs-scroll-hint" id="tabsHintRight" onclick="document.getElementById('tabsWrap').scrollBy({left:140,behavior:'smooth'})"><span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></div>
-    <div class="tabs-scroll-hint left" id="tabsHintLeft" style="display:none" onclick="document.getElementById('tabsWrap').scrollBy({left:-140,behavior:'smooth'})"><span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span></div>
+    <div class="tabs-scroll-hint" id="tabsHintRight" onclick="document.getElementById('tabsWrap').scrollBy({left:140,behavior:'smooth'});setTimeout(updateTabHints,200)"><span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+    <div class="tabs-scroll-hint left" id="tabsHintLeft" style="display:none" onclick="document.getElementById('tabsWrap').scrollBy({left:-140,behavior:'smooth'});setTimeout(updateTabHints,200)"><span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span></div>
   </div>
 
   <!-- GASTOS TAB -->
@@ -7458,17 +7458,20 @@ let convApiKey = localStorage.getItem('nf_conv_key') || '';
 
 function initTabsScrollHint() {
   const wrap = document.getElementById('tabsWrap');
-  const right = document.getElementById('tabsHintRight');
-  const left  = document.getElementById('tabsHintLeft');
   if (!wrap) return;
-  const update = () => {
-    const atStart = wrap.scrollLeft <= 10;
-    const atEnd   = wrap.scrollLeft >= wrap.scrollWidth - wrap.clientWidth - 10;
-    if (right) right.style.display = atEnd  ? 'none' : 'flex';
-    if (left)  left.style.display  = atStart? 'none' : 'flex';
-  };
-  wrap.addEventListener('scroll', update, {passive:true});
-  setTimeout(update, 300);
+  wrap.addEventListener('scroll', updateTabHints, {passive:true});
+  setTimeout(updateTabHints, 300);
+}
+
+function updateTabHints() {
+  var wrap  = document.getElementById('tabsWrap');
+  var right = document.getElementById('tabsHintRight');
+  var left  = document.getElementById('tabsHintLeft');
+  if (!wrap) return;
+  var atStart = wrap.scrollLeft <= 5;
+  var atEnd   = wrap.scrollLeft >= wrap.scrollWidth - wrap.clientWidth - 5;
+  if (right) right.style.display = atEnd   ? 'none' : 'flex';
+  if (left)  left.style.display  = atStart ? 'none' : 'flex';
 }
 
 function initConversor() {
