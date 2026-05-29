@@ -7187,8 +7187,10 @@ async function processOCR(input) {
       throw new Error('Detecté un resumen de tarjeta, pero no pude identificar los consumos línea por línea. Probá subir el PDF original o una captura más nítida del detalle.');
     }
 
-    setProgress(100, 'Archivo leído, extrayendo datos…', '✅');
-    const parsed = parseTicketText(text);
+    setProgress(90, 'Interpretando comprobante con IA…', '🤖');
+    const aiParsed = await parseTicketWithAI(text);
+    if (aiParsed) console.log('[OCR-AI] Resultado IA:', aiParsed);
+    const parsed = aiParsed || parseTicketText(text);
     fillGastoForm(parsed);
 
     setTimeout(function() {
@@ -7205,6 +7207,56 @@ async function processOCR(input) {
 
   if (btn) btn.disabled = false;
   input.value = '';
+}
+
+async function parseTicketWithAI(text) {
+  try {
+    var cats = ['Alimentación','Transporte','Salud','Entretenimiento','Servicios','Ropa','Educación','Vivienda','Mascota','Suscripciones','Otros'];
+    var prompt =
+      'Sos un extractor de datos de comprobantes de pago argentinos. ' +
+      'Del texto OCR que te voy a dar, extraé los datos del comprobante y respondé ÚNICAMENTE con un JSON válido, sin texto extra ni markdown.\n\n' +
+      'Formato exacto (sin variaciones):\n' +
+      '{"descripcion":"nombre del comercio o servicio","monto":12345.67,"categoria":"Alimentación","fecha":"2024-03-15"}\n\n' +
+      'Categorías posibles: ' + cats.join(', ') + '\n\n' +
+      'Reglas:\n' +
+      '- monto: número decimal con punto (ej: 46044.77), sin símbolo $ ni puntos de miles\n' +
+      '- fecha: formato YYYY-MM-DD si existe en el texto, sino null\n' +
+      '- descripcion: nombre del negocio o servicio, máximo 40 caracteres\n' +
+      '- categoria: la más apropiada de la lista\n\n' +
+      'Texto del comprobante:\n' + text.slice(0, 2500);
+
+    var res = await fetch(IA_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+      body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], context: {} }),
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    var reply = (data.reply || '').trim();
+
+    var jsonMatch = reply.match(/\{[\s\S]*?\}/);
+    if (!jsonMatch) return null;
+
+    var ai = JSON.parse(jsonMatch[0]);
+    var monto = parseFloat(ai.monto);
+    if (!ai.descripcion && !(monto > 0)) return null;
+
+    var out = {
+      descripcion: (ai.descripcion || '').slice(0, 40).trim(),
+      monto: monto > 0 ? String(monto) : '',
+      categoria: cats.includes(ai.categoria) ? ai.categoria : 'Otros',
+      fecha: '',
+      dia: '',
+    };
+    if (ai.fecha && /^\d{4}-\d{2}-\d{2}$/.test(ai.fecha)) {
+      out.fecha = ai.fecha;
+      out.dia = parseInt(ai.fecha.split('-')[2], 10) || '';
+    }
+    return out;
+  } catch (e) {
+    console.warn('[OCR-AI] falló, usando regex:', e.message);
+    return null;
+  }
 }
 
 function isSinglePaymentReceipt(text) {
