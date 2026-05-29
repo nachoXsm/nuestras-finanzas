@@ -9241,8 +9241,8 @@ function renderFlujo() {
   if(tI===0){
     html+='<div style="text-align:center;padding:20px;color:var(--muted)">'+L('flujoSinIngresos')+'</div>';
   } else {
-    html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
-    function gc2(lbl,val,color){var p=tI>0?Math.round(val/tI*100):0;return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px">'+lbl+'</div><div style="font-size:15px;font-weight:800;color:'+color+';letter-spacing:-.5px">'+fmtInt(val)+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+pctIncomeText(p)+'</div></div>';}
+    html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+    function gc2(lbl,val,color){var p=tI>0?Math.round(val/tI*100):0;return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:12px 8px;text-align:center;overflow:hidden;min-width:0"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+lbl+'</div><div style="font-size:13px;font-weight:800;color:'+color+';letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fmtInt(val)+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+pctIncomeText(p)+'</div></div>';}
     html+=gc2(L('flujoAhorro10'),tI*.1,'#12c7b7');
     html+=gc2(L('flujoAhorro20'),tI*.2,'#6c63ff');
     html+=gc2(L('flujoReal'),Math.max(0,sl),sl>=0?'#1ec98f':'#ff7a59');
