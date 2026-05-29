@@ -4076,7 +4076,7 @@ function renderAllGrupo() {
         var isCompartido = g.quien === 'Todos' || g.quien === 'Ambos';
         var medioLabel = g.medio || 'Efectivo';
         if (isCardPayment && isCardPayment(g)) {
-          var tc = tarjetas && tarjetas.find(function(t){ return t.id === getExpenseCardId(g); });
+          var tc = state.tarjetas && state.tarjetas.find(function(t){ return t.id === getExpenseCardId(g); });
           medioLabel = '💳 ' + (tc ? tc.nombre : 'Tarjeta');
         }
 
