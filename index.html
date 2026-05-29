@@ -7187,10 +7187,28 @@ async function processOCR(input) {
       throw new Error('Detecté un resumen de tarjeta, pero no pude identificar los consumos línea por línea. Probá subir el PDF original o una captura más nítida del detalle.');
     }
 
-    setProgress(90, 'Interpretando comprobante con IA…', '🤖');
-    const aiParsed = await parseTicketWithAI(text);
-    if (aiParsed) console.log('[OCR-AI] Resultado IA:', aiParsed);
-    const parsed = aiParsed || parseTicketText(text);
+    setProgress(90, 'Archivo leído, extrayendo datos…', '✅');
+    const regexParsed = parseTicketText(text);
+    const needsAI = !regexParsed.monto || !regexParsed.descripcion;
+    let parsed = regexParsed;
+    if (needsAI) {
+      console.log('[OCR] Regex incompleto, consultando IA…');
+      setProgress(95, 'Completando datos con IA…', '🤖');
+      const aiParsed = await parseTicketWithAI(text);
+      if (aiParsed) {
+        console.log('[OCR-AI] Resultado IA:', aiParsed);
+        parsed = {
+          ...regexParsed,
+          monto: aiParsed.monto || regexParsed.monto,
+          descripcion: aiParsed.descripcion || regexParsed.descripcion,
+          categoria: (regexParsed.categoria && regexParsed.categoria !== 'Otros') ? regexParsed.categoria : aiParsed.categoria,
+          fecha: aiParsed.fecha || regexParsed.fecha,
+          dia: aiParsed.dia || regexParsed.dia,
+        };
+      }
+    } else {
+      console.log('[OCR] Regex completo, sin llamada a IA');
+    }
     fillGastoForm(parsed);
 
     setTimeout(function() {
