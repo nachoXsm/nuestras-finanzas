@@ -4838,6 +4838,16 @@ function parseOCRMoney(raw) {
   } else if (hasComma) {
     s = s.replace(/\./g, '').replace(',', '.');
   } else {
+    // No comma. Check for "46.044.77" — PDF joins thousands-dot + decimal-dot into two dots
+    // (last group has 1–2 digits = cents, earlier groups have 3 digits = thousands)
+    const dots = (s.match(/\./g) || []).length;
+    if (hasDot && dots > 1) {
+      const lastDot = s.lastIndexOf('.');
+      const dec = s.slice(lastDot + 1);
+      if (dec.length <= 2) {
+        return parseFloat(s.slice(0, lastDot).replace(/\./g, '') + '.' + dec) || 0;
+      }
+    }
     s = s.replace(/,/g, '');
   }
   return parseFloat(s) || 0;
