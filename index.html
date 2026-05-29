@@ -4099,6 +4099,10 @@ function renderAllGrupo() {
           montoMostrar = montoTotal / nPart;
         }
 
+        // Verde si yo pagué o fue dividido; rojo si otro pagó y me deben
+        var yoPague = isDividido || isCompartido || (g.quien === yoName);
+        var amountColor = yoPague ? 'var(--success)' : 'var(--danger)';
+
         // Cuota badge (debajo del meta)
         var cuotaVal = cuotaDisplayValue(g);
         var cuotaRow = cuotaVal ? '<div style="margin-top:5px"><span class="nfi-cuota">' + cuotaVal + '</span></div>' : '';
@@ -4113,7 +4117,7 @@ function renderAllGrupo() {
             '<span class="tag tag-medio">' + medioLabel + (cuotaVal ? ' &nbsp;<span class="nfi-cuota">' + cuotaVal + '</span>' : '') + '</span>' +
           '</div>' +
           '<div class="group-expense-side">' +
-            '<span class="group-expense-amount">'+fmtCurrency(montoMostrar, g.moneda)+'</span>' +
+            '<span class="group-expense-amount" style="color:'+amountColor+'">'+fmtCurrency(montoMostrar, g.moneda)+'</span>' +
             '<div class="group-expense-actions">' +
               '<button class="nf-btn-edit" onclick="editGasto(&quot;'+g.id+'&quot;)" title="Editar">✏️</button>' +
               '<button class="nf-btn-del" onclick="deleteGasto(&quot;'+g.id+'&quot;)" title="Eliminar">🗑</button>' +
