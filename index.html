@@ -7188,32 +7188,24 @@ async function processOCR(input) {
     }
 
     setProgress(90, 'Archivo leído, extrayendo datos…', '✅');
-    const regexParsed = parseTicketText(text);
-    const needsAI = !regexParsed.monto || !regexParsed.descripcion;
-    let parsed = regexParsed;
-    if (needsAI) {
-      console.log('[OCR] Regex incompleto, consultando IA…');
-      setProgress(95, 'Completando datos con IA…', '🤖');
-      const aiParsed = await parseTicketWithAI(text);
-      if (aiParsed) {
-        console.log('[OCR-AI] Resultado IA:', aiParsed);
-        parsed = {
-          ...regexParsed,
-          monto: aiParsed.monto || regexParsed.monto,
-          descripcion: aiParsed.descripcion || regexParsed.descripcion,
-          categoria: (regexParsed.categoria && regexParsed.categoria !== 'Otros') ? regexParsed.categoria : aiParsed.categoria,
-          fecha: aiParsed.fecha || regexParsed.fecha,
-          dia: aiParsed.dia || regexParsed.dia,
-        };
-      }
-    } else {
-      console.log('[OCR] Regex completo, sin llamada a IA');
-    }
+    const [regexParsed, aiParsed] = await Promise.all([
+      Promise.resolve(parseTicketText(text)),
+      parseTicketWithAI(text),
+    ]);
+    const usedAI = !!(aiParsed && (aiParsed.monto || aiParsed.descripcion));
+    const parsed = usedAI ? {
+      ...regexParsed,
+      monto:      aiParsed.monto      || regexParsed.monto,
+      descripcion:aiParsed.descripcion|| regexParsed.descripcion,
+      categoria:  (regexParsed.categoria && regexParsed.categoria !== 'Otros') ? regexParsed.categoria : aiParsed.categoria,
+      fecha:      aiParsed.fecha      || regexParsed.fecha,
+      dia:        aiParsed.dia        || regexParsed.dia,
+    } : regexParsed;
     fillGastoForm(parsed);
 
     setTimeout(function() {
       if (prog) prog.style.display = 'none';
-      toast(needsAI ? '🤖 Leído con IA — revisá y confirmá' : '✅ Leído con regex — revisá y confirmá');
+      toast(usedAI ? '🤖 Leído con IA — revisá y confirmá' : '✅ Leído con regex — revisá y confirmá');
     }, 800);
 
   } catch(e) {
@@ -7241,7 +7233,7 @@ async function parseTicketWithAI(text) {
       '- fecha: formato YYYY-MM-DD si existe en el texto, sino null\n' +
       '- descripcion: nombre del negocio o servicio, máximo 40 caracteres\n' +
       '- categoria: la más apropiada de la lista\n\n' +
-      'Texto del comprobante:\n' + text.slice(0, 2500);
+      'Texto del comprobante:\n' + text.slice(0, 600) + (text.length > 600 ? '\n...\n' + text.slice(-400) : '');
 
     var res = await fetch(IA_ENDPOINT, {
       method: 'POST',
