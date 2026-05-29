@@ -213,9 +213,9 @@
     /* TABS */
     .tabs-wrap{display:flex;gap:8px;overflow-x:auto;padding:0 18px 20px;scrollbar-width:none;position:relative}
     .tabs-wrap::-webkit-scrollbar{display:none}
-    .tabs-scroll-hint{position:absolute;right:0;top:0;bottom:16px;width:36px;display:flex;align-items:center;justify-content:center;pointer-events:none;background:linear-gradient(to right,transparent,rgba(8,17,31,.9));border-radius:0 999px 999px 0}
-    .tabs-scroll-hint span{font-size:16px;color:var(--primary);animation:fadeInOut 1.8s ease-in-out infinite}
-    .tabs-scroll-hint.left{left:0;right:auto;background:linear-gradient(to left,transparent,rgba(8,17,31,.9));border-radius:999px 0 0 999px}
+    .tabs-scroll-hint{position:absolute;right:0;top:0;bottom:16px;width:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(to right,transparent,rgba(8,17,31,.92));border-radius:0 999px 999px 0;z-index:2}
+    .tabs-scroll-hint span{font-size:18px;color:var(--primary);font-weight:700;line-height:1;animation:fadeInOut 1.8s ease-in-out infinite;display:flex;align-items:center}
+    .tabs-scroll-hint.left{left:0;right:auto;background:linear-gradient(to left,transparent,rgba(8,17,31,.92));border-radius:999px 0 0 999px}
     @keyframes fadeInOut{0%,100%{opacity:.2}50%{opacity:1}}
     .tab{white-space:nowrap;padding:10px 18px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .2s}
     .tab.active{background:rgba(18,199,183,.15);color:var(--primary);border-color:rgba(18,199,183,.3)}
@@ -1004,15 +1004,15 @@
       <button class="tab" onclick="switchTab('conversor')">💱 Conversor</button>
       <button class="tab" id="tab-btn-ia" onclick="switchTab('ia');setNavActive('nav-ia')">🤖 IA</button>
     </div>
-    <div class="tabs-scroll-hint" id="tabsHintRight"><span>›</span></div>
-    <div class="tabs-scroll-hint left" id="tabsHintLeft" style="display:none"><span>‹</span></div>
+    <div class="tabs-scroll-hint" id="tabsHintRight" onclick="document.getElementById('tabsWrap').scrollBy({left:140,behavior:'smooth'})"><span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></div>
+    <div class="tabs-scroll-hint left" id="tabsHintLeft" style="display:none" onclick="document.getElementById('tabsWrap').scrollBy({left:-140,behavior:'smooth'})"><span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span></div>
   </div>
 
   <!-- GASTOS TAB -->
   <div class="tab-content active" id="tab-gastos">
     <div class="sec-wrap">
       <div class="sec-head">
-        <div class="sec-title" id="incTitle" onclick="toggleIngresos()" style="cursor:pointer;user-select:none">💰 Ingresos <span id="incToggleIcon" style="font-size:11px;opacity:.5;margin-left:4px">▼</span></div>
+        <div class="sec-title" id="incTitle" onclick="toggleIngresos()" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:7px">💰 Ingresos <svg id="incToggleIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .25s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg></div>
         <button class="sec-action" onclick="toggleForm('fIngreso')">+ Agregar</button>
       </div>
       <div class="form-panel" id="fIngreso">
@@ -2497,7 +2497,7 @@ function toggleIngresos() {
   if (list) list.style.display = hidden ? '' : 'none';
   if (form && !hidden) form.style.display = 'none';
   if (btn) btn.style.display = hidden ? '' : 'none';
-  if (icon) icon.textContent = hidden ? '▼' : '▶';
+  if (icon) icon.style.transform = hidden ? 'rotate(0deg)' : 'rotate(-90deg)';
 }
 
 function toggleDivision() {
