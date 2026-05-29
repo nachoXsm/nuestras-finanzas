@@ -300,9 +300,10 @@
     .tag-card{background:rgba(18,199,183,.12);color:#12c7b7;border:1px solid rgba(18,199,183,.25)}
     .tag-cash{background:rgba(30,201,143,.1);color:#1ec98f;border:1px solid rgba(30,201,143,.22)}
     .tag-cuota{background:rgba(247,201,72,.1);color:#f7c948;border:1px solid rgba(247,201,72,.22)}
-    .tag-quien{background:rgba(108,99,255,.15);color:#a89bff;border:1px solid rgba(108,99,255,.2)}
-    .tag-dividido{background:rgba(18,199,183,.12);color:var(--primary);border:1px solid rgba(18,199,183,.2)}
-    .tag-medio{background:rgba(255,255,255,.07);color:var(--muted);border:1px solid rgba(255,255,255,.08)}
+    .tag-quien{background:none;border:none;padding:0;border-radius:0;color:var(--muted);text-transform:none;font-weight:600;letter-spacing:0;font-size:12px}
+    .tag-dividido{background:none;border:none;padding:0;border-radius:0;color:var(--primary);text-transform:none;font-weight:600;letter-spacing:0;font-size:12px;opacity:.9}
+    .tag-medio{background:none;border:none;padding:0;border-radius:0;color:var(--muted);text-transform:none;font-weight:500;font-size:11px;opacity:.6}
+    .tag-medio::before{content:'·';margin-right:4px;opacity:.6}
     .tag-dia{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid rgba(255,255,255,.08)}
     /* Botones acción */
     .nf-btn-edit,.nf-btn-del{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .18s;flex-shrink:0}
