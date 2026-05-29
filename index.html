@@ -1350,6 +1350,16 @@
   </div>
 </nav>
 
+<!-- ALIAS MODAL -->
+<div class="modal-overlay" id="aliasModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-head"><span>🏦 Alias para transferencias</span><button class="modal-close" onclick="document.getElementById('aliasModal').classList.remove('open')">✕</button></div>
+    <p style="font-size:12px;opacity:.6;margin:0 0 14px">El alias o CBU que cada uno comparte para recibir transferencias.</p>
+    <div id="aliasModalBody"></div>
+    <button class="btn btn-primary" onclick="saveGrupoAliasModal()" style="width:100%;margin-top:12px">Guardar</button>
+  </div>
+</div>
+
 <!-- MONTH MODAL -->
 <div class="modal-overlay" id="monthModal" onclick="closeMonthPicker(event)">
   <div class="modal">
@@ -3898,7 +3908,11 @@ renderAll = function() {
 // RENDER COMPLETO PARA MODO GRUPO
 // ============================================
 function calcularLiquidacionGrupo() {
-  const gs = state.gastos || [];
+  var allGs = state.gastos || [];
+  var _lastLiq = grupoGetLastLiquidacion();
+  var gs = _lastLiq
+    ? allGs.filter(function(g){ return fechaGastoKey(g) > _lastLiq.fecha; })
+    : allGs;
   const personas = state.personas || [];
   const baseCurrency = getActiveBaseCurrency();
   const totalGrupo = gs.reduce(function(a,g){ return a + moneyValue(g, baseCurrency); }, 0);
@@ -4067,6 +4081,10 @@ function renderAllGrupo() {
         '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoDebe') + '</div>' +
         '<div style="font-size:14px;font-weight:800;color:#ffb3a0;white-space:nowrap">' + fmtInt(yoDebo) + '</div></div>' +
       '</div>';
+    var _liqHist = grupoGetLastLiquidacion();
+    if (_liqHist) {
+      balCard.innerHTML += '<div style="font-size:10px;opacity:.38;margin-top:10px;text-align:center">Liquidación: ' + _liqHist.fechaDisplay + '</div>';
+    }
   }
 
   // PANEL LIQUIDAR antes de gastos
@@ -4075,15 +4093,32 @@ function renderAllGrupo() {
   if (deudas.length > 0) {
     var panel = document.createElement('div');
     panel.id = 'grupoBalancePanel';
+    var _aliases = grupoGetAliases();
     var html = '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
     html += '<div style="font-size:13px;font-weight:800;margin-bottom:10px">💸 ' + L('groupSettleAccounts') + '</div>';
     deudas.forEach(function(d) {
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+      var _alias = (_aliases[d.a] || '').trim();
+      html += '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between">';
       html += '<div><span style="font-weight:700;color:var(--danger)">' + d.de + '</span>';
-      html += '<span style="font-size:11px;color:var(--muted)"> ' + L('groupOwesTo') + ' </span>';
+      html += '<span style="font-size:11px;color:var(--muted)"> debe › </span>';
       html += '<span style="font-weight:700;color:var(--success)">' + d.a + '</span></div>';
-      html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span></div>';
+      html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span>';
+      html += '</div>';
+      if (_alias) {
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-top:5px">';
+        html += '<span style="font-size:11px;color:#b8c8e8">🏦 ' + _alias + '</span>';
+        html += '<button onclick="gruposCopyAlias(\'' + _alias.replace(/'/g,"\\'") + '\')" style="background:none;border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:2px 9px;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer">Copiar</button>';
+        html += '</div>';
+      } else {
+        html += '<div style="margin-top:4px;font-size:10px;opacity:.45">Sin alias · <button onclick="openGrupoAliasModal()" style="background:none;border:none;color:var(--primary);font-size:10px;cursor:pointer;padding:0;font-weight:700">Agregar</button></div>';
+      }
+      html += '</div>';
     });
+    html += '<div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:8px">';
+    html += '<button onclick="openGrupoAliasModal()" style="background:none;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:8px 14px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;flex-shrink:0">✏ Alias</button>';
+    html += '<button onclick="abrirConfirmLiquidacion()" style="flex:1;background:linear-gradient(135deg,#1db954,#17a44a);color:#fff;border:none;border-radius:12px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer">✅ Marcar como saldado</button>';
+    html += '</div>';
     html += '</div>';
     panel.innerHTML = html;
     var gastoList = document.getElementById('gastoList');
@@ -7695,6 +7730,89 @@ function loadGroup() {
 function saveGroupLocal(grupo) {
   localStorage.setItem('nf_grupo', JSON.stringify(grupo));
 }
+
+// ---- LIQUIDACIONES & ALIASES ----
+function grupoGetAliases() {
+  var g = loadGroup();
+  return (g && g.aliases) || {};
+}
+
+function grupoGetLiquidaciones() {
+  var g = loadGroup();
+  return (g && g.liquidaciones) || [];
+}
+
+function grupoGetLastLiquidacion() {
+  var liqs = grupoGetLiquidaciones();
+  return liqs.length ? liqs[liqs.length - 1] : null;
+}
+
+function grupoSaveLiquidacion() {
+  var g = loadGroup();
+  if (!g) return;
+  var now = new Date();
+  var fecha = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  var fechaDisplay = now.toLocaleDateString('es-AR', {day:'numeric', month:'long', year:'numeric'});
+  if (!g.liquidaciones) g.liquidaciones = [];
+  g.liquidaciones.push({ fecha: fecha, fechaDisplay: fechaDisplay, ts: now.toISOString() });
+  saveGroupLocal(g);
+}
+
+function grupoSaveAliases(aliases) {
+  var g = loadGroup();
+  if (!g) return;
+  g.aliases = aliases;
+  saveGroupLocal(g);
+}
+
+function abrirConfirmLiquidacion() {
+  var liq = calcularLiquidacionGrupo();
+  if (!liq.deudas.length) { toast('No hay deudas pendientes'); return; }
+  var lineas = liq.deudas.map(function(d){ return '• ' + d.de + ' → ' + d.a + ': ' + fmt(d.monto); }).join('\n');
+  if (window.confirm('¿Confirmar que estas deudas fueron saldadas?\n\n' + lineas + '\n\nEl saldo del grupo vuelve a $0 desde hoy.')) {
+    grupoSaveLiquidacion();
+    renderAllGrupo();
+    toast('✅ Saldo liquidado — están todos a mano');
+  }
+}
+
+function openGrupoAliasModal() {
+  var personas = state.personas || [state.persona1, state.persona2].filter(Boolean);
+  var aliases = grupoGetAliases();
+  var html = '';
+  personas.forEach(function(p) {
+    var safeId = 'alias_' + p.replace(/[^a-zA-Z0-9]/g, '_');
+    html += '<div style="margin-bottom:14px">';
+    html += '<label style="font-size:12px;font-weight:700;opacity:.65;display:block;margin-bottom:5px">' + p + '</label>';
+    html += '<input class="form-input" id="' + safeId + '" value="' + (aliases[p] || '') + '" placeholder="ej: ' + p.toLowerCase().replace(/\s+/g,'.') + '.mp" style="width:100%;box-sizing:border-box">';
+    html += '</div>';
+  });
+  document.getElementById('aliasModalBody').innerHTML = html;
+  document.getElementById('aliasModal').classList.add('open');
+}
+
+function saveGrupoAliasModal() {
+  var personas = state.personas || [state.persona1, state.persona2].filter(Boolean);
+  var aliases = {};
+  personas.forEach(function(p) {
+    var safeId = 'alias_' + p.replace(/[^a-zA-Z0-9]/g, '_');
+    var el = document.getElementById(safeId);
+    if (el) aliases[p] = el.value.trim();
+  });
+  grupoSaveAliases(aliases);
+  document.getElementById('aliasModal').classList.remove('open');
+  renderAllGrupo();
+  toast('✅ Alias guardados');
+}
+
+function gruposCopyAlias(alias) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(alias).then(function(){ toast('📋 Alias copiado: ' + alias); }).catch(function(){ toast('Alias: ' + alias); });
+  } else {
+    toast('Alias: ' + alias);
+  }
+}
+
 function showWelcome() {
   ['gsHogar','gsHogarCodigo','gsHogarNuevo','gsCreate','gsJoin','gsSuccess'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.style.display = 'none';
