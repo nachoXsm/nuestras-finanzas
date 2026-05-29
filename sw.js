@@ -1,4 +1,4 @@
-const CACHE = 'nf-v2';
+const CACHE = 'nf-v3';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -22,15 +22,23 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Only handle GET requests
+  if (e.request.method !== 'GET') return;
+  // Don't cache Supabase API or external calls
+  const url = new URL(e.request.url);
+  if (url.hostname !== self.location.hostname) return;
+
   e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        if (res && res.status === 200 && e.request.method === 'GET') {
+    caches.match(e.request).then(cached => {
+      const networkFetch = fetch(e.request).then(res => {
+        if (res && res.status === 200) {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
-      })
-      .catch(() => caches.match(e.request))
+      });
+      // Return cached version immediately if available, update in background
+      return cached || networkFetch.catch(() => caches.match('/index.html'));
+    })
   );
 });

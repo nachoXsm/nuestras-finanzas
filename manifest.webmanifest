@@ -4,12 +4,33 @@
   "short_name": "Finanzas",
   "description": "Gestión de finanzas personales y compartidas con IA",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone"],
   "orientation": "portrait",
   "background_color": "#08111f",
   "theme_color": "#0b0f1e",
   "lang": "es-AR",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "categories": ["finance", "utilities"],
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+  "shortcuts": [
+    {
+      "name": "Agregar gasto",
+      "short_name": "Nuevo gasto",
+      "description": "Registrar un nuevo gasto",
+      "url": "/?shortcut=gasto",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ver balance",
+      "short_name": "Balance",
+      "description": "Ver el balance del mes",
+      "url": "/?shortcut=balance",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "screenshots": [
     {
       "src": "/icon-512.png",
