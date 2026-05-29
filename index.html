@@ -1065,7 +1065,7 @@
             <input type="file" id="ocrInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv" style="display:none" onchange="processOCR(this)">
             <input type="file" id="ocrCameraInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
           </div>
-          <div class="field"><label id="g_monto_label">Monto</label><div class="amount-currency-row"><select id="g_moneda" class="currency-select-mini"></select><input type="number" id="g_monto" placeholder="0"></div></div>
+          <div class="field"><label id="g_monto_label">Monto</label><div class="amount-currency-row"><select id="g_moneda" class="currency-select-mini"></select><input type="number" id="g_monto" placeholder="0" step="any"></div></div>
           <div class="field"><label id="g_cat_label">Categoría</label>
             <div class="category-select-wrap">
               <span id="g_cat_preview" class="cat-select-preview"></span>
@@ -7187,18 +7187,19 @@ function parseTicketText(text) {
     if (pagasteIdx >= 0 && lines[pagasteIdx + 1]) {
       result.descripcion = lines[pagasteIdx + 1].slice(0, 40).trim();
     }
-    // Amount: "Total pagado $X" or "Total pagado\n$X"
-    const totalPagadoMatch = text.match(/total\s+pagado\s*[:\$]?\s*\$?\s*([\d.,]+)/i);
-    if (totalPagadoMatch) {
-      result.monto = parseOCRMoney(totalPagadoMatch[1]) || '';
-    }
-    if (!result.monto) {
-      const tpIdx = lines.findIndex(l => /total\s+pagado/i.test(l));
-      if (tpIdx >= 0) {
-        for (let i = tpIdx; i <= tpIdx + 2; i++) {
-          const m = (lines[i] || '').match(/\$?\s*([\d.,]+)/);
-          if (m) { result.monto = parseOCRMoney(m[1]) || ''; if (result.monto) break; }
-        }
+    // Amount: look at up to 80 chars after "Total pagado" (may span newlines in PDF)
+    const tpCtxMatch = text.match(/total\s+pagado([\s\S]{0,80})/i);
+    if (tpCtxMatch) {
+      const ctx = tpCtxMatch[1];
+      // First try Argentine format with explicit decimal: 46.044,77
+      const withDecimal = ctx.match(/\$?\s*([\d.]+,\d{1,2})/);
+      if (withDecimal) {
+        result.monto = parseOCRMoney(withDecimal[1]) || '';
+      }
+      // Fall back to any number (handles no-cent amounts like 5.000)
+      if (!result.monto) {
+        const anyNum = ctx.match(/\$?\s*([\d.,]+)/);
+        if (anyNum) result.monto = parseOCRMoney(anyNum[1]) || '';
       }
     }
     // Date: "Fecha de pago DD/MM/YYYY HH:MM:SS"
