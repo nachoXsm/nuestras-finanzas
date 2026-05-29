@@ -3975,6 +3975,11 @@ function renderAllGrupo() {
   var participantes = liq.participantes;
   var parteIgual = liq.parteIgual;
   var deudas = liq.deudas;
+  // Balance personal del usuario actual
+  var yoName = (state.personas && state.personas[0]) || state.persona1 || (participantes[0]) || '';
+  var miBalance = (liq.balances && liq.balances[yoName]) || 0;
+  var meLeDeben = Math.max(0, miBalance);
+  var yoDebo   = Math.max(0, -miBalance);
   // OCULTAR TODO LO DE HOGAR
   var toHide = ['.balance-card', '#summary', '#ingresoList', '#fIngreso'];
   toHide.forEach(function(sel) {
@@ -4021,9 +4026,9 @@ function renderAllGrupo() {
         '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('groupSpent') + '</div>' +
         '<div style="font-size:14px;font-weight:800;white-space:nowrap">' + fmtInt(totalGrupo) + '</div></div>' +
         '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoLeDeben') + '</div>' +
-        '<div style="font-size:14px;font-weight:800;color:#7effd4;white-space:nowrap">' + fmtInt(liq.teDebenTotal) + '</div></div>' +
+        '<div style="font-size:14px;font-weight:800;color:#7effd4;white-space:nowrap">' + fmtInt(meLeDeben) + '</div></div>' +
         '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoDebe') + '</div>' +
-        '<div style="font-size:14px;font-weight:800;color:#ffb3a0;white-space:nowrap">' + fmtInt(liq.debesTotal) + '</div></div>' +
+        '<div style="font-size:14px;font-weight:800;color:#ffb3a0;white-space:nowrap">' + fmtInt(yoDebo) + '</div></div>' +
       '</div>';
   }
 
@@ -4062,7 +4067,6 @@ function renderAllGrupo() {
     } else {
       const sorted = [...visibleGs].sort(function(a,b){ return fechaGastoDate(b) - fechaGastoDate(a); });
       var lastDate = '';
-      var yoName = (state.personas && state.personas[0]) || state.persona1 || (participantes[0]) || '';
       var nPart = participantes.length || 2;
       gastoList2.innerHTML = sorted.map(function(g) {
         const catIcon = categoryIconInner(g.cat);
