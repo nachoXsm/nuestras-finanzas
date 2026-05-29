@@ -7790,7 +7790,12 @@ function openGrupoAliasModal() {
     html += '<div style="width:34px;height:34px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">' + initial + '</div>';
     html += '<span style="font-size:14px;font-weight:700;color:#e8edf8">' + p + '</span>';
     html += '</div>';
-    html += '<input id="' + safeId + '" value="' + (aliases[p] || '') + '" placeholder="alias · CVU · CBU" autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;font-size:14px;color:#e8edf8;outline:none;-webkit-appearance:none;font-family:inherit" onfocus="this.style.borderColor=\'rgba(94,206,200,.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,.1)\'">';
+    html += '<div style="position:relative">';
+    html += '<input id="' + safeId + '" value="' + (aliases[p] || '') + '" placeholder="alias · CVU · CBU" autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 44px 12px 14px;font-size:14px;color:#e8edf8;outline:none;-webkit-appearance:none;font-family:inherit" onfocus="this.style.borderColor=\'rgba(94,206,200,.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,.1)\'">';
+    html += '<button onclick="var v=document.getElementById(\'' + safeId + '\').value;if(v)gruposCopyAlias(v);" type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:var(--primary);opacity:.7;display:flex;align-items:center">';
+    html += '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    html += '</button>';
+    html += '</div>';
     html += '</div>';
   });
   document.getElementById('aliasModalBody').innerHTML = html;
