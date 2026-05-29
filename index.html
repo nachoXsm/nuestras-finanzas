@@ -7190,7 +7190,11 @@ function parseTicketText(text) {
     // Amount: look at up to 80 chars after "Total pagado" (may span newlines in PDF)
     const tpCtxMatch = text.match(/total\s+pagado([\s\S]{0,80})/i);
     if (tpCtxMatch) {
-      const ctx = tpCtxMatch[1];
+      // PDF text extraction joins elements with spaces; collapse spaces around separators
+      // so "46.044 ,77" and "46.044, 77" both become "46.044,77"
+      const ctx = tpCtxMatch[1]
+        .replace(/(\d)\s+([,.])/g, '$1$2')
+        .replace(/([,.])\s+(\d)/g, '$1$2');
       // First try Argentine format with explicit decimal: 46.044,77
       const withDecimal = ctx.match(/\$?\s*([\d.]+,\d{1,2})/);
       if (withDecimal) {
