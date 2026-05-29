@@ -300,7 +300,9 @@
     .tag-card{background:rgba(18,199,183,.12);color:#12c7b7;border:1px solid rgba(18,199,183,.25)}
     .tag-cash{background:rgba(30,201,143,.1);color:#1ec98f;border:1px solid rgba(30,201,143,.22)}
     .tag-cuota{background:rgba(247,201,72,.1);color:#f7c948;border:1px solid rgba(247,201,72,.22)}
-    .tag-quien{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid rgba(255,255,255,.1)}
+    .tag-quien{background:rgba(108,99,255,.15);color:#a89bff;border:1px solid rgba(108,99,255,.2)}
+    .tag-dividido{background:rgba(18,199,183,.12);color:var(--primary);border:1px solid rgba(18,199,183,.2)}
+    .tag-medio{background:rgba(255,255,255,.07);color:var(--muted);border:1px solid rgba(255,255,255,.08)}
     .tag-dia{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid rgba(255,255,255,.08)}
     /* Botones acción */
     .nf-btn-edit,.nf-btn-del{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .18s;flex-shrink:0}
@@ -1822,28 +1824,23 @@ function applyRecordInstallments(table, rows){
   var m = getInstallmentStore(table);
   var toRepair = [];
   var NON_DB = ['cuotas','cuota_actual','moneda','tarjeta_id','gasto_origen_id','division'];
-  var _dbHasCuotas=0, _lsHasCuotas=0, _noCuotas=0, _needRepair=0;
   (rows||[]).forEach(function(r){
     if(!r || !r.id) return;
     var stored = m[r.id];
-    if (Number(r.cuotas || 0) > 1) { _dbHasCuotas++; return; }
+    if (Number(r.cuotas || 0) > 1) { return; }
     if(stored && Number(r.cuotas || 1) <= 1) {
-      _lsHasCuotas++;
       r.cuotas = stored.cuotas || 1;
       r.cuota_actual = stored.cuota_actual || 1;
       if (r.descripcion != null && !/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/i.test(r.descripcion)) {
-        _needRepair++;
         toRepair.push({ row: r, cuotas: stored.cuotas, cuota_actual: stored.cuota_actual });
       }
-    } else { _noCuotas++; }
+    }
   });
-  console.log('[cuota-diag] '+table+': DB='+_dbHasCuotas+' LS='+_lsHasCuotas+' sinDatos='+_noCuotas+' aReparar='+_needRepair+' total='+rows.length);
   if (toRepair.length) {
     var repaired = 0;
     Promise.all(toRepair.map(function(item){
       var suffix = ' C. ' + item.cuota_actual + '/' + item.cuotas;
       var newDesc = item.row.descripcion.trim().slice(0, 80 - suffix.length) + suffix;
-      // Construir body limpio (solo columnas DB) con descripcion actualizada
       var body = {};
       Object.keys(item.row).forEach(function(k){ if(NON_DB.indexOf(k) === -1) body[k] = item.row[k]; });
       body.descripcion = newDesc;
@@ -1860,8 +1857,6 @@ function applyRecordInstallments(table, rows){
       if (repaired > 0 && typeof renderAll === 'function') {
         toast('✅ ' + repaired + ' cuotas sincronizadas. Refrescá el celular.');
         renderAll();
-      } else if (repaired === 0) {
-        console.error('[cuota-repair] 0/' + toRepair.length + ' upserts OK');
       }
     });
   }
@@ -1893,9 +1888,8 @@ async function dbPostMoney(table, body){
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
     }
     if ((body.cuotas || 1) > 1 && clean.descripcion != null) {
-      var _sfx = ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
-      var _base = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
-      clean.descripcion = _base.slice(0, 80 - _sfx.length) + _sfx;
+      var descBase = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
+      clean.descripcion = descBase + ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
     }
     var res = await dbPost(table, clean);
     if(res && res[0]) {
@@ -1931,9 +1925,8 @@ async function dbPatchMoney(table, id, body){
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
     }
     if ((body.cuotas || 1) > 1 && clean.descripcion != null) {
-      var _sfx = ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
-      var _base = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
-      clean.descripcion = _base.slice(0, 80 - _sfx.length) + _sfx;
+      var descBase = String(clean.descripcion).replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim();
+      clean.descripcion = descBase + ' C. ' + (body.cuota_actual||1) + '/' + body.cuotas;
     }
     var res = await dbPatch(table, id, clean);
     if(res && res[0]) {
@@ -4068,6 +4061,8 @@ function renderAllGrupo() {
     } else {
       const sorted = [...visibleGs].sort(function(a,b){ return fechaGastoDate(b) - fechaGastoDate(a); });
       var lastDate = '';
+      var yoName = (state.personas && state.personas[0]) || state.persona1 || (participantes[0]) || '';
+      var nPart = participantes.length || 2;
       gastoList2.innerHTML = sorted.map(function(g) {
         const catIcon = categoryIconInner(g.cat);
         const catColor = CAT_COLORS[g.cat]||'#888';
@@ -4075,21 +4070,53 @@ function renderAllGrupo() {
         const key = fechaGastoKey(g);
         const dateHead = key !== lastDate ? '<div style="font-size:16px;font-weight:800;color:var(--text);margin:20px 4px 10px;text-transform:capitalize">' + fechaGastoTitulo(g) + '</div>' : '';
         lastDate = key;
-        var pagador = g.quien === 'Todos' ? L('pagoDividido') : L('pagadoPor') + ' ' + (g.quien || L('sinDefinir'));
+
+        var montoTotal = parseFloat(g.monto || 0);
+        var isDividido = !!(g.division);
+        var isCompartido = g.quien === 'Todos' || g.quien === 'Ambos';
+        var medioLabel = g.medio || 'Efectivo';
+        if (isCardPayment && isCardPayment(g)) {
+          var tc = tarjetas && tarjetas.find(function(t){ return t.id === getExpenseCardId(g); });
+          medioLabel = '💳 ' + (tc ? tc.nombre : 'Tarjeta');
+        }
+
+        // Meta: quien pagó total · medio
+        var metaQuien;
+        if (isDividido || isCompartido) {
+          metaQuien = '<span class="tag tag-dividido">' + L('pagoDividido') + ' ' + fmtCurrency(montoTotal, g.moneda) + '</span>';
+        } else {
+          metaQuien = '<span class="tag tag-quien">' + (g.quien || L('sinDefinir')) + ' pagó ' + fmtCurrency(montoTotal, g.moneda) + '</span>';
+        }
+
+        // Monto a mostrar = lo que aportó "yo" (primer persona)
+        var montoMostrar;
+        if (isDividido) {
+          var divObj = {};
+          try { divObj = typeof g.division === 'string' ? JSON.parse(g.division) : g.division; } catch(e) {}
+          montoMostrar = parseFloat(divObj[yoName] || 0) || (montoTotal / nPart);
+        } else {
+          montoMostrar = montoTotal / nPart;
+        }
+
+        // Cuota badge (debajo del meta)
+        var cuotaVal = cuotaDisplayValue(g);
+        var cuotaRow = cuotaVal ? '<div style="margin-top:5px"><span class="nfi-cuota">' + cuotaVal + '</span></div>' : '';
+
         return dateHead + '<div class="group-expense-item">' +
           '<div class="item-cat-icon" style="background:'+catBg+';color:'+catColor+'">'+catIcon+'</div>' +
           '<div class="group-expense-main">' +
             '<div class="group-expense-title">'+(gastoDisplayDescription(g)||L('sinDescripcion'))+'</div>' +
             '<div class="group-expense-tags">' +
-              '<span class="tag tag-quien">👤 '+pagador+'</span>' +
-              cuotaBadgeHtml(g) +
+              metaQuien +
+              '<span class="tag tag-medio">' + medioLabel + '</span>' +
             '</div>' +
+            cuotaRow +
           '</div>' +
           '<div class="group-expense-side">' +
-            '<span class="group-expense-amount">'+fmtCurrency(parseFloat(g.monto), g.moneda)+'</span>' +
+            '<span class="group-expense-amount">'+fmtCurrency(montoMostrar, g.moneda)+'</span>' +
             '<div class="group-expense-actions">' +
-              '<button class="action-btn edit" onclick="editGasto(&quot;'+g.id+'&quot;)">✏️</button>' +
-              '<button class="action-btn del" onclick="deleteGasto(&quot;'+g.id+'&quot;)">🗑</button>' +
+              '<button class="nf-btn-edit" onclick="editGasto(&quot;'+g.id+'&quot;)" title="Editar">✏️</button>' +
+              '<button class="nf-btn-del" onclick="deleteGasto(&quot;'+g.id+'&quot;)" title="Eliminar">🗑</button>' +
             '</div>' +
           '</div>' +
         '</div>';
