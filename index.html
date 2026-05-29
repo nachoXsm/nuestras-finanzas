@@ -314,6 +314,22 @@
     /* Group label */
     .nf-group-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin:14px 0 8px 2px;display:flex;align-items:center;gap:8px}
     .nf-group-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07)}
+    /* IA Advisor */
+    .ia-header{display:flex;align-items:center;gap:14px;padding:16px 4px 20px}
+    .ia-avatar{width:46px;height:46px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+    .ia-messages{display:flex;flex-direction:column;gap:12px;min-height:200px;padding-bottom:16px}
+    .ia-msg{max-width:88%;padding:12px 15px;border-radius:18px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+    .ia-msg.user{align-self:flex-end;background:var(--primary);color:#000;border-bottom-right-radius:6px;font-weight:500}
+    .ia-msg.bot{align-self:flex-start;background:rgba(255,255,255,.07);color:var(--text);border-bottom-left-radius:6px}
+    .ia-msg.typing{opacity:.5}
+    .ia-input-wrap{position:sticky;bottom:70px;display:flex;gap:10px;align-items:flex-end;background:var(--bg);padding:12px 0 4px}
+    .ia-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:12px 16px;color:var(--text);font-size:14px;font-family:inherit;resize:none;outline:none;max-height:120px;line-height:1.4}
+    .ia-input:focus{border-color:rgba(18,199,183,.4)}
+    .ia-send{width:44px;height:44px;border-radius:14px;background:var(--primary);border:none;color:#000;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s}
+    .ia-send:disabled{opacity:.4;cursor:default}
+    .ia-chip-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+    .ia-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:7px 14px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .2s}
+    .ia-chip:hover{background:rgba(18,199,183,.12);border-color:rgba(18,199,183,.3);color:var(--primary)}
     /* Compat legacy */
     .item-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.04);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:10px;transition:all .2s}
     .item-card:hover{border-color:rgba(18,199,183,.2);transform:translateX(2px)}
@@ -986,6 +1002,7 @@
       <button class="tab" onclick="switchTab('flujo')">Flujo</button>
       <button class="tab" onclick="switchTab('informe')">Informe</button>
       <button class="tab" onclick="switchTab('conversor')">💱 Conversor</button>
+      <button class="tab" id="tab-btn-ia" onclick="switchTab('ia');setNavActive('nav-ia')">🤖 IA</button>
     </div>
     <div class="tabs-scroll-hint" id="tabsHintRight"><span>›</span></div>
     <div class="tabs-scroll-hint left" id="tabsHintLeft" style="display:none"><span>‹</span></div>
@@ -1161,6 +1178,26 @@
     </div>
   </div>
 
+  <!-- IA ADVISOR TAB -->
+  <div class="tab-content" id="tab-ia">
+    <div class="sec-wrap" style="padding-bottom:80px">
+      <div class="ia-header">
+        <div class="ia-avatar">🤖</div>
+        <div>
+          <div style="font-size:15px;font-weight:800">Asesor financiero</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Basado en tus datos reales</div>
+        </div>
+      </div>
+      <div id="iaChatMessages" class="ia-messages"></div>
+      <div class="ia-input-wrap">
+        <textarea id="iaInput" class="ia-input" placeholder="Preguntame sobre tus finanzas…" rows="1" oninput="iaAutoResize(this)" onkeydown="iaKeyDown(event)"></textarea>
+        <button class="ia-send" onclick="iaSend()" id="iaSendBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- CUENTA TAB -->
   <div class="tab-content" id="tab-cuenta">
     <div class="sec-wrap">
@@ -1307,6 +1344,9 @@
   <button class="fab" onclick="openFabAction()">+</button>
   <div class="nav-item" id="nav-analisis" onclick="openAnalisisNav();setNavActive('nav-analisis')">
     <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5" rx="1"/><rect x="12" y="7" width="3" height="9" rx="1"/><rect x="17" y="9" width="3" height="7" rx="1"/></svg></span>Análisis
+  </div>
+  <div class="nav-item" id="nav-ia" onclick="switchTab('ia');setNavActive('nav-ia');iaInitIfNeeded()">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9h.01M15 9h.01"/><path d="M9 15c.83 1 2.17 1 3 1s2.17 0 3-1"/></svg></span>IA
   </div>
   <div class="nav-item" id="nav-cuenta" onclick="setNavActive('nav-cuenta');openPerfil()">
     <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>Cuenta
@@ -3136,7 +3176,7 @@ function exportExcel() {
 // TABS
 // ============================================
 function getModeTabs(isGroup) {
-  return isGroup ? ['gastos','categorias','informe','conversor'] : ['gastos','tarjetas','categorias','flujo','informe','conversor'];
+  return isGroup ? ['gastos','categorias','informe','conversor','ia'] : ['gastos','tarjetas','categorias','flujo','informe','conversor','ia'];
 }
 
 function getTabNameFromButton(btn) {
@@ -9018,6 +9058,134 @@ function renderFlujo() {
   el.innerHTML = html;
 }
 
+// ─── IA ADVISOR ──────────────────────────────────────────────────────────────
+var IA_ENDPOINT = 'https://gzjhohwuyquumkgiehan.supabase.co/functions/v1/ai-advisor';
+var iaMessages = [];
+var iaInitDone = false;
+
+var IA_CHIPS = [
+  '¿Estoy ahorrando bien este mes?',
+  '¿En qué categoría gasto de más?',
+  'Dame 3 consejos para mejorar mis finanzas',
+  '¿Cómo está el balance del grupo?',
+];
+
+function iaBuildContext() {
+  var gs = state.gastos || [];
+  var inc = state.ingresos || [];
+  var totalG = gs.reduce(function(a, g) { return a + parseFloat(g.monto || 0); }, 0);
+  var totalI = inc.reduce(function(a, i) { return a + parseFloat(i.monto || 0); }, 0);
+  var cats = {};
+  gs.forEach(function(g) {
+    if (!g.cat) return;
+    cats[g.cat] = (cats[g.cat] || 0) + parseFloat(g.monto || 0);
+  });
+  var ctx = {
+    mes: (function() {
+      var m = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      return (m[(state.mes || 1) - 1] || '') + ' ' + (state.anio || '');
+    })(),
+    moneda: getDefaultCurrency ? getDefaultCurrency() : 'ARS',
+    ingresos: Math.round(totalI),
+    gastos: Math.round(totalG),
+    categorias: cats,
+  };
+  if (typeof esModoGrupo === 'function' && esModoGrupo()) {
+    var liq = calcularLiquidacionGrupo();
+    var yoN = (state.personas && state.personas[0]) || state.persona1 || '';
+    var mb = (liq.balances && liq.balances[yoN]) || 0;
+    ctx.grupo = {
+      total: Math.round(liq.totalGrupo),
+      participantes: liq.participantes.length,
+      leDeben: Math.round(Math.max(0, mb)),
+      debes: Math.round(Math.max(0, -mb)),
+    };
+  }
+  return ctx;
+}
+
+function iaInitIfNeeded() {
+  if (iaInitDone) return;
+  iaInitDone = true;
+  var el = document.getElementById('iaChatMessages');
+  if (!el) return;
+  var chips = IA_CHIPS.map(function(c) {
+    return '<button class="ia-chip" onclick="iaChip(this)">' + c + '</button>';
+  }).join('');
+  el.innerHTML =
+    '<div class="ia-msg bot">¡Hola! Soy tu asesor financiero. Tengo acceso a tus datos reales de la app. ¿En qué te puedo ayudar?</div>' +
+    '<div class="ia-chip-wrap">' + chips + '</div>';
+}
+
+function iaChip(btn) {
+  var text = btn.textContent;
+  btn.closest('.ia-chip-wrap').remove();
+  iaInputAndSend(text);
+}
+
+function iaInputAndSend(text) {
+  var input = document.getElementById('iaInput');
+  if (input) { input.value = text; iaAutoResize(input); }
+  iaSend();
+}
+
+function iaAutoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function iaKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); iaSend(); }
+}
+
+function iaAppendMsg(role, text, extra) {
+  var el = document.getElementById('iaChatMessages');
+  if (!el) return null;
+  var div = document.createElement('div');
+  div.className = 'ia-msg ' + role + (extra ? ' ' + extra : '');
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  return div;
+}
+
+async function iaSend() {
+  var input = document.getElementById('iaInput');
+  var btn = document.getElementById('iaSendBtn');
+  if (!input) return;
+  var text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  iaAutoResize(input);
+  if (btn) btn.disabled = true;
+
+  iaAppendMsg('user', text);
+  iaMessages.push({ role: 'user', content: text });
+
+  var typing = iaAppendMsg('bot', '…', 'typing');
+
+  try {
+    var res = await fetch(IA_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+      body: JSON.stringify({ messages: iaMessages, context: iaBuildContext() }),
+    });
+    var data = await res.json();
+    var reply = data.reply || data.error || 'Sin respuesta';
+    if (typing) typing.remove();
+    iaAppendMsg('bot', reply);
+    iaMessages.push({ role: 'assistant', content: reply });
+    if (iaMessages.length > 20) iaMessages = iaMessages.slice(-20);
+  } catch (e) {
+    if (typing) typing.remove();
+    iaAppendMsg('bot', 'Error de conexión. Intentá de nuevo.');
+  }
+
+  if (btn) btn.disabled = false;
+  if (input) input.focus();
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 </script>
 </body>
