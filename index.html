@@ -2070,7 +2070,7 @@ function nfSetLang(c){
   // Secciones principales
   document.querySelectorAll('.sec-title').forEach(function(el){
     var t = el.textContent.trim();
-    if(t.includes('Ingreso') || t.includes('Income') || t.includes('Receita'))  el.textContent = LD.secIngresos;
+    if(t.includes('Ingreso') || t.includes('Income') || t.includes('Receita'))  { var _sv=el.querySelector('svg'); el.textContent = LD.secIngresos; if(_sv) el.appendChild(_sv); }
     if(t.includes('Gasto') || t.includes('Expense') || t.includes('Despesa'))   el.textContent = LD.secGastos;
     if(t.includes('Tarjeta') || t.includes('Card') || t.includes('Cartão'))     el.textContent = LD.secTarjetas;
     if(t.includes('categor') || t.includes('Categor') || t.includes('categ'))   el.textContent = LD.secCat;
