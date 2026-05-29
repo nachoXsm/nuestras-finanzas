@@ -1353,10 +1353,10 @@
 <!-- ALIAS MODAL -->
 <div class="modal-overlay" id="aliasModal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal">
-    <div class="modal-head"><span>🏦 Alias para transferencias</span><button class="modal-close" onclick="document.getElementById('aliasModal').classList.remove('open')">✕</button></div>
-    <p style="font-size:12px;opacity:.6;margin:0 0 14px">El alias o CBU que cada uno comparte para recibir transferencias.</p>
+    <div class="modal-head"><span>Alias para transferir</span><button class="modal-close" onclick="document.getElementById('aliasModal').classList.remove('open')">✕</button></div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 16px;line-height:1.5">El alias, CVU o CBU de cada persona para recibir transferencias. Solo se guarda en este dispositivo.</p>
     <div id="aliasModalBody"></div>
-    <button class="btn btn-primary" onclick="saveGrupoAliasModal()" style="width:100%;margin-top:12px">Guardar</button>
+    <button onclick="saveGrupoAliasModal()" style="width:100%;margin-top:4px;background:var(--primary);color:#0a1628;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px">Guardar</button>
   </div>
 </div>
 
@@ -7779,12 +7779,18 @@ function abrirConfirmLiquidacion() {
 function openGrupoAliasModal() {
   var personas = state.personas || [state.persona1, state.persona2].filter(Boolean);
   var aliases = grupoGetAliases();
+  var avatarColors = ['#5b6af7','#1db954','#f7a23b','#e05c6e','#9b59b6','#00b4d8'];
   var html = '';
-  personas.forEach(function(p) {
+  personas.forEach(function(p, idx) {
     var safeId = 'alias_' + p.replace(/[^a-zA-Z0-9]/g, '_');
-    html += '<div style="margin-bottom:14px">';
-    html += '<label style="font-size:12px;font-weight:700;opacity:.65;display:block;margin-bottom:5px">' + p + '</label>';
-    html += '<input class="form-input" id="' + safeId + '" value="' + (aliases[p] || '') + '" placeholder="ej: ' + p.toLowerCase().replace(/\s+/g,'.') + '.mp" style="width:100%;box-sizing:border-box">';
+    var initial = p.charAt(0).toUpperCase();
+    var avatarBg = avatarColors[idx % avatarColors.length];
+    html += '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 16px;margin-bottom:10px">';
+    html += '<div style="display:flex;align-items:center;gap:11px;margin-bottom:11px">';
+    html += '<div style="width:34px;height:34px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">' + initial + '</div>';
+    html += '<span style="font-size:14px;font-weight:700;color:#e8edf8">' + p + '</span>';
+    html += '</div>';
+    html += '<input id="' + safeId + '" value="' + (aliases[p] || '') + '" placeholder="alias · CVU · CBU" autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;font-size:14px;color:#e8edf8;outline:none;-webkit-appearance:none;font-family:inherit" onfocus="this.style.borderColor=\'rgba(94,206,200,.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,.1)\'">';
     html += '</div>';
   });
   document.getElementById('aliasModalBody').innerHTML = html;
