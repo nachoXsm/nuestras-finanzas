@@ -10,6 +10,15 @@
   "theme_color": "#0b0f1e",
   "lang": "es-AR",
   "categories": ["finance", "utilities"],
+  "screenshots": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Pantalla principal de Nuestras Finanzas"
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",

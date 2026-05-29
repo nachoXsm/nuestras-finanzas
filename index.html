@@ -8540,16 +8540,13 @@ toggleTheme = function(){
   if(btn) btn.textContent = isDark ? '☀️' : '🌙';
 };
 
-// Desregistrar service workers viejos y limpiar cache para forzar actualizaciones
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(function(regs){
-    regs.forEach(function(r){ r.unregister(); });
-  });
-  if(window.caches){
-    caches.keys().then(function(keys){
-      keys.forEach(function(k){ caches.delete(k); });
+// Registrar service worker para PWA / Play Store
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(e) {
+      console.warn('SW register failed:', e);
     });
-  }
+  });
 }
 
 // ============================================
