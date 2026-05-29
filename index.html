@@ -7128,7 +7128,7 @@ async function processOCR(input) {
     }));
     console.log(window.lastStatementImportDebug);
     console.groupEnd();
-    if ((isStatement && statementItems.length) || statementItems.length >= 3) {
+    if (!isSinglePaymentReceipt(text) && ((isStatement && statementItems.length) || statementItems.length >= 3)) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
       setTimeout(function() {
@@ -7165,9 +7165,61 @@ async function processOCR(input) {
   input.value = '';
 }
 
+function isSinglePaymentReceipt(text) {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes('pagaste a') ||
+    lower.includes('total pagado') ||
+    (lower.includes('mercado pago') && lower.includes('comprobante')) ||
+    (lower.includes('comprobante de pago') && !lower.includes('resumen'))
+  );
+}
+
 function parseTicketText(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   const result = { descripcion: '', monto: '', categoria: 'Otros', dia: '', fecha: '' };
+
+  // ---- MERCADO PAGO / SINGLE-PAYMENT RECEIPT ----
+  const lower = text.toLowerCase();
+  if (lower.includes('pagaste a') || lower.includes('total pagado')) {
+    // Description: line after "Pagaste a"
+    const pagasteIdx = lines.findIndex(l => /^pagaste\s+a$/i.test(l));
+    if (pagasteIdx >= 0 && lines[pagasteIdx + 1]) {
+      result.descripcion = lines[pagasteIdx + 1].slice(0, 40).trim();
+    }
+    // Amount: "Total pagado $X" or "Total pagado\n$X"
+    const totalPagadoMatch = text.match(/total\s+pagado\s*[:\$]?\s*\$?\s*([\d.,]+)/i);
+    if (totalPagadoMatch) {
+      result.monto = parseOCRMoney(totalPagadoMatch[1]) || '';
+    }
+    if (!result.monto) {
+      const tpIdx = lines.findIndex(l => /total\s+pagado/i.test(l));
+      if (tpIdx >= 0) {
+        for (let i = tpIdx; i <= tpIdx + 2; i++) {
+          const m = (lines[i] || '').match(/\$?\s*([\d.,]+)/);
+          if (m) { result.monto = parseOCRMoney(m[1]) || ''; if (result.monto) break; }
+        }
+      }
+    }
+    // Date: "Fecha de pago DD/MM/YYYY HH:MM:SS"
+    const fechaPagoMatch = text.match(/fecha\s+de\s+pago\s+(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i);
+    if (fechaPagoMatch) {
+      const d = parseInt(fechaPagoMatch[1], 10), m = parseInt(fechaPagoMatch[2], 10);
+      let y = parseInt(fechaPagoMatch[3], 10);
+      if (y < 100) y += 2000;
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+        result.dia = d;
+        result.fecha = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      }
+    }
+    // Category hint: servicios for utilities
+    const servKeywords = ['naturgy','edenor','edesur','metrogas','aysa','telecom','personal','claro','movistar','fibertel','cablevision','gas','luz','agua'];
+    const descLower = (result.descripcion || '').toLowerCase();
+    if (servKeywords.some(kw => descLower.includes(kw) || lower.includes(kw))) {
+      result.categoria = 'Servicios';
+    }
+    if (result.descripcion || result.monto) return result;
+  }
 
   // ---- FIND TOTAL ----
   // Strategy: find ALL occurrences of a real TOTAL line (excluding TOTAL NETO,
