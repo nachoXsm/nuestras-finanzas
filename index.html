@@ -7213,7 +7213,7 @@ async function processOCR(input) {
 
     setTimeout(function() {
       if (prog) prog.style.display = 'none';
-      toast('✅ Archivo leído — revisá y confirmá los datos');
+      toast(needsAI ? '🤖 Leído con IA — revisá y confirmá' : '✅ Leído con regex — revisá y confirmá');
     }, 800);
 
   } catch(e) {
