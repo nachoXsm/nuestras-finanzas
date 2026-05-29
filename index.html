@@ -333,7 +333,7 @@
     .group-expense-title{font-size:14px;font-weight:800;line-height:1.2;color:var(--text);margin-bottom:10px}
     .group-expense-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
     .group-expense-side{display:flex;flex-direction:column;align-items:flex-end;gap:9px;align-self:start;padding-top:2px;white-space:nowrap}
-    .group-expense-amount{font-size:16px;font-weight:900;line-height:1.2;color:var(--danger);letter-spacing:-.2px}
+    .group-expense-amount{font-size:15px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
     .group-expense-actions{display:flex;gap:6px;justify-content:flex-end}
     .item-info{flex:1;min-width:0}.item-name{font-size:14px;font-weight:700}
     .item-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -4105,7 +4105,6 @@ function renderAllGrupo() {
 
         // Verde si yo pagué o fue dividido; rojo si otro pagó y me deben
         var yoPague = isDividido || isCompartido || (g.quien === yoName);
-        var amountColor = yoPague ? 'var(--success)' : 'var(--danger)';
 
         // Cuota badge (debajo del meta)
         var cuotaVal = cuotaDisplayValue(g);
@@ -4121,7 +4120,7 @@ function renderAllGrupo() {
             '<span class="tag tag-medio">' + medioLabel + (cuotaVal ? ' &nbsp;<span class="nfi-cuota">' + cuotaVal + '</span>' : '') + '</span>' +
           '</div>' +
           '<div class="group-expense-side">' +
-            '<span class="group-expense-amount" style="color:'+amountColor+'">'+fmtCurrency(montoMostrar, g.moneda)+'</span>' +
+            '<span class="group-expense-amount '+(yoPague?'nfi-amt-inc':'nfi-amt-exp')+'">'+fmtCurrency(montoMostrar, g.moneda)+'</span>' +
             '<div class="group-expense-actions">' +
               '<button class="nf-btn-edit" onclick="editGasto(&quot;'+g.id+'&quot;)" title="Editar">✏️</button>' +
               '<button class="nf-btn-del" onclick="deleteGasto(&quot;'+g.id+'&quot;)" title="Eliminar">🗑</button>' +
