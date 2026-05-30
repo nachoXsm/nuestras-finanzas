@@ -8391,22 +8391,33 @@ async function enviarInvitacion() {
   const msg = document.getElementById('gsInviteMsg');
   const code = document.getElementById('gsCode').textContent;
   if (!contact) { msg.style.color='var(--danger)'; msg.textContent='Ingresá un email o teléfono'; return; }
-  
+
   const isEmail = contact.includes('@');
   const isPhone = /^[\d\+\-\s\(\)]{7,}$/.test(contact);
-  
+
   if (isPhone) {
-    // Abrir WhatsApp con el número
     const phone = contact.replace(/\D/g,'');
     const text = encodeURIComponent(`¡Te invito a NuestrasFinanzas! 💰 Código: ${code}`);
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
     msg.style.color='var(--success)'; msg.textContent='✅ Abriendo WhatsApp…';
   } else if (isEmail) {
-    // Abrir cliente de email
-    const subject = encodeURIComponent('Invitación a NuestrasFinanzas');
-    const body = encodeURIComponent(`Hola!\n\nTe invito a usar NuestrasFinanzas para gestionar gastos juntos.\n\nUsá este código para unirte: ${code}\n\nDescargá la app en: https://nuestrasfinanzas.app`);
-    window.open(`mailto:${contact}?subject=${subject}&body=${body}`, '_blank');
-    msg.style.color='var(--success)'; msg.textContent='✅ Abriendo email…';
+    msg.style.color='var(--muted)'; msg.textContent='Enviando…';
+    const remitente = (state.personas && state.personas[0]) || state.persona1 || 'Un amigo';
+    try {
+      const res = await fetch(SB_URL + '/functions/v1/send-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        body: JSON.stringify({ email: contact, codigo: code, grupoNombre: state.grupoNombre || '', remitente }),
+      });
+      if (res.ok) {
+        msg.style.color='var(--success)'; msg.textContent='✅ Invitación enviada';
+      } else {
+        const err = await res.json().catch(() => ({}));
+        msg.style.color='var(--danger)'; msg.textContent='❌ ' + (err.error || 'No se pudo enviar');
+      }
+    } catch(e) {
+      msg.style.color='var(--danger)'; msg.textContent='❌ Error al enviar';
+    }
   } else {
     msg.style.color='var(--danger)'; msg.textContent='Ingresá un email o teléfono válido';
   }
@@ -9356,15 +9367,33 @@ function invitarAlGrupo(id, codigo, nombre) {
   document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-function enviarInvitacionDirecta(contact, codigo, nombre) {
+async function enviarInvitacionDirecta(contact, codigo, nombre) {
   contact = (contact||'').trim();
   if (!contact) { toast('Ingresá un email o teléfono'); return; }
-  const msg = '¡Te invito al grupo "' + nombre + '" en NuestrasFinanzas! Código: ' + codigo;
   const isPhone = /^[\d\+]{7,}$/.test(contact.replace(/\s/g,''));
   if (isPhone) {
+    const msg = '¡Te invito al grupo "' + nombre + '" en NuestrasFinanzas! Código: ' + codigo;
     window.open('https://wa.me/' + contact.replace(/\D/g,'') + '?text=' + encodeURIComponent(msg), '_blank');
   } else {
-    window.open('mailto:' + contact + '?subject=' + encodeURIComponent('Invitación a NuestrasFinanzas') + '&body=' + encodeURIComponent(msg), '_blank');
+    toast('Enviando invitación…');
+    const remitente = (state.personas && state.personas[0]) || state.persona1 || 'Un amigo';
+    try {
+      const res = await fetch(SB_URL + '/functions/v1/send-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        body: JSON.stringify({ email: contact, codigo: codigo, grupoNombre: nombre, remitente }),
+      });
+      if (res.ok) {
+        toast('✅ Invitación enviada a ' + contact);
+        const inp = document.getElementById('inviteContactInput');
+        if (inp) inp.value = '';
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast('❌ ' + (err.error || 'No se pudo enviar'));
+      }
+    } catch(e) {
+      toast('❌ Error al enviar');
+    }
   }
 }
 
