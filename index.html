@@ -346,7 +346,7 @@
     .cat-select-preview img{width:100%;height:100%;object-fit:contain;display:block}
     .group-expense-item{display:grid;grid-template-columns:52px minmax(0,1fr) max-content;align-items:start;column-gap:12px;row-gap:4px;margin-bottom:18px;padding:0 0 4px 0}
     .group-expense-main{min-width:0;padding-top:2px}
-    .group-expense-title{font-size:14px;font-weight:800;line-height:1.2;color:var(--text);margin-bottom:10px}
+    .group-expense-title{font-size:14px;font-weight:800;line-height:1.2;color:var(--text);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .group-expense-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
     .group-expense-side{display:flex;flex-direction:column;align-items:flex-end;gap:9px;align-self:start;padding-top:2px;white-space:nowrap}
     .group-expense-amount{font-size:15px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
@@ -731,6 +731,7 @@
   <div class="lock-tagline">Tu economía en orden</div>
   <button class="lock-orb" onclick="tryBiometric()">🔒</button>
   <div class="lock-hint" id="lockHint">Tocá para desbloquear</div>
+  <button onclick="recuperarAccesoPIN()" style="margin-top:24px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;opacity:.7">¿Olvidaste tu acceso?</button>
   <div class="pin-wrap" id="pinWrap">
     <div class="pin-dots">
       <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
@@ -2552,9 +2553,9 @@ function toggleCardFields() {
   document.getElementById('gTarjetaField').style.display = (isTarjeta && hayTarjetas) ? '' : 'none';
   document.getElementById('gCuotasField').style.display = isTarjeta ? '' : 'none';
   const lbl = document.getElementById('g_monto_label');
-  if (lbl) lbl.textContent = isTarjeta ? 'Valor de cada cuota' : 'Monto';
+  if (lbl) lbl.textContent = isTarjeta ? 'Monto total' : 'Monto';
   const ph = document.getElementById('g_monto');
-  if (ph) ph.placeholder = isTarjeta ? 'Ej: 16.667' : '0';
+  if (ph) ph.placeholder = isTarjeta ? 'Ej: 50.000' : '0';
 }
 function updateCardSelects() {
   const sel = document.getElementById('g_tarjeta');
@@ -2624,7 +2625,7 @@ async function saveGasto() {
 
   const medio = document.getElementById('g_medio').value;
   const cuotas = isCardPayment(medio) ? parseInt(document.getElementById('g_cuotas').value)||1 : 1;
-  const cuotaMonto = monto; // Opción A: monto ya es el valor por cuota
+  const cuotaMonto = cuotas > 1 ? Math.round((monto / cuotas) * 100) / 100 : monto;
   const _fd = document.getElementById('g_fecha'); const _fdv = _fd ? _fd.value : ''; const _fdate = _fdv ? new Date(_fdv+'T12:00:00') : new Date();
   const gMes = _fdate.getMonth()+1; const gAnio = _fdate.getFullYear();
 
@@ -3495,6 +3496,20 @@ function cerrarSesion() {
   }, 300);
 }
 
+function recuperarAccesoPIN() {
+  var codigo = (window.prompt('Ingresá el código de tu grupo para recuperar el acceso:') || '').trim().toUpperCase().replace(/-/g,'');
+  if (!codigo) return;
+  var g = loadGroup();
+  var grupoCodigo = (g && g.codigo) ? g.codigo.replace(/-/g,'') : null;
+  if (!grupoCodigo || codigo !== grupoCodigo) {
+    alert('Código incorrecto. Si no recordás el código, pedíselo a otro miembro del grupo.');
+    return;
+  }
+  localStorage.removeItem('nf_pin');
+  localStorage.removeItem('nf_cred');
+  alert('Acceso restablecido. Vas a poder crear un nuevo PIN al ingresar.');
+  window.location.reload();
+}
 
 function buildManifest(){
   const link=document.getElementById('pwa-manifest');
@@ -3989,6 +4004,18 @@ function calcularLiquidacionGrupo() {
     });
   });
 
+  // Descontar liquidaciones por par (saldos individuales)
+  var _liqPar = (function(){ var _g = loadGroup(); return (_g && _g.liquidacionesPar) || []; })();
+  if (_liqPar.length) {
+    _liqPar
+      .filter(function(lp){ return !_lastLiq || lp.fecha > _lastLiq.fecha; })
+      .forEach(function(lp) {
+        var d = deudas.find(function(d){ return d.de === lp.de && d.a === lp.a; });
+        if (d) d.monto = Math.max(0, Math.round((d.monto - lp.monto) * 100) / 100);
+      });
+    deudas = deudas.filter(function(d){ return d.monto > 0.5; });
+  }
+
   return {
     gastos: gs,
     totalGrupo: totalGrupo,
@@ -4085,6 +4112,10 @@ function renderAllGrupo() {
     if (_liqHist) {
       balCard.innerHTML += '<div style="font-size:10px;opacity:.38;margin-top:10px;text-align:center">Liquidación: ' + _liqHist.fechaDisplay + '</div>';
     }
+    if (!document.getElementById('balancePrivacyBtn')) {
+      balCard.insertAdjacentHTML('beforeend', '<button type="button" id="balancePrivacyBtn" class="balance-privacy-btn" onclick="toggleBalancePrivacy()"></button>');
+    }
+    if (typeof setupBalancePrivacy === 'function') setupBalancePrivacy();
   }
 
   // PANEL LIQUIDAR antes de gastos
@@ -4099,11 +4130,15 @@ function renderAllGrupo() {
     deudas.forEach(function(d) {
       var _alias = (_aliases[d.a] || '').trim();
       html += '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between">';
-      html += '<div><span style="font-weight:700;color:var(--danger)">' + d.de + '</span>';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">';
+      html += '<div style="min-width:0"><span style="font-weight:700;color:var(--danger)">' + d.de + '</span>';
       html += '<span style="font-size:11px;color:var(--muted)"> debe › </span>';
       html += '<span style="font-weight:700;color:var(--success)">' + d.a + '</span></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">';
       html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span>';
+      html += '<button onclick="confirmarLiquidacionPar(\'' + d.de.replace(/'/g,"\\'") + '\',\'' + d.a.replace(/'/g,"\\'") + '\',' + d.monto + ')" style="background:var(--primary);color:#0a1628;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">Saldar</button>';
+      html += '<button onclick="abrirReclamoDeuda(\'' + d.de.replace(/'/g,"\\'") + '\',\'' + d.a.replace(/'/g,"\\'") + '\',' + d.monto + ')" style="background:none;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap">Reclamar</button>';
+      html += '</div>';
       html += '</div>';
       if (_alias) {
         html += '<div style="display:flex;align-items:center;gap:8px;margin-top:5px">';
@@ -4117,7 +4152,7 @@ function renderAllGrupo() {
     });
     html += '<div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:8px">';
     html += '<button onclick="openGrupoAliasModal()" style="background:none;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:8px 14px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;flex-shrink:0">✏ Alias</button>';
-    html += '<button onclick="abrirConfirmLiquidacion()" style="flex:1;background:var(--primary);color:#0a1628;border:none;border-radius:12px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer">Marcar como saldado</button>';
+    html += '<button onclick="abrirConfirmLiquidacion()" style="flex:1;background:rgba(255,255,255,.07);color:var(--text);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer">Saldar todo</button>';
     html += '</div>';
     html += '</div>';
     panel.innerHTML = html;
@@ -4141,9 +4176,10 @@ function renderAllGrupo() {
       var lastDate = '';
       var nPart = participantes.length || 2;
       gastoList2.innerHTML = sorted.map(function(g) {
-        const catIcon = categoryIconInner(g.cat);
-        const catColor = CAT_COLORS[g.cat]||'#888';
-        const catBg = categoryIconBg(g.cat);
+        const _esTarjetaGrupo = isCardPayment && isCardPayment(g);
+        const catIcon = _esTarjetaGrupo ? cardStatementIconSvg() : categoryIconInner(g.cat);
+        const catColor = _esTarjetaGrupo ? '#2563eb' : (CAT_COLORS[g.cat]||'#888');
+        const catBg = _esTarjetaGrupo ? '#DDE8FF' : categoryIconBg(g.cat);
         const key = fechaGastoKey(g);
         const dateHead = key !== lastDate ? '<div style="font-size:16px;font-weight:800;color:var(--text);margin:20px 4px 10px;text-transform:capitalize">' + fechaGastoTitulo(g) + '</div>' : '';
         lastDate = key;
@@ -7830,11 +7866,73 @@ function grupoSaveAliases(aliases) {
   saveGroupLocal(g);
 }
 
+function abrirReclamoDeuda(de, a, monto) {
+  var mensajes = {
+    verde:  '😊 Hola ' + de + '! Cuando puedas, acordate que me debés ' + fmt(monto) + '. ¡Sin apuro!',
+    amarillo: '👋 ' + de + ', te recuerdo que tenés una deuda pendiente conmigo de ' + fmt(monto) + '. ¿Cuándo me lo pasás?',
+    rojo: '⚠️ ' + de + ', necesito que saldes tu deuda de ' + fmt(monto) + ' a la brevedad. Por favor coordinemos.'
+  };
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:16px';
+  modal.innerHTML =
+    '<div style="background:#0f1d35;border-radius:20px;padding:20px;width:100%;max-width:400px;max-height:80vh;overflow-y:auto">' +
+    '<div style="font-size:14px;font-weight:800;margin-bottom:4px">Reclamar deuda</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">Elegí el tono del mensaje</div>' +
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">' +
+    '<button onclick="enviarReclamo(\'verde\',\'' + de.replace(/'/g,"\\'") + '\')" style="background:rgba(30,200,120,.12);border:1.5px solid rgba(30,200,120,.4);border-radius:12px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--text)">' +
+      '<div style="font-size:12px;font-weight:800;color:#1ec978;margin-bottom:4px">😊 Amigable</div>' +
+      '<div style="font-size:11px;opacity:.8">' + mensajes.verde + '</div></button>' +
+    '<button onclick="enviarReclamo(\'amarillo\',\'' + de.replace(/'/g,"\\'") + '\')" style="background:rgba(245,158,11,.1);border:1.5px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--text)">' +
+      '<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:4px">👋 Intermedio</div>' +
+      '<div style="font-size:11px;opacity:.8">' + mensajes.amarillo + '</div></button>' +
+    '<button onclick="enviarReclamo(\'rojo\',\'' + de.replace(/'/g,"\\'") + '\')" style="background:rgba(220,38,38,.1);border:1.5px solid rgba(220,38,38,.35);border-radius:12px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--text)">' +
+      '<div style="font-size:12px;font-weight:800;color:#ef4444;margin-bottom:4px">⚠️ Firme</div>' +
+      '<div style="font-size:11px;opacity:.8">' + mensajes.rojo + '</div></button>' +
+    '</div>' +
+    '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:none;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:10px;font-size:13px;color:var(--muted);cursor:pointer">Cancelar</button>' +
+    '</div>';
+  window._reclamoMensajes = mensajes;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e){ if (e.target === modal) modal.remove(); });
+}
+
+function enviarReclamo(intensidad, de) {
+  var mensajes = window._reclamoMensajes || {};
+  var texto = mensajes[intensidad] || '';
+  var modal = document.querySelector('[style*="position:fixed"][style*="z-index:9999"]');
+  if (modal) modal.remove();
+  var waUrl = 'https://wa.me/?text=' + encodeURIComponent(texto);
+  var shareOk = false;
+  if (navigator.share) {
+    navigator.share({ text: texto }).then(function(){ shareOk = true; }).catch(function(){});
+    shareOk = true;
+  }
+  if (!shareOk) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(texto).then(function(){ toast('📋 Mensaje copiado — envialo por donde quieras'); }).catch(function(){});
+    } else {
+      window.open(waUrl, '_blank');
+    }
+  }
+}
+
+function confirmarLiquidacionPar(de, a, monto) {
+  if (!window.confirm('¿Confirmar que ' + de + ' le pagó ' + fmt(monto) + ' a ' + a + '?')) return;
+  var g = loadGroup(); if (!g) return;
+  var now = new Date();
+  var fecha = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  if (!g.liquidacionesPar) g.liquidacionesPar = [];
+  g.liquidacionesPar.push({ de: de, a: a, monto: monto, fecha: fecha, ts: now.toISOString() });
+  saveGroupLocal(g);
+  renderAllGrupo();
+  toast('✅ ' + de + ' y ' + a + ' están a mano');
+}
+
 function abrirConfirmLiquidacion() {
   var liq = calcularLiquidacionGrupo();
   if (!liq.deudas.length) { toast('No hay deudas pendientes'); return; }
   var lineas = liq.deudas.map(function(d){ return '• ' + d.de + ' → ' + d.a + ': ' + fmt(d.monto); }).join('\n');
-  if (window.confirm('¿Confirmar que estas deudas fueron saldadas?\n\n' + lineas + '\n\nEl saldo del grupo vuelve a $0 desde hoy.')) {
+  if (window.confirm('¿Confirmar que TODAS las deudas fueron saldadas?\n\n' + lineas + '\n\nEl saldo del grupo vuelve a $0 desde hoy.')) {
     grupoSaveLiquidacion();
     renderAllGrupo();
     toast('✅ Saldo liquidado — están todos a mano');
