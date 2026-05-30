@@ -2621,6 +2621,12 @@ function toggleForm(id) {
       // g_mes y g_anio ya no existen como campos separados
       if (typeof loadCustomCatsIntoSelect === 'function') loadCustomCatsIntoSelect();
       updateCategoryPreview();
+      // Default quien to first persona instead of "Todos"
+      const _quienSel = document.getElementById('g_quien');
+      if (_quienSel && (_quienSel.value === 'Todos' || _quienSel.value === 'Ambos' || !_quienSel.value)) {
+        const _defQuien = (state.personas && state.personas[0]) || state.persona1 || '';
+        if (_defQuien && _quienSel.value !== _defQuien) { _quienSel.value = _defQuien; toggleDivision(); }
+      }
     }
     if (id==='fTarjeta') {
       document.getElementById('t_cierre_mes').value = state.mes;
