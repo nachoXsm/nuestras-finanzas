@@ -1289,6 +1289,15 @@
       <div class="perfil-row-right">›</div>
     </div>
 
+    <div class="perfil-row" onclick="configurarEmailRecuperacion()">
+      <div class="perfil-row-icon" style="background:rgba(18,199,183,.12)">📧</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">Email de recuperación</div>
+        <div class="perfil-row-sub" id="perfilEmailRecSub">Para recuperar el acceso si olvidás el PIN</div>
+      </div>
+      <div class="perfil-row-right">›</div>
+    </div>
+
     <div class="perfil-divider"></div>
     <div class="perfil-section">Ayuda</div>
     <div class="perfil-row" onclick="closePerfil();abrirAyuda()">
@@ -1400,7 +1409,7 @@
 
       <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
         <div style="font-size:13px;font-weight:800;margin-bottom:8px">🔒 Olvidé mi acceso</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">En la pantalla de bloqueo tocá <b style="color:var(--text)">¿Olvidaste tu acceso?</b> e ingresá el código de tu grupo para restablecer el PIN. Si no recordás el código, pedíselo a otro miembro del grupo.</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">Primero configurá tu <b style="color:var(--text)">email de recuperación</b> desde tu perfil (antes de necesitarlo). Si olvidás el PIN, tocá <b style="color:var(--text)">¿Olvidaste tu acceso?</b> en la pantalla de bloqueo e ingresá ese email para restablecer el acceso.</div>
       </div>
 
       <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
@@ -3489,6 +3498,8 @@ function openPerfil() {
   document.querySelectorAll('.perfil-lang-opt').forEach(b => {
     b.classList.toggle('active', b.dataset.lang === nfLang);
   });
+  // Email recuperación
+  updatePerfilEmailRecSub();
   // Abrir
   document.getElementById('perfilOverlay').classList.add('open');
   document.getElementById('perfilPanel').classList.add('open');
@@ -3568,18 +3579,38 @@ function abrirAyuda() {
 }
 
 function recuperarAccesoPIN() {
-  var codigo = (window.prompt('Ingresá el código de tu grupo para recuperar el acceso:') || '').trim().toUpperCase().replace(/-/g,'');
-  if (!codigo) return;
-  var g = loadGroup();
-  var grupoCodigo = (g && g.codigo) ? g.codigo.replace(/-/g,'') : null;
-  if (!grupoCodigo || codigo !== grupoCodigo) {
-    alert('Código incorrecto. Si no recordás el código, pedíselo a otro miembro del grupo.');
+  var savedEmail = localStorage.getItem('nf_recovery_email') || '';
+  if (!savedEmail) {
+    alert('No tenés un email de recuperación configurado.\n\nAndá a tu perfil → Email de recuperación para configurarlo antes de necesitarlo.');
+    return;
+  }
+  var ingresado = (window.prompt('Ingresá tu email de recuperación:') || '').trim().toLowerCase();
+  if (!ingresado) return;
+  if (ingresado !== savedEmail.toLowerCase()) {
+    alert('Email incorrecto. Si no recordás el email configurado, intentá desde otro dispositivo donde tengas acceso a la app.');
     return;
   }
   localStorage.removeItem('nf_pin');
   localStorage.removeItem('nf_cred');
-  alert('Acceso restablecido. Vas a poder crear un nuevo PIN al ingresar.');
+  alert('✅ Acceso restablecido. Vas a poder crear un nuevo PIN al ingresar.');
   window.location.reload();
+}
+
+function configurarEmailRecuperacion() {
+  var actual = localStorage.getItem('nf_recovery_email') || '';
+  var ingresado = (window.prompt('Ingresá tu email de recuperación:' + (actual ? '\n\nActual: ' + actual : ''), actual) || '').trim().toLowerCase();
+  if (!ingresado) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ingresado)) { toast('Email inválido'); return; }
+  localStorage.setItem('nf_recovery_email', ingresado);
+  var sub = document.getElementById('perfilEmailRecSub');
+  if (sub) sub.textContent = ingresado;
+  toast('✅ Email de recuperación guardado');
+}
+
+function updatePerfilEmailRecSub() {
+  var email = localStorage.getItem('nf_recovery_email') || '';
+  var sub = document.getElementById('perfilEmailRecSub');
+  if (sub) sub.textContent = email || 'Para recuperar el acceso si olvidás el PIN';
 }
 
 function buildManifest(){
@@ -4186,7 +4217,7 @@ function renderAllGrupo() {
     if (!document.getElementById('balancePrivacyBtn')) {
       balCard.insertAdjacentHTML('beforeend', '<button type="button" id="balancePrivacyBtn" class="balance-privacy-btn" onclick="toggleBalancePrivacy()"></button>');
     }
-    if (typeof setupBalancePrivacy === 'function') setupBalancePrivacy();
+    if (typeof setBalancePrivacyUI === 'function') setBalancePrivacyUI();
   }
 
   // PANEL LIQUIDAR antes de gastos
@@ -4201,15 +4232,15 @@ function renderAllGrupo() {
     deudas.forEach(function(d) {
       var _alias = (_aliases[d.a] || '').trim();
       html += '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">';
-      html += '<div style="min-width:0"><span style="font-weight:700;color:var(--danger)">' + d.de + '</span>';
-      html += '<span style="font-size:11px;color:var(--muted)"> debe › </span>';
-      html += '<span style="font-weight:700;color:var(--success)">' + d.a + '</span></div>';
-      html += '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">';
-      html += '<span style="font-size:15px;font-weight:800;color:var(--primary)">' + fmt(d.monto) + '</span>';
-      html += '<button onclick="confirmarLiquidacionPar(\'' + d.de.replace(/'/g,"\\'") + '\',\'' + d.a.replace(/'/g,"\\'") + '\',' + d.monto + ')" style="background:var(--primary);color:#0a1628;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">Saldar</button>';
-      html += '<button onclick="abrirReclamoDeuda(\'' + d.de.replace(/'/g,"\\'") + '\',\'' + d.a.replace(/'/g,"\\'") + '\',' + d.monto + ')" style="background:none;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap">Reclamar</button>';
+      html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px">';
+      html += '<span style="font-size:14px;font-weight:800;color:var(--danger)">' + d.de + '</span>';
+      html += '<span style="font-size:11px;color:var(--muted)">debe a</span>';
+      html += '<span style="font-size:14px;font-weight:800;color:var(--success)">' + d.a + '</span>';
       html += '</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px">';
+      html += '<span style="font-size:15px;font-weight:800;color:var(--primary);flex:1">' + fmt(d.monto) + '</span>';
+      html += '<button onclick="confirmarLiquidacionPar(\'' + d.de.replace(/'/g,"\\'") + '\',\'' + d.a.replace(/'/g,"\\'") + '\',' + d.monto + ')" style="background:var(--primary);color:#0a1628;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">Saldar</button>';
+      html += '<button onclick="abrirReclamoDeuda(\'' + d.de.replace(/'/g,"\\'") + '\',\'' + d.a.replace(/'/g,"\\'") + '\',' + d.monto + ')" style="background:none;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap">Reclamar</button>';
       html += '</div>';
       if (_alias) {
         html += '<div style="display:flex;align-items:center;gap:8px;margin-top:5px">';
