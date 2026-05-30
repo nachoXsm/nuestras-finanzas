@@ -931,6 +931,13 @@
       <button class="gs-copy-btn" onclick="enviarInvitacion()" style="white-space:nowrap">Invitar →</button>
     </div>
     <div class="gs-error" id="gsInviteMsg" style="color:var(--success)"></div>
+    <div style="width:100%;height:1px;background:rgba(255,255,255,.08)"></div>
+    <div style="text-align:left;width:100%">
+      <div style="font-size:.78rem;font-weight:700;margin-bottom:4px">🔐 Email de recuperación</div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;line-height:1.4">Si perdés el código de acceso o el PIN, con este email podés recuperarlo. <strong style="color:var(--text)">Requerido.</strong></div>
+      <input class="gs-input" id="gsRecoveryEmail" type="email" placeholder="tu@email.com" style="font-size:.85rem" autocomplete="email">
+    </div>
+    <div class="gs-error" id="gsEmailErr"></div>
     <button class="gs-btn gs-btn-primary" onclick="enterAppSegunTipo()">Entrar a la app →</button>
   </div>
 </div>
@@ -8377,6 +8384,23 @@ function copyCode() {
 var _tipoCreado = 'hogar'; // 'hogar' o 'grupo'
 
 function enterAppSegunTipo() {
+  var emailInput = document.getElementById('gsRecoveryEmail');
+  var emailErr = document.getElementById('gsEmailErr');
+  if (emailInput) {
+    var email = (emailInput.value || '').trim().toLowerCase();
+    if (!email) {
+      if (emailErr) emailErr.textContent = 'Ingresá tu email de recuperación para continuar';
+      emailInput.focus();
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (emailErr) emailErr.textContent = 'Email inválido, revisalo';
+      emailInput.focus();
+      return;
+    }
+    localStorage.setItem('nf_recovery_email', email);
+    if (emailErr) emailErr.textContent = '';
+  }
   if (_tipoCreado === 'grupo') {
     setModoGrupo();
   } else {
