@@ -3650,8 +3650,13 @@ function setBalancePrivacyUI() {
   const card = document.querySelector('.balance-card');
   const total = document.getElementById('balanceTotal');
   const btn = document.getElementById('balancePrivacyBtn');
-  if (!card || !total) return;
   const hidden = isBalanceHidden();
+  if (btn) {
+    btn.innerHTML = nfEyeIcon(hidden);
+    btn.setAttribute('aria-label', hidden ? 'Mostrar saldo' : 'Ocultar saldo');
+    btn.title = hidden ? 'Mostrar saldo' : 'Ocultar saldo';
+  }
+  if (!card || !total) return;
   const realValue = total.getAttribute('data-real-value') || total.textContent || '$0';
   card.classList.toggle('privacy-hidden', hidden);
   total.textContent = hidden ? '••••••' : realValue;
@@ -3659,11 +3664,6 @@ function setBalancePrivacyUI() {
     const value = el.getAttribute('data-real-value') || el.textContent || '$0';
     el.textContent = hidden ? '••••••' : value;
   });
-  if (btn) {
-    btn.innerHTML = nfEyeIcon(hidden);
-    btn.setAttribute('aria-label', hidden ? 'Mostrar saldo' : 'Ocultar saldo');
-    btn.title = hidden ? 'Mostrar saldo' : 'Ocultar saldo';
-  }
 }
 
 function toggleBalancePrivacy() {
