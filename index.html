@@ -908,21 +908,23 @@
         <option value="PEN">🇵🇪 Perú · PEN</option>
       </select>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:500">Integrantes (hasta 10)</label>
-        <button class="add-person-btn" id="btnAddPerson" onclick="addPersonField()">+ Agregar</button>
-      </div>
-      <div id="personFields" style="display:flex;flex-direction:column;gap:8px">
-        <div class="person-field"><input type="text" class="gs-input pf-input" placeholder="Tu nombre"></div>
-      </div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:500">Tu nombre</label>
+      <input class="gs-input" id="gc_mi_nombre" type="text" placeholder="Ej: Nacho">
     </div>
     <div class="gs-error" id="gcError"></div>
     <button class="gs-btn gs-btn-primary" onclick="createGroup()" id="btnCreateGroup">Crear grupo →</button>
   </div>
   <div id="gsJoin" style="display:none;flex-direction:column;gap:16px;width:100%;max-width:340px">
     <div style="display:flex;align-items:center;gap:10px"><button class="gs-back" onclick="showWelcome()">‹</button><div class="gs-title">Unirme a un grupo</div></div>
-    <input class="gs-input" id="gj_codigo" type="text" placeholder="ABC123" maxlength="6" oninput="this.value=this.value.toUpperCase().replace(/-/g,'')" style="font-size:1.4rem;font-weight:800;text-align:center;letter-spacing:4px">
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:500">Código del grupo</label>
+      <input class="gs-input" id="gj_codigo" type="text" placeholder="ABC123" maxlength="6" oninput="this.value=this.value.toUpperCase().replace(/-/g,'')" style="font-size:1.4rem;font-weight:800;text-align:center;letter-spacing:4px">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:500">Tu nombre</label>
+      <input class="gs-input" id="gj_nombre" type="text" placeholder="Ej: Celi">
+    </div>
     <div class="gs-error" id="gjError"></div>
     <button class="gs-btn gs-btn-primary" onclick="joinGroup()">Entrar al grupo →</button>
   </div>
@@ -8458,14 +8460,13 @@ function removePersonField(btn) {
 
 async function createGroup() {
   const nombre = document.getElementById('gc_nombre').value.trim();
-  const personas = Array.from(document.querySelectorAll('.pf-input'))
-    .map(i => i.value.trim()).filter(v => v.length > 0);
+  const miNombre = document.getElementById('gc_mi_nombre').value.trim();
   const err = document.getElementById('gcError');
 
   if (!nombre) { err.textContent = 'Escribí el nombre del grupo'; return; }
-  if (personas.length < 1) { err.textContent = 'Ingresá al menos tu nombre'; return; }
-  if (personas.length > 10) { err.textContent = 'Máximo 10 integrantes'; return; }
+  if (!miNombre) { err.textContent = 'Ingresá tu nombre'; return; }
 
+  const personas = [miNombre];
   const moneda = document.getElementById('gc_pais_moneda')?.value || getDefaultCurrency();
   setDefaultCurrency(moneda);
   document.getElementById('btnCreateGroup').textContent = 'Creando…';
@@ -8474,8 +8475,8 @@ async function createGroup() {
   try {
     const res = await dbPost('grupos', {
       codigo, nombre,
-      persona1: personas[0],
-      persona2: personas[1] || '',
+      persona1: miNombre,
+      persona2: '',
       personas: JSON.stringify(personas),
       tipo: 'grupo'
     });
@@ -8498,9 +8499,11 @@ async function createGroup() {
 async function joinGroup() {
   const raw2 = document.getElementById('gj_codigo').value.trim().toUpperCase();
   const codigo = raw2.replace(/-/g,'');
+  const miNombre = (document.getElementById('gj_nombre') || {}).value?.trim() || '';
   const err = document.getElementById('gjError');
 
   if (codigo.length < 6) { err.textContent = 'Ingresá el código completo'; return; }
+  if (!miNombre) { err.textContent = 'Ingresá tu nombre'; return; }
 
   try {
     const res = await dbGet('grupos', `codigo=eq.${codigo}`);
@@ -8514,6 +8517,18 @@ async function joinGroup() {
     }
     if (!grupo.personasArray) {
       grupo.personasArray = [grupo.persona1, grupo.persona2].filter(Boolean);
+    }
+    // Agregar nombre del nuevo integrante si no está ya
+    if (!grupo.personasArray.includes(miNombre)) {
+      grupo.personasArray.push(miNombre);
+      // Persistir en la BD
+      try {
+        await dbPatch('grupos', grupo.id, {
+          personas: JSON.stringify(grupo.personasArray),
+          persona1: grupo.personasArray[0] || '',
+          persona2: grupo.personasArray[1] || '',
+        });
+      } catch(e) { console.warn('No se pudo actualizar el grupo:', e); }
     }
     // Unirse con código = es un grupo de gastos, no el hogar
     grupo.tipo = grupo.tipo || 'grupo';
