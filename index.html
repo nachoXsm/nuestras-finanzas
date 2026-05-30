@@ -502,6 +502,11 @@
     body:not(.dark) #ocrActionSheet{background:#fff!important}
     body:not(.dark) #ocrActionSheet button{background:rgba(20,33,61,.05)!important;border-color:rgba(20,33,61,.1)!important;color:#14213d!important}
     body:not(.dark) #ocrActionSheet button:active{background:rgba(20,33,61,.1)!important}
+    .ocr-type-pill{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;border-radius:14px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:var(--text);font-size:.85rem;font-weight:700;cursor:pointer;transition:all .15s;text-align:center}
+    .ocr-type-pill .ocr-pill-icon{font-size:1.8rem}
+    .ocr-type-pill.ocr-pill-active,.ocr-type-pill:focus{border-color:var(--primary);background:rgba(18,199,183,.12);color:var(--primary);outline:none}
+    body:not(.dark) .ocr-type-pill{background:rgba(20,33,61,.04);border-color:rgba(20,33,61,.1);color:#14213d}
+    body:not(.dark) .ocr-type-pill.ocr-pill-active{background:rgba(18,199,183,.12);border-color:var(--primary);color:var(--primary)}
     body{background:radial-gradient(circle at top,var(--bg-soft,#0d1830),var(--bg))!important;color:var(--text)!important}
     body:not(.dark) .balance-card{background:linear-gradient(135deg,#1a3a6e,var(--secondary))!important}
     body:not(.dark) .tcard{background:linear-gradient(135deg,#1e3a8a,#3b4fd4)!important;color:white!important}
@@ -1476,13 +1481,49 @@
 <div id="ocrActionOverlay" onclick="closeOcrActionSheet()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;backdrop-filter:blur(4px)"></div>
 <div id="ocrActionSheet" style="display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(430px,100%);background:var(--card);border-radius:24px 24px 0 0;z-index:2001;padding:20px 20px 36px;box-shadow:0 -8px 40px rgba(0,0,0,.35)">
   <div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);margin:0 auto 20px"></div>
-  <div style="font-size:.8rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Seleccionar una acción</div>
-  <button onclick="ocrChooseCamera()" style="display:flex;align-items:center;gap:16px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:16px 18px;border-radius:16px;font-size:1rem;font-weight:600;cursor:pointer;margin-bottom:10px;text-align:left">
-    <span style="font-size:1.6rem">📷</span><span>Cámara</span>
-  </button>
-  <button onclick="ocrChooseFiles()" style="display:flex;align-items:center;gap:16px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:16px 18px;border-radius:16px;font-size:1rem;font-weight:600;cursor:pointer;text-align:left">
-    <span style="font-size:1.6rem">🗂️</span><span>Fotos y archivos</span>
-  </button>
+
+  <!-- PASO 1: elegir acción -->
+  <div id="ocrStep1">
+    <div style="font-size:.8rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Seleccionar una acción</div>
+    <button onclick="ocrChooseCamera()" style="display:flex;align-items:center;gap:16px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:16px 18px;border-radius:16px;font-size:1rem;font-weight:600;cursor:pointer;margin-bottom:10px;text-align:left">
+      <span style="font-size:1.6rem">📷</span><span>Cámara</span>
+    </button>
+    <button onclick="ocrShowFileTypeStep()" style="display:flex;align-items:center;gap:16px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:16px 18px;border-radius:16px;font-size:1rem;font-weight:600;cursor:pointer;text-align:left">
+      <span style="font-size:1.6rem">🗂️</span><span>Fotos y archivos</span>
+    </button>
+  </div>
+
+  <!-- PASO 2: elegir tipo de archivo -->
+  <div id="ocrStep2" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button onclick="ocrResetSteps()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;padding:0;line-height:1">‹</button>
+      <div style="font-size:.8rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">¿Qué querés subir?</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button id="ocrPillComprobante" class="ocr-type-pill ocr-pill-active" onclick="ocrSelectType('comprobante')">
+        <span class="ocr-pill-icon">📄</span>
+        <span>Comprobante</span>
+      </button>
+      <button id="ocrPillResumen" class="ocr-type-pill" onclick="ocrSelectType('resumen')">
+        <span class="ocr-pill-icon">💳</span>
+        <span>Resumen de tarjeta</span>
+      </button>
+    </div>
+    <!-- Sección resumen: selector de tarjeta -->
+    <div id="ocrCardSection" style="display:none;flex-direction:column;gap:10px">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Tarjeta del resumen</div>
+      <select id="ocrTarjetaSelect" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-size:.9rem;font-weight:700;padding:12px 14px;width:100%;outline:none;cursor:pointer"></select>
+      <button onclick="ocrConfirmResumen()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--primary);border:none;color:#06131f;padding:15px 18px;border-radius:16px;font-size:1rem;font-weight:800;cursor:pointer">
+        Seleccionar archivo →
+      </button>
+    </div>
+    <!-- Sección comprobante: botón directo -->
+    <div id="ocrComprobanteSection" style="display:flex;flex-direction:column;gap:10px">
+      <button onclick="ocrConfirmComprobante()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--primary);border:none;color:#06131f;padding:15px 18px;border-radius:16px;font-size:1rem;font-weight:800;cursor:pointer">
+        Seleccionar archivo →
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -4678,12 +4719,70 @@ function triggerOCR() {
 function closeOcrActionSheet() {
   document.getElementById('ocrActionOverlay').style.display = 'none';
   document.getElementById('ocrActionSheet').style.display = 'none';
+  ocrResetSteps();
+}
+function ocrResetSteps() {
+  var s1 = document.getElementById('ocrStep1');
+  var s2 = document.getElementById('ocrStep2');
+  if (s1) s1.style.display = 'block';
+  if (s2) s2.style.display = 'none';
+  // reset pill state
+  var pc = document.getElementById('ocrPillComprobante');
+  var pr = document.getElementById('ocrPillResumen');
+  if (pc) pc.classList.add('ocr-pill-active');
+  if (pr) pr.classList.remove('ocr-pill-active');
+  var cs = document.getElementById('ocrCardSection');
+  var cmp = document.getElementById('ocrComprobanteSection');
+  if (cs) cs.style.display = 'none';
+  if (cmp) cmp.style.display = 'flex';
 }
 function ocrChooseCamera() {
   closeOcrActionSheet();
   document.getElementById('ocrCameraInput').click();
 }
 function ocrChooseFiles() {
+  closeOcrActionSheet();
+  document.getElementById('ocrInput').click();
+}
+function ocrShowFileTypeStep() {
+  document.getElementById('ocrStep1').style.display = 'none';
+  var step2 = document.getElementById('ocrStep2');
+  step2.style.display = 'block';
+  // Populate card dropdown
+  var sel = document.getElementById('ocrTarjetaSelect');
+  if (sel) {
+    var tarjetas = (state && state.tarjetas) || [];
+    if (!tarjetas.length) {
+      sel.innerHTML = '<option value="">Sin tarjetas cargadas</option>';
+    } else {
+      sel.innerHTML = tarjetas.map(function(t) {
+        return '<option value="' + t.id + '">' + (t.nombre || 'Tarjeta') + '</option>';
+      }).join('');
+    }
+  }
+}
+function ocrSelectType(type) {
+  var pc = document.getElementById('ocrPillComprobante');
+  var pr = document.getElementById('ocrPillResumen');
+  var cs = document.getElementById('ocrCardSection');
+  var cmp = document.getElementById('ocrComprobanteSection');
+  if (pc) pc.classList.toggle('ocr-pill-active', type === 'comprobante');
+  if (pr) pr.classList.toggle('ocr-pill-active', type === 'resumen');
+  if (cs) cs.style.display = type === 'resumen' ? 'flex' : 'none';
+  if (cmp) cmp.style.display = type === 'comprobante' ? 'flex' : 'none';
+}
+function ocrConfirmComprobante() {
+  closeOcrActionSheet();
+  document.getElementById('ocrInput').click();
+}
+function ocrConfirmResumen() {
+  var tarjetaSelect = document.getElementById('ocrTarjetaSelect');
+  if (tarjetaSelect && tarjetaSelect.value) {
+    var formTarjeta = document.getElementById('g_tarjeta');
+    if (formTarjeta) formTarjeta.value = tarjetaSelect.value;
+    var formMedio = document.getElementById('g_medio');
+    if (formMedio) { formMedio.value = 'tarjeta'; if (typeof toggleCardFields === 'function') toggleCardFields(); }
+  }
   closeOcrActionSheet();
   document.getElementById('ocrInput').click();
 }
