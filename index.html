@@ -961,7 +961,7 @@
 
   <div class="greeting">
     <h2 id="greetingText">Hola 👋</h2>
-    <p>Todo en orden para <span id="greetingMonth">este mes</span></p>
+    <p><span id="greetingSub">Todo en orden para</span> <span id="greetingMonth">este mes</span></p>
     <div class="month-row">
       <button class="mnav-btn" onclick="shiftMonth(-1)">‹</button>
       <div class="month-chip" onclick="openMonthPicker()" id="monthLabel">May 2026</div>
@@ -1290,6 +1290,17 @@
     </div>
 
     <div class="perfil-divider"></div>
+    <div class="perfil-section">Ayuda</div>
+    <div class="perfil-row" onclick="closePerfil();abrirAyuda()">
+      <div class="perfil-row-icon" style="background:rgba(18,199,183,.12)">📖</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">Instrucciones y ayuda</div>
+        <div class="perfil-row-sub">Cómo usar la app y preguntas frecuentes</div>
+      </div>
+      <div class="perfil-row-right">›</div>
+    </div>
+
+    <div class="perfil-divider"></div>
     <div class="perfil-section">Sesión</div>
     <div class="perfil-row" onclick="cerrarSesion()">
       <div class="perfil-row-icon" style="background:rgba(255,122,89,.12)">🚪</div>
@@ -1350,6 +1361,61 @@
     <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="15" height="15" rx="3"/><path d="M4.5 21L7.5 11l3 10"/><path d="M5.5 18h4"/><line x1="14" y1="13.5" x2="14" y2="21"/><circle cx="14" cy="11.5" r="1" style="fill:currentColor;stroke:none"/><path d="M16 2l.6 1.4 1.4.6-1.4.6L16 6l-.6-1.4-1.4-.6 1.4-.6Z"/><path d="M20.5 6.5l.3.7.7.3-.7.3-.3.7-.3-.7-.7-.3.7-.3Z"/></svg></span>IA
   </div>
 </nav>
+
+<!-- AYUDA MODAL -->
+<div class="modal-overlay" id="ayudaModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-height:85vh;overflow-y:auto">
+    <div class="modal-head"><span>📖 Ayuda</span><button class="modal-close" onclick="document.getElementById('ayudaModal').classList.remove('open')">✕</button></div>
+    <div style="display:flex;flex-direction:column;gap:16px;padding-bottom:8px">
+
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px">💸 Cargar un gasto</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">Tocá el botón <b style="color:var(--text)">+ Agregar gasto</b> en la sección de gastos. Completá descripción, monto, categoría y medio de pago. Si pagaste con tarjeta en cuotas, ingresá el <b style="color:var(--text)">monto total</b> y la app lo divide automáticamente.</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px">📄 Subir comprobante</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">Usá el botón de cámara para subir una foto o PDF de un ticket o comprobante de pago. La IA lee el monto, descripción y fecha automáticamente. Siempre revisá los datos antes de guardar.</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px">💳 Importar resumen de tarjeta</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">Subí el PDF del resumen de tu tarjeta (Visa, Mastercard, Amex). La app detecta todos los consumos y los carga automáticamente con fecha y monto. No modifica datos si detecta duplicados.</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px">👥 Modo Grupo</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">En el menú superior tocá tu avatar → <b style="color:var(--text)">Cambiar de grupo</b>. Podés crear un grupo nuevo o unirte con un código. Los gastos del grupo se dividen entre los participantes y la app calcula quién le debe a quién.</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px">⚖️ Liquidar deudas del grupo</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">En el panel de deudas del grupo, tocá <b style="color:var(--text)">Saldar</b> junto a cada deuda para marcarla como pagada individualmente, o <b style="color:var(--text)">Saldar todo</b> para resetear todo el balance del grupo desde hoy.</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px">🤖 Asesor IA</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">Accedé desde el ícono IA en la barra inferior. Podés preguntarle cómo vas con el ahorro, en qué categoría gastás más o pedir consejos personalizados. Tiene acceso a tus datos reales del mes.</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px">🔒 Olvidé mi acceso</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">En la pantalla de bloqueo tocá <b style="color:var(--text)">¿Olvidaste tu acceso?</b> e ingresá el código de tu grupo para restablecer el PIN. Si no recordás el código, pedíselo a otro miembro del grupo.</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px">❓ Preguntas frecuentes</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">
+          <b style="color:var(--text)">¿Mis datos son privados?</b><br>Sí. Tus datos se guardan en una base de datos segura y nunca se comparten con terceros.<br><br>
+          <b style="color:var(--text)">¿Funciona sin internet?</b><br>Podés ver los datos ya cargados, pero para guardar nuevos gastos necesitás conexión.<br><br>
+          <b style="color:var(--text)">¿Puedo cambiar el idioma?</b><br>Sí, desde tu perfil (ícono superior derecho) podés elegir Español, English o Português.<br><br>
+          <b style="color:var(--text)">¿Cómo invito a alguien al grupo?</b><br>Copiá el código del grupo desde tu perfil y enviáselo. Ellos lo ingresan en "Unirse con código".
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <!-- ALIAS MODAL -->
 <div class="modal-overlay" id="aliasModal" onclick="if(event.target===this)this.classList.remove('open')">
@@ -2040,6 +2106,7 @@ function nfSetLang(c){
   T('monthLabel', m[typeof state!=='undefined'?state.mes-1:0] + ' ' + (typeof state!=='undefined'?state.anio:''));
   var _greetName = (typeof getPersonaPrincipal === 'function' ? getPersonaPrincipal() : '') || '';
   T('greetingText', LD.greeting + (_greetName ? ' ' + _greetName : '') + ' 👋');
+  T('greetingSub', LD.greetingSub);
   T('greetingMonth', LD.thisMonth);
 
   // Balance card labels
@@ -3494,6 +3561,10 @@ function cerrarSesion() {
   setTimeout(function(){
     window.location.href = window.location.pathname + '?nocache=' + Date.now();
   }, 300);
+}
+
+function abrirAyuda() {
+  document.getElementById('ayudaModal').classList.add('open');
 }
 
 function recuperarAccesoPIN() {
@@ -8708,6 +8779,8 @@ function activarModoHogar() {
   document.getElementById('appMain').setAttribute('data-modo', 'hogar');
   var gmHogar = document.getElementById('greetingMonth');
   if (gmHogar) gmHogar.textContent = L('thisMonth') || 'este mes';
+  var greetSubEl = document.getElementById('greetingSub');
+  if (greetSubEl) greetSubEl.textContent = L('greetingSub') || 'Todo en orden para';
   var greetEl = document.getElementById('greetingText');
   if (greetEl) {
     var _nombre = (typeof getPersonaPrincipal === 'function' ? getPersonaPrincipal() : '') || '';
