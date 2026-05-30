@@ -4199,16 +4199,16 @@ function renderAllGrupo() {
     balCard.classList.remove('home-balance-only', 'privacy-hidden');
     balCard.innerHTML =
       '<small style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.65">' + L('groupBalance') + '</small>' +
-      '<h2 style="font-size:32px;font-weight:800;margin:8px 0 2px;letter-spacing:-1px">' + fmtInt(totalGrupo) + '</h2>' +
-      '<div style="font-size:12px;opacity:.6;margin-bottom:14px">' + participantes.length + ' ' + L('groupParticipants') + ' · ' + fmtInt(parteIgual) + ' ' + L('groupEach') + '</div>' +
+      '<h2 id="balanceTotal" style="font-size:32px;font-weight:800;margin:8px 0 2px;letter-spacing:-1px" data-private-balance data-real-value="' + fmtInt(totalGrupo) + '">' + fmtInt(totalGrupo) + '</h2>' +
+      '<div style="font-size:12px;opacity:.6;margin-bottom:14px">' + participantes.length + ' ' + L('groupParticipants') + ' · <span data-private-balance data-real-value="' + fmtInt(parteIgual) + '">' + fmtInt(parteIgual) + '</span> ' + L('groupEach') + '</div>' +
       '<div style="height:1px;background:rgba(255,255,255,.15);margin-bottom:14px"></div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:start">' +
         '<div><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('groupSpent') + '</div>' +
-        '<div style="font-size:14px;font-weight:800;white-space:nowrap">' + fmtInt(totalGrupo) + '</div></div>' +
+        '<div style="font-size:14px;font-weight:800;white-space:nowrap" data-private-balance data-real-value="' + fmtInt(totalGrupo) + '">' + fmtInt(totalGrupo) + '</div></div>' +
         '<div style="text-align:center"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoLeDeben') + '</div>' +
-        '<div style="font-size:14px;font-weight:800;color:#7effd4;white-space:nowrap">' + fmtInt(meLeDeben) + '</div></div>' +
+        '<div style="font-size:14px;font-weight:800;color:#7effd4;white-space:nowrap" data-private-balance data-real-value="' + fmtInt(meLeDeben) + '">' + fmtInt(meLeDeben) + '</div></div>' +
         '<div style="text-align:right"><div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.6">' + L('grupoDebe') + '</div>' +
-        '<div style="font-size:14px;font-weight:800;color:#ffb3a0;white-space:nowrap">' + fmtInt(yoDebo) + '</div></div>' +
+        '<div style="font-size:14px;font-weight:800;color:#ffb3a0;white-space:nowrap" data-private-balance data-real-value="' + fmtInt(yoDebo) + '">' + fmtInt(yoDebo) + '</div></div>' +
       '</div>';
     var _liqHist = grupoGetLastLiquidacion();
     if (_liqHist) {
@@ -4376,12 +4376,12 @@ renderInforme = function() {
         <div class="inf-hero-row">
           <div class="inf-hero-stat">
             <div class="inf-hero-label">${L('groupTotal')}</div>
-            <div class="inf-hero-val neu">${fmtInt(totalGrupo)}</div>
+            <div class="inf-hero-val neu" data-private-balance data-real-value="${fmtInt(totalGrupo)}">${fmtInt(totalGrupo)}</div>
           </div>
           <div class="inf-hero-divider"></div>
           <div class="inf-hero-stat">
             <div class="inf-hero-label">${L('groupPerPerson')}</div>
-            <div class="inf-hero-val pos">${fmt(parteGrupo)}</div>
+            <div class="inf-hero-val pos" data-private-balance data-real-value="${fmt(parteGrupo)}">${fmt(parteGrupo)}</div>
           </div>
           <div class="inf-hero-divider"></div>
           <div class="inf-hero-stat">
