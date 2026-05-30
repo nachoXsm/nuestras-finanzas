@@ -238,8 +238,14 @@
     .expense-search-pill svg,.expense-filter-pill svg{width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2.05;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
     .expense-search-pill input,.expense-filter-pill select{background:transparent;border:none;color:var(--text);font-size:13px;font-weight:700;min-width:0;outline:none;width:100%}
     .expense-search-pill input::placeholder{color:var(--muted);font-weight:600}
-    .expense-filter-pill{flex:0 1 220px;min-width:180px}
-    .expense-filter-pill select option{background:var(--card);color:white}
+    .expense-filter-pill{flex:1 1 100%;flex-direction:column;align-items:stretch;gap:7px;padding:10px 12px;min-height:auto}
+    .expense-filter-pill .efilter-row{display:flex;align-items:center;gap:8px;width:100%}
+    .expense-filter-pill .efilter-row select{flex:1;width:auto}
+    .expense-filter-pill select option,.efilter-date option{background:var(--card);color:white}
+    .efilter-dates{display:flex;align-items:center;gap:6px;width:100%}
+    .efilter-date{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--text);font-size:12px;padding:5px 6px;outline:none;min-width:0;cursor:pointer}
+    .efilter-date::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer}
+    .efilter-date-sep{color:var(--muted);font-size:12px;flex-shrink:0}
     .expense-clear-btn{width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#dbe7f6;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0}
     .expense-clear-btn:hover{color:white;background:rgba(255,255,255,.1)}
     @media(max-width:430px){.sec-title{font-size:17px}.sec-actions-row{gap:6px}.expense-tools{gap:6px}.expense-tool-btn{width:38px;height:38px;border-radius:13px}.sec-action{padding:8px 13px}.expense-filter-pill{flex:1 1 100%}}
@@ -1057,9 +1063,16 @@
           <button type="button" class="expense-clear-btn" onclick="clearExpenseSearch(event)" aria-label="Cerrar búsqueda">×</button>
         </div>
         <div class="expense-filter-pill" id="expenseFilterPill">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15l-6.1 6.9v4.6l-2.8 1.6v-6.2L4.5 6.5Z"></path></svg>
-          <select id="expenseCategoryFilter" onchange="setExpenseCategoryFilter(this.value)" aria-label="Filtrar gastos por categoría"></select>
-          <button type="button" class="expense-clear-btn" onclick="clearExpenseCategoryFilter(event)" aria-label="Cerrar filtro">×</button>
+          <div class="efilter-row">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2.05;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><path d="M4.5 6.5h15l-6.1 6.9v4.6l-2.8 1.6v-6.2L4.5 6.5Z"></path></svg>
+            <select id="expenseCategoryFilter" onchange="setExpenseCategoryFilter(this.value)" aria-label="Filtrar gastos por categoría" style="background:transparent;border:none;color:var(--text);font-size:13px;font-weight:700;min-width:0;outline:none"></select>
+            <button type="button" class="expense-clear-btn" onclick="clearExpenseFilters(event)" aria-label="Cerrar filtro">×</button>
+          </div>
+          <div class="efilter-dates">
+            <input type="date" id="expenseDateFrom" class="efilter-date" onchange="setExpenseDateFrom(this.value)" aria-label="Desde">
+            <span class="efilter-date-sep">—</span>
+            <input type="date" id="expenseDateTo" class="efilter-date" onchange="setExpenseDateTo(this.value)" aria-label="Hasta">
+          </div>
         </div>
       </div>
       <div class="form-panel" id="fGasto">
@@ -3683,6 +3696,8 @@ var nfExpenseFilterOpen = false;
 var nfExpenseSearchQuery = '';
 var nfExpenseCategoryFilter = 'all';
 var nfExpenseTypeFilter = 'all';
+var nfExpenseDateFrom = '';
+var nfExpenseDateTo = '';
 
 function normalizeExpenseFilterText(value) {
   return String(value || '')
@@ -3703,6 +3718,13 @@ function expenseSearchText(g) {
   ].join(' ');
 }
 
+function expenseDateStr(g) {
+  const y = parseInt(g.anio || state.anio, 10);
+  const m = String(parseInt(g.mes || state.mes, 10) || 1).padStart(2, '0');
+  const d = String(parseInt(g.dia || 1, 10)).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
+
 function expenseMatchesFilters(g) {
   const query = normalizeExpenseFilterText(nfExpenseSearchQuery || (document.getElementById('expenseSearchInput') || {}).value || '');
   const selectedCat = nfExpenseCategoryFilter || (document.getElementById('expenseCategoryFilter') || {}).value || 'all';
@@ -3710,7 +3732,10 @@ function expenseMatchesFilters(g) {
   const matchesSearch = !query || normalizeExpenseFilterText(expenseSearchText(g)).includes(query);
   const matchesCategory = selectedCat === 'all' || String((g && g.cat) || '') === selectedCat;
   const matchesType = selectedType === 'all' || String((g && g.tipo) || '').toLowerCase() === selectedType;
-  return matchesSearch && matchesCategory && matchesType;
+  const dateStr = expenseDateStr(g);
+  const matchesDateFrom = !nfExpenseDateFrom || dateStr >= nfExpenseDateFrom;
+  const matchesDateTo = !nfExpenseDateTo || dateStr <= nfExpenseDateTo;
+  return matchesSearch && matchesCategory && matchesType && matchesDateFrom && matchesDateTo;
 }
 
 function getFilteredExpenses(list) {
@@ -3741,13 +3766,18 @@ function refreshExpenseToolsUI() {
   panel.classList.toggle('search-open', nfExpenseSearchOpen);
   panel.classList.toggle('filter-open', nfExpenseFilterOpen);
   if (searchBtn) searchBtn.classList.toggle('active', nfExpenseSearchOpen || !!nfExpenseSearchQuery);
-  if (filterBtn) filterBtn.classList.toggle('active', nfExpenseFilterOpen || nfExpenseCategoryFilter !== 'all');
+  const hasDateFilter = !!(nfExpenseDateFrom || nfExpenseDateTo);
+  if (filterBtn) filterBtn.classList.toggle('active', nfExpenseFilterOpen || nfExpenseCategoryFilter !== 'all' || hasDateFilter);
   if (input && input.value !== nfExpenseSearchQuery) input.value = nfExpenseSearchQuery;
   if (select) {
     const current = select.value || nfExpenseCategoryFilter;
     select.innerHTML = expenseCategoryOptionsHtml(nfExpenseCategoryFilter);
     select.value = nfExpenseCategoryFilter || current || 'all';
   }
+  const fromInput = document.getElementById('expenseDateFrom');
+  const toInput = document.getElementById('expenseDateTo');
+  if (fromInput && fromInput.value !== nfExpenseDateFrom) fromInput.value = nfExpenseDateFrom;
+  if (toInput && toInput.value !== nfExpenseDateTo) toInput.value = nfExpenseDateTo;
 }
 
 function toggleExpenseSearch() {
@@ -3782,12 +3812,30 @@ function setExpenseCategoryFilter(value) {
 }
 
 function clearExpenseCategoryFilter(event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
+  if (event) { event.preventDefault(); event.stopPropagation(); }
   nfExpenseCategoryFilter = 'all';
   nfExpenseFilterOpen = false;
+  renderAll();
+}
+
+function clearExpenseFilters(event) {
+  if (event) { event.preventDefault(); event.stopPropagation(); }
+  nfExpenseCategoryFilter = 'all';
+  nfExpenseDateFrom = '';
+  nfExpenseDateTo = '';
+  nfExpenseFilterOpen = false;
+  renderAll();
+}
+
+function setExpenseDateFrom(value) {
+  nfExpenseDateFrom = value || '';
+  refreshExpenseToolsUI();
+  renderAll();
+}
+
+function setExpenseDateTo(value) {
+  nfExpenseDateTo = value || '';
+  refreshExpenseToolsUI();
   renderAll();
 }
 
