@@ -1087,7 +1087,8 @@
             <label>Descripción</label>
             <div style="display:flex;gap:8px">
               <input type="text" id="g_desc" placeholder="Alquiler, Supermercado…" style="flex:1">
-              <button onclick="triggerOCR()" title="Leer factura o subir archivo" aria-label="Leer factura o subir archivo" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 11px;border-radius:13px;cursor:pointer;display:flex;align-items:center;gap:3px;font-size:.85rem;white-space:nowrap" id="btnCamera"><span>📷</span><span style="opacity:.3;font-size:.6rem">|</span><span>🗂️</span></button>
+              <button onclick="ocrChooseCamera()" title="Tomar foto" aria-label="Tomar foto" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 12px;border-radius:13px;cursor:pointer;font-size:1rem" id="btnCamera">📷</button>
+              <button onclick="triggerOCRFiles()" title="Subir archivo o resumen" aria-label="Subir archivo o resumen" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 12px;border-radius:13px;cursor:pointer;font-size:1rem" id="btnFiles">🗂️</button>
             </div>
             <input type="file" id="ocrInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv" style="display:none" onchange="processOCR(this)">
             <input type="file" id="ocrCameraInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
@@ -4711,10 +4712,19 @@ function getMutedColor(){return document.documentElement.getAttribute('data-them
 // ============================================
 
 function triggerOCR() {
+  ocrResetSteps();
   const overlay = document.getElementById('ocrActionOverlay');
   const sheet = document.getElementById('ocrActionSheet');
   if (overlay) overlay.style.display = 'block';
   if (sheet) sheet.style.display = 'block';
+}
+function triggerOCRFiles() {
+  ocrResetSteps();
+  const overlay = document.getElementById('ocrActionOverlay');
+  const sheet = document.getElementById('ocrActionSheet');
+  if (overlay) overlay.style.display = 'block';
+  if (sheet) sheet.style.display = 'block';
+  ocrShowFileTypeStep();
 }
 function closeOcrActionSheet() {
   document.getElementById('ocrActionOverlay').style.display = 'none';
