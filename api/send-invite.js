@@ -30,13 +30,7 @@ function buildInviteEmail(codigo, grupo, de) {
 
           <tr>
             <td align="center" style="padding-bottom:28px">
-              <table cellpadding="0" cellspacing="0" role="presentation">
-                <tr>
-                  <td align="center" style="background:#12c7b7;border-radius:18px;width:60px;height:60px;text-align:center;vertical-align:middle">
-                    <div style="line-height:60px;font-size:30px">💰</div>
-                  </td>
-                </tr>
-              </table>
+              <img src="https://nuestras-finanzas-two.vercel.app/icon-192.png" width="72" height="72" alt="NuestrasFinanzas" style="border-radius:18px;display:block;margin:0 auto">
               <div style="color:#12c7b7;font-size:21px;font-weight:800;margin-top:10px;letter-spacing:-0.5px">NuestrasFinanzas</div>
               <div style="color:rgba(255,255,255,.35);font-size:11px;margin-top:3px;letter-spacing:2px;text-transform:uppercase">Finanzas del hogar</div>
             </td>
