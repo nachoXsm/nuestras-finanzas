@@ -2618,6 +2618,11 @@ function toggleForm(id) {
     if (id==='fIngreso') {
       document.getElementById('i_mes').value = state.mes;
       document.getElementById('i_anio').value = state.anio;
+      const _iQuienSel = document.getElementById('i_quien');
+      if (_iQuienSel && !_iQuienSel.value) {
+        const _defIQuien = (state.personas && state.personas[0]) || state.persona1 || '';
+        if (_defIQuien) _iQuienSel.value = _defIQuien;
+      }
     }
     if (id==='fGasto') {
       const _hoy = new Date(); const _gf = document.getElementById('g_fecha');
