@@ -8169,53 +8169,121 @@ function grupoSaveAliases(aliases) {
 
 function abrirReclamoDeuda(de, a, monto) {
   var mensajes = {
-    verde:  '😊 Hola ' + de + '! Cuando puedas, acordate que me debés ' + fmt(monto) + '. ¡Sin apuro!',
+    verde:    '😊 Hola ' + de + '! Cuando puedas, acordate que me debés ' + fmt(monto) + '. ¡Sin apuro!',
     amarillo: '👋 ' + de + ', te recuerdo que tenés una deuda pendiente conmigo de ' + fmt(monto) + '. ¿Cuándo me lo pasás?',
-    rojo: '⚠️ ' + de + ', necesito que saldes tu deuda de ' + fmt(monto) + ' a la brevedad. Por favor coordinemos.'
+    rojo:     '⚠️ ' + de + ', necesito que saldes tu deuda de ' + fmt(monto) + ' a la brevedad. Por favor coordinemos.'
   };
+  var tonos = [
+    { key:'verde',    color:'#1ec978', bg:'rgba(30,200,120,.12)', border:'rgba(30,200,120,.4)',  label:'😊 Amigable' },
+    { key:'amarillo', color:'#f59e0b', bg:'rgba(245,158,11,.1)',  border:'rgba(245,158,11,.4)',  label:'👋 Intermedio' },
+    { key:'rojo',     color:'#ef4444', bg:'rgba(220,38,38,.1)',   border:'rgba(220,38,38,.35)',  label:'⚠️ Firme' },
+  ];
+  window._reclamoData = { de, a, monto, mensajes };
+
   var modal = document.createElement('div');
+  modal.id = 'reclamoModal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:16px';
-  modal.innerHTML =
-    '<div style="background:#0f1d35;border-radius:20px;padding:20px;width:100%;max-width:400px;max-height:80vh;overflow-y:auto">' +
+
+  var tonosHtml = tonos.map(function(t) {
+    return '<button onclick="seleccionarTonoReclamo(\''+t.key+'\')" id="tonoBtn_'+t.key+'" style="background:'+t.bg+';border:1.5px solid '+t.border+';border-radius:12px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--text);width:100%;transition:opacity .2s">' +
+      '<div style="font-size:12px;font-weight:800;color:'+t.color+';margin-bottom:4px">'+t.label+'</div>' +
+      '<div style="font-size:11px;opacity:.8">'+mensajes[t.key]+'</div></button>';
+  }).join('');
+
+  modal.innerHTML = '<div style="background:#0f1d35;border-radius:20px;padding:20px;width:100%;max-width:400px;max-height:85vh;overflow-y:auto">' +
     '<div style="font-size:14px;font-weight:800;margin-bottom:4px">Reclamar deuda</div>' +
     '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">Elegí el tono del mensaje</div>' +
-    '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">' +
-    '<button onclick="enviarReclamo(\'verde\',\'' + de.replace(/'/g,"\\'") + '\')" style="background:rgba(30,200,120,.12);border:1.5px solid rgba(30,200,120,.4);border-radius:12px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--text)">' +
-      '<div style="font-size:12px;font-weight:800;color:#1ec978;margin-bottom:4px">😊 Amigable</div>' +
-      '<div style="font-size:11px;opacity:.8">' + mensajes.verde + '</div></button>' +
-    '<button onclick="enviarReclamo(\'amarillo\',\'' + de.replace(/'/g,"\\'") + '\')" style="background:rgba(245,158,11,.1);border:1.5px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--text)">' +
-      '<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:4px">👋 Intermedio</div>' +
-      '<div style="font-size:11px;opacity:.8">' + mensajes.amarillo + '</div></button>' +
-    '<button onclick="enviarReclamo(\'rojo\',\'' + de.replace(/'/g,"\\'") + '\')" style="background:rgba(220,38,38,.1);border:1.5px solid rgba(220,38,38,.35);border-radius:12px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--text)">' +
-      '<div style="font-size:12px;font-weight:800;color:#ef4444;margin-bottom:4px">⚠️ Firme</div>' +
-      '<div style="font-size:11px;opacity:.8">' + mensajes.rojo + '</div></button>' +
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">' + tonosHtml + '</div>' +
+    '<div id="reclamoEnvioPanel" style="display:none;margin-bottom:14px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">¿Cómo enviarlo?</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px">' +
+        '<button onclick="enviarReclamoInApp()" style="background:rgba(108,99,255,.15);border:1.5px solid rgba(108,99,255,.35);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:#a89cff;cursor:pointer;text-align:left">📲 Notificación en la app<div style="font-size:10px;font-weight:400;opacity:.7;margin-top:2px">Aparece cuando '+de+' abra la app</div></button>' +
+        '<button onclick="mostrarEmailReclamo()" style="background:rgba(18,199,183,.12);border:1.5px solid rgba(18,199,183,.3);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:#12c7b7;cursor:pointer;text-align:left">✉️ Enviar por email<div style="font-size:10px;font-weight:400;opacity:.7;margin-top:2px">Email con diseño de la app</div></button>' +
+        '<button onclick="enviarReclamoWhatsApp()" style="background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.3);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:#25d366;cursor:pointer;text-align:left">📱 WhatsApp<div style="font-size:10px;font-weight:400;opacity:.7;margin-top:2px">Abrir WhatsApp con el mensaje</div></button>' +
+      '</div>' +
+      '<div id="reclamoEmailPanel" style="display:none;margin-top:10px">' +
+        '<div style="display:flex;gap:8px">' +
+          '<input id="reclamoEmailInput" type="email" placeholder="email de '+de+'" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:var(--text);font-size:13px">' +
+          '<button onclick="enviarReclamoEmail()" style="background:#12c7b7;border:none;color:#0a0f1e;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer">Enviar</button>' +
+        '</div>' +
+        '<div id="reclamoEmailMsg" style="font-size:11px;margin-top:6px;text-align:center"></div>' +
+      '</div>' +
     '</div>' +
-    '<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:none;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:10px;font-size:13px;color:var(--muted);cursor:pointer">Cancelar</button>' +
+    '<button onclick="document.getElementById(\'reclamoModal\').remove()" style="width:100%;background:none;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:10px;font-size:13px;color:var(--muted);cursor:pointer">Cancelar</button>' +
     '</div>';
+
   window._reclamoMensajes = mensajes;
+  window._reclamoTono = null;
   document.body.appendChild(modal);
   modal.addEventListener('click', function(e){ if (e.target === modal) modal.remove(); });
 }
 
-function enviarReclamo(intensidad, de) {
-  var mensajes = window._reclamoMensajes || {};
-  var texto = mensajes[intensidad] || '';
-  var modal = document.querySelector('[style*="position:fixed"][style*="z-index:9999"]');
-  if (modal) modal.remove();
-  var waUrl = 'https://wa.me/?text=' + encodeURIComponent(texto);
-  var shareOk = false;
-  if (navigator.share) {
-    navigator.share({ text: texto }).then(function(){ shareOk = true; }).catch(function(){});
-    shareOk = true;
-  }
-  if (!shareOk) {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(texto).then(function(){ toast('📋 Mensaje copiado — envialo por donde quieras'); }).catch(function(){});
+function seleccionarTonoReclamo(tono) {
+  window._reclamoTono = tono;
+  ['verde','amarillo','rojo'].forEach(function(t) {
+    var btn = document.getElementById('tonoBtn_'+t);
+    if (btn) btn.style.opacity = t === tono ? '1' : '0.45';
+  });
+  var panel = document.getElementById('reclamoEnvioPanel');
+  if (panel) panel.style.display = 'block';
+}
+
+function mostrarEmailReclamo() {
+  var p = document.getElementById('reclamoEmailPanel');
+  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+async function enviarReclamoInApp() {
+  var d = window._reclamoData; var tono = window._reclamoTono;
+  if (!d || !tono) return;
+  var g = loadGroup(); if (!g) { toast('No hay grupo activo'); return; }
+  var notif = { para: d.de, de: d.a, monto: d.monto, tono: tono, msg: window._reclamoMensajes[tono], ts: Date.now(), visto: false };
+  var lista = g.notificaciones || [];
+  lista.push(notif);
+  g.notificaciones = lista;
+  saveGroupLocal(g);
+  try {
+    await dbPatch('grupos', g.id, { notificaciones: JSON.stringify(lista) });
+  } catch(e) {}
+  document.getElementById('reclamoModal').remove();
+  var colors = { verde:'#1ec978', amarillo:'#f59e0b', rojo:'#ef4444' };
+  toast('📲 Reclamo enviado a ' + d.de);
+}
+
+async function enviarReclamoEmail() {
+  var d = window._reclamoData; var tono = window._reclamoTono;
+  if (!d || !tono) return;
+  var email = (document.getElementById('reclamoEmailInput').value || '').trim();
+  var msgEl = document.getElementById('reclamoEmailMsg');
+  if (!email || !email.includes('@')) { if (msgEl) { msgEl.style.color='var(--danger)'; msgEl.textContent='Ingresá un email válido'; } return; }
+  if (msgEl) { msgEl.style.color='var(--muted)'; msgEl.textContent='Enviando…'; }
+  try {
+    var res = await fetch('/api/send-claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, de: d.a, para: d.de, monto: fmt(d.monto), tono, mensaje: window._reclamoMensajes[tono] }),
+    });
+    if (res.ok) {
+      if (msgEl) { msgEl.style.color='var(--success)'; msgEl.textContent='✅ Email enviado'; }
+      setTimeout(function(){ document.getElementById('reclamoModal') && document.getElementById('reclamoModal').remove(); }, 1200);
     } else {
-      window.open(waUrl, '_blank');
+      var err = await res.json().catch(function(){ return {}; });
+      if (msgEl) { msgEl.style.color='var(--danger)'; msgEl.textContent='❌ ' + (err.error || 'Error al enviar'); }
     }
+  } catch(e) {
+    if (msgEl) { msgEl.style.color='var(--danger)'; msgEl.textContent='❌ Error de conexión'; }
   }
 }
+
+function enviarReclamoWhatsApp() {
+  var d = window._reclamoData; var tono = window._reclamoTono;
+  if (!d || !tono) return;
+  var texto = window._reclamoMensajes[tono] || '';
+  document.getElementById('reclamoModal').remove();
+  if (navigator.share) { navigator.share({ text: texto }).catch(function(){}); return; }
+  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+}
+
 
 function confirmarLiquidacionPar(de, a, monto) {
   if (!window.confirm('¿Confirmar que ' + de + ' le pagó ' + fmt(monto) + ' a ' + a + '?')) return;
@@ -8690,6 +8758,39 @@ function updatePersonaNames() {
   }
 }
 
+async function checkPendingNotificaciones() {
+  var g = loadGroup(); if (!g) return;
+  var miNombre = localStorage.getItem('nf_mi_nombre') || '';
+  if (!miNombre) return;
+  // Intentar refrescar notificaciones desde Supabase
+  try {
+    var res = await dbGet('grupos', 'id=eq.' + g.id);
+    if (res && res[0] && res[0].notificaciones) {
+      var lista = typeof res[0].notificaciones === 'string' ? JSON.parse(res[0].notificaciones) : res[0].notificaciones;
+      g.notificaciones = lista;
+      saveGroupLocal(g);
+    }
+  } catch(e) {}
+  var notifs = g.notificaciones || [];
+  var pendientes = notifs.filter(function(n){ return n.para === miNombre && !n.visto; });
+  if (!pendientes.length) return;
+  var colores = { verde:'#1ec978', amarillo:'#f59e0b', rojo:'#ef4444' };
+  pendientes.forEach(function(n, idx) {
+    setTimeout(function() {
+      var color = colores[n.tono] || '#12c7b7';
+      var toastEl = document.createElement('div');
+      toastEl.style.cssText = 'position:fixed;bottom:' + (80 + idx*70) + 'px;left:50%;transform:translateX(-50%);background:#101828;border:2px solid '+color+';border-radius:16px;padding:12px 18px;font-size:13px;font-weight:600;color:var(--text);z-index:9999;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:fadeInUp .3s ease';
+      toastEl.innerHTML = '<span style="color:'+color+';margin-right:6px">💬</span>' + n.msg;
+      document.body.appendChild(toastEl);
+      setTimeout(function(){ toastEl.remove(); }, 5000);
+    }, idx * 600);
+    n.visto = true;
+  });
+  g.notificaciones = notifs;
+  saveGroupLocal(g);
+  try { await dbPatch('grupos', g.id, { notificaciones: JSON.stringify(notifs) }); } catch(e) {}
+}
+
 async function startApp() {
   const grupo = loadGroup();
   if (!grupo) return;
@@ -8719,6 +8820,9 @@ async function startApp() {
   } else {
     activarModoHogar();
   }
+
+  // Verificar notificaciones pendientes
+  setTimeout(function(){ checkPendingNotificaciones(); }, 1500);
 }
 
 
