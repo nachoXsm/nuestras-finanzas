@@ -4574,7 +4574,8 @@ renderInforme = function() {
     inc:ingresos.filter(x=>x.quien===p).reduce((a,x)=>a+parseFloat(x.monto),0),
     gas: liqGrupo ? (liqGrupo.aportes[p] || 0) : gastos.filter(x=>x.quien===p).reduce((a,x)=>a+parseFloat(x.monto),0)
   }));
-  const ambosG=gastos.filter(g=>g.quien==='Ambos').reduce((a,g)=>a+parseFloat(g.monto),0);
+  const ambosInc=ingresos.filter(x=>!personas.includes(x.quien)).reduce((a,x)=>a+parseFloat(x.monto),0);
+  const ambosG=gastos.filter(g=>!personas.includes(g.quien)).reduce((a,g)=>a+parseFloat(g.monto),0);
 
   const el=document.getElementById('informeContent');
   el.innerHTML=`
@@ -4698,13 +4699,24 @@ renderInforme = function() {
             </div>
           </div>`:''
         ).join('')}
+        ${ambosInc>0?`
+          <div class="inf-legend-row">
+            <div class="inf-legend-left">
+              <div class="inf-legend-dot" style="background:#f7c948"></div>
+              <div class="inf-legend-name">${L('optCompartido')}</div>
+            </div>
+            <div>
+              <span class="inf-legend-val">${fmt(ambosInc)}</span>
+              <span class="inf-legend-pct">${totalInc>0?Math.round(ambosInc/totalInc*100):0}%</span>
+            </div>
+          </div>`:''}
       </div>
     </div>`;
 
   setTimeout(()=>{
-    const incData=pInc.map(p=>p.inc);
-    const incColors=pInc.map(p=>p.color);
-    const incLabels=pInc.map(p=>p.nombre);
+    const incData=[...pInc.map(p=>p.inc), ...(ambosInc>0?[ambosInc]:[])];
+    const incColors=[...pInc.map(p=>p.color), ...(ambosInc>0?['#f7c948']:[])];
+    const incLabels=[...pInc.map(p=>p.nombre), ...(ambosInc>0?[L('optCompartido')]:[])];
     drawDonut('cIngresos',incLabels,incData,incColors);
     drawDonut('cTipos',[L('balFijos'), L('sumVariables').replace('📊 ','')],[fijos,variables],['#6c63ff','#ff7a59']);
   },60);
@@ -9710,7 +9722,7 @@ function renderFlujo() {
   html += '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">'+L('flujoDesglose')+'</div>';
   html += '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:16px;margin-bottom:14px">';
   pInc.forEach(function(p){if(p.inc>0)html+=fRow(p.nombre,fmt(p.inc),p.color,false);});
-  var ambosI=inc.filter(function(i){return i.quien==='Ambos';}).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
+  var ambosI = inc.filter(function(i){ return personas.indexOf(i.quien) === -1; }).reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
   if(ambosI>0)html+=fRow(L('optCompartido'),fmt(ambosI),'#f7c948',false);
   html+=fRow(L('flujoTotalIngresos'),fmtInt(tI),'#1ec98f',true);
   html+='<div style="height:6px"></div>';
