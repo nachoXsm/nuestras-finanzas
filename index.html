@@ -8404,9 +8404,9 @@ async function enviarInvitacion() {
     msg.style.color='var(--muted)'; msg.textContent='Enviando…';
     const remitente = (state.personas && state.personas[0]) || state.persona1 || 'Un amigo';
     try {
-      const res = await fetch(SB_URL + '/functions/v1/send-invite', {
+      const res = await fetch('/api/send-invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: contact, codigo: code, grupoNombre: state.grupoNombre || '', remitente }),
       });
       if (res.ok) {
@@ -9378,9 +9378,9 @@ async function enviarInvitacionDirecta(contact, codigo, nombre) {
     toast('Enviando invitación…');
     const remitente = (state.personas && state.personas[0]) || state.persona1 || 'Un amigo';
     try {
-      const res = await fetch(SB_URL + '/functions/v1/send-invite', {
+      const res = await fetch('/api/send-invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: contact, codigo: codigo, grupoNombre: nombre, remitente }),
       });
       if (res.ok) {
