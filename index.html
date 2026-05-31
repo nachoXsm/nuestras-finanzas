@@ -2620,7 +2620,9 @@ function toggleForm(id) {
       document.getElementById('i_anio').value = state.anio;
       const _iQuienSel = document.getElementById('i_quien');
       if (_iQuienSel && !_iQuienSel.value) {
-        const _defIQuien = (state.personas && state.personas[0]) || state.persona1 || '';
+        const _iMiNombre = localStorage.getItem('nf_mi_nombre') || '';
+        const _iPersonas = state.personas || [state.persona1, state.persona2].filter(Boolean);
+        const _defIQuien = (_iMiNombre && _iPersonas.includes(_iMiNombre)) ? _iMiNombre : (_iPersonas[0] || '');
         if (_defIQuien) _iQuienSel.value = _defIQuien;
       }
     }
@@ -2633,10 +2635,12 @@ function toggleForm(id) {
       // g_mes y g_anio ya no existen como campos separados
       if (typeof loadCustomCatsIntoSelect === 'function') loadCustomCatsIntoSelect();
       updateCategoryPreview();
-      // Default quien to first persona instead of "Todos"
+      // Default quien to current user
       const _quienSel = document.getElementById('g_quien');
       if (_quienSel && (_quienSel.value === 'Todos' || _quienSel.value === 'Ambos' || !_quienSel.value)) {
-        const _defQuien = (state.personas && state.personas[0]) || state.persona1 || '';
+        const _miNombre = localStorage.getItem('nf_mi_nombre') || '';
+        const _personas = state.personas || [state.persona1, state.persona2].filter(Boolean);
+        const _defQuien = (_miNombre && _personas.includes(_miNombre)) ? _miNombre : (_personas[0] || '');
         if (_defQuien && _quienSel.value !== _defQuien) { _quienSel.value = _defQuien; toggleDivision(); }
       }
     }
@@ -8386,6 +8390,7 @@ async function crearHogar() {
     grupo.moneda = moneda;
     saveGroupLocal(grupo);
     setHogarId(grupo.id);
+    localStorage.setItem('nf_mi_nombre', nombre1);
     setModoHogar();
     _tipoCreado = 'hogar'; // Marcar que se creó un hogar
     hideAllGsScreens();
@@ -8514,6 +8519,7 @@ async function createGroup() {
     grupo.tipo = 'grupo';
     grupo.moneda = moneda;
     saveGroupLocal(grupo);
+    localStorage.setItem('nf_mi_nombre', miNombre);
     _tipoCreado = 'grupo'; // Marcar que se creó un grupo de gastos
     document.getElementById('gsCreate').style.display = 'none';
     document.getElementById('gsSuccess').style.display = 'flex';
@@ -8558,6 +8564,7 @@ async function joinGroup() {
         });
       } catch(e) { console.warn('No se pudo actualizar el grupo:', e); }
     }
+    localStorage.setItem('nf_mi_nombre', miNombre);
     // Unirse con código = es un grupo de gastos, no el hogar
     grupo.tipo = grupo.tipo || 'grupo';
     const hogarId = getHogarId();
