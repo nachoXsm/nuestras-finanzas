@@ -135,7 +135,7 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 500, { error: 'Servicio de email no configurado' });
   }
 
-  const FROM = process.env.INVITE_FROM_EMAIL || 'NuestrasFinanzas <hola@nuestrasfinanzas.app>';
+  const FROM = process.env.INVITE_FROM_EMAIL || 'NuestrasFinanzas <onboarding@resend.dev>';
   const grupo = grupoNombre || 'el grupo';
   const de = remitente || 'Un amigo';
 
