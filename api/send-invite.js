@@ -1,3 +1,5 @@
+const nodemailer = require('nodemailer');
+
 function sendJson(res, status, data) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -130,34 +132,29 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 400, { error: 'Faltan datos requeridos' });
   }
 
-  const RESEND_KEY = process.env.RESEND_API_KEY;
-  if (!RESEND_KEY) {
+  const GMAIL_USER = process.env.GMAIL_USER;
+  const GMAIL_PASS = process.env.GMAIL_APP_PASSWORD;
+  if (!GMAIL_USER || !GMAIL_PASS) {
     return sendJson(res, 500, { error: 'Servicio de email no configurado' });
   }
 
-  const FROM = process.env.INVITE_FROM_EMAIL || 'NuestrasFinanzas <onboarding@resend.dev>';
   const grupo = grupoNombre || 'el grupo';
   const de = remitente || 'Un amigo';
 
   try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: FROM,
-        to: [email],
-        subject: `${de} te invita a NuestrasFinanzas 💰`,
-        html: buildInviteEmail(codigo, grupo, de),
-      }),
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
     });
 
-    if (!r.ok) {
-      const err = await r.text();
-      return sendJson(res, 502, { error: err });
-    }
+    await transporter.sendMail({
+      from: `NuestrasFinanzas <${GMAIL_USER}>`,
+      to: email,
+      subject: `${de} te invita a NuestrasFinanzas 💰`,
+      html: buildInviteEmail(codigo, grupo, de),
+    });
 
-    const data = await r.json();
-    return sendJson(res, 200, { ok: true, id: data.id });
+    return sendJson(res, 200, { ok: true });
   } catch (e) {
     return sendJson(res, 500, { error: String(e) });
   }
