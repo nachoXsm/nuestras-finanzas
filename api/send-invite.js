@@ -28,14 +28,26 @@ function buildInviteEmail(codigo, grupo, de) {
       <td align="center" style="padding:40px 16px">
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:480px">
 
+          <!-- Logo header -->
           <tr>
             <td align="center" style="padding-bottom:28px">
-              <img src="https://nuestras-finanzas-two.vercel.app/icon-192.png" width="72" height="72" alt="NuestrasFinanzas" style="border-radius:18px;display:block;margin:0 auto">
-              <div style="color:#12c7b7;font-size:21px;font-weight:800;margin-top:10px;letter-spacing:-0.5px">NuestrasFinanzas</div>
-              <div style="color:rgba(255,255,255,.35);font-size:11px;margin-top:3px;letter-spacing:2px;text-transform:uppercase">Finanzas del hogar</div>
+              <table cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td align="center" valign="middle" style="padding-right:12px">
+                    <img src="https://nuestras-finanzas-two.vercel.app/icon-192.png" width="56" height="56" alt="N" style="border-radius:14px;display:block">
+                  </td>
+                  <td valign="middle">
+                    <div style="font-size:26px;font-weight:900;line-height:1;letter-spacing:-0.5px">
+                      <span style="color:#ffffff">nuestras</span><br>
+                      <span style="color:#12c7b7">finanzas</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
+          <!-- Main card -->
           <tr>
             <td style="background:#101828;border-radius:22px;border:1px solid rgba(255,255,255,.07)">
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
@@ -46,9 +58,10 @@ function buildInviteEmail(codigo, grupo, de) {
                   <td style="padding:32px 28px 36px">
                     <p style="margin:0 0 6px;color:rgba(255,255,255,.4);font-size:11px;text-transform:uppercase;letter-spacing:2px;font-weight:700">Invitación recibida</p>
                     <h1 style="margin:0 0 20px;color:#ffffff;font-size:24px;font-weight:800;line-height:1.25"><span style="color:#12c7b7">${de}</span> te invita a gestionar finanzas juntos</h1>
-                    <p style="margin:0 0 28px;color:rgba(255,255,255,.6);font-size:14px;line-height:1.7">Te sumaron al grupo <strong style="color:#fff">"${grupo}"</strong> en NuestrasFinanzas. Usá el código de abajo para unirte en segundos.</p>
+                    <p style="margin:0 0 28px;color:rgba(255,255,255,.6);font-size:14px;line-height:1.7">Te sumaron al grupo <strong style="color:#fff">"${grupo}"</strong>. Descargá la app e ingresá el código para unirte en segundos.</p>
 
-                    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:28px">
+                    <!-- Code box -->
+                    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px">
                       <tr>
                         <td style="background:rgba(18,199,183,.08);border:1.5px solid rgba(18,199,183,.25);border-radius:16px;padding:22px 20px;text-align:center">
                           <div style="color:rgba(255,255,255,.45);font-size:10px;text-transform:uppercase;letter-spacing:2.5px;font-weight:700;margin-bottom:10px">Código de acceso</div>
@@ -58,10 +71,25 @@ function buildInviteEmail(codigo, grupo, de) {
                       </tr>
                     </table>
 
+                    <!-- Store buttons -->
                     <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
                       <tr>
+                        <td align="center" style="padding-bottom:10px">
+                          <div style="color:rgba(255,255,255,.4);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px">Descargá la app</div>
+                        </td>
+                      </tr>
+                      <tr>
                         <td align="center">
-                          <a href="https://nuestrasfinanzas.app" style="display:inline-block;background:#12c7b7;color:#0a0f1e;text-decoration:none;font-weight:800;font-size:15px;padding:15px 36px;border-radius:13px">Abrir NuestrasFinanzas &rarr;</a>
+                          <table cellpadding="0" cellspacing="0" role="presentation">
+                            <tr>
+                              <td style="padding-right:8px">
+                                <a href="https://play.google.com/store/apps/details?id=app.nuestrasfinanzas" style="display:inline-block;background:#fff;color:#000;text-decoration:none;font-weight:800;font-size:13px;padding:12px 20px;border-radius:12px;white-space:nowrap">▶ Play Store</a>
+                              </td>
+                              <td>
+                                <a href="https://apps.apple.com/app/nuestrasfinanzas" style="display:inline-block;background:#fff;color:#000;text-decoration:none;font-weight:800;font-size:13px;padding:12px 20px;border-radius:12px;white-space:nowrap"> App Store</a>
+                              </td>
+                            </tr>
+                          </table>
                         </td>
                       </tr>
                     </table>
@@ -71,6 +99,7 @@ function buildInviteEmail(codigo, grupo, de) {
             </td>
           </tr>
 
+          <!-- Steps -->
           <tr>
             <td style="padding-top:20px">
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
@@ -80,7 +109,7 @@ function buildInviteEmail(codigo, grupo, de) {
                     <table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:10px">
                       <tr>
                         <td style="width:26px;height:26px;background:rgba(18,199,183,.15);border-radius:50%;text-align:center;vertical-align:middle;color:#12c7b7;font-size:11px;font-weight:800">1</td>
-                        <td style="padding-left:10px;color:rgba(255,255,255,.65);font-size:13px">Abrí <strong style="color:#fff">nuestrasfinanzas.app</strong></td>
+                        <td style="padding-left:10px;color:rgba(255,255,255,.65);font-size:13px">Descargá la app de <strong style="color:#fff">Play Store</strong> o <strong style="color:#fff">App Store</strong></td>
                       </tr>
                     </table>
                     <table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:10px">
@@ -101,6 +130,7 @@ function buildInviteEmail(codigo, grupo, de) {
             </td>
           </tr>
 
+          <!-- Footer -->
           <tr>
             <td align="center" style="padding:24px 0 0">
               <p style="margin:0 0 6px;color:rgba(255,255,255,.2);font-size:11px;line-height:1.5">Recibiste este email porque alguien te invitó a NuestrasFinanzas.</p>

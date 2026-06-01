@@ -37,9 +37,19 @@ function buildClaimEmail(de, para, monto, tono, mensaje) {
 
           <tr>
             <td align="center" style="padding-bottom:28px">
-              <img src="https://nuestras-finanzas-two.vercel.app/icon-192.png" width="72" height="72" alt="NuestrasFinanzas" style="border-radius:18px;display:block;margin:0 auto">
-              <div style="color:#12c7b7;font-size:21px;font-weight:800;margin-top:10px;letter-spacing:-0.5px">NuestrasFinanzas</div>
-              <div style="color:rgba(255,255,255,.35);font-size:11px;margin-top:3px;letter-spacing:2px;text-transform:uppercase">Finanzas del hogar</div>
+              <table cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td align="center" valign="middle" style="padding-right:12px">
+                    <img src="https://nuestras-finanzas-two.vercel.app/icon-192.png" width="56" height="56" alt="N" style="border-radius:14px;display:block">
+                  </td>
+                  <td valign="middle">
+                    <div style="font-size:26px;font-weight:900;line-height:1;letter-spacing:-0.5px">
+                      <span style="color:#ffffff">nuestras</span><br>
+                      <span style="color:#12c7b7">finanzas</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
