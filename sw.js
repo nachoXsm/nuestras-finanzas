@@ -2,10 +2,12 @@ const CACHE = 'nf-v7';
 const PRECACHE = [
   '/',
   '/index.html',
-  '/manifest.webmanifest',
   '/icon-192.png',
   '/icon-512.png',
 ];
+// manifest.webmanifest is intentionally excluded from precache so Android
+// always reads the latest version and never shows a "name changed" warning.
+const NEVER_CACHE = ['/manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -22,11 +24,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Only handle GET requests
   if (e.request.method !== 'GET') return;
-  // Don't cache Supabase API or external calls
   const url = new URL(e.request.url);
   if (url.hostname !== self.location.hostname) return;
+
+  // Always fetch manifest fresh from network — never serve from cache
+  if (NEVER_CACHE.some(p => url.pathname === p)) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then(cached => {
@@ -37,7 +43,6 @@ self.addEventListener('fetch', e => {
         }
         return res;
       });
-      // Return cached version immediately if available, update in background
       return cached || networkFetch.catch(() => caches.match('/index.html'));
     })
   );
