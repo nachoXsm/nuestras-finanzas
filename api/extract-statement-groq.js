@@ -67,7 +67,9 @@ Return ONLY a valid JSON object with this exact structure, no markdown, no expla
 Rules:
 - ${dueDateInstruction}
 - due_date: the payment due date found in the statement header. Set "fecha" of EVERY item to this same due_date.
-- Extract ONLY purchases/charges. Skip: payments made, previous balances, credit limits, interest charges, taxes, subtotals.
+- Extract purchases/charges AND refunds/credits (reintegros, bonificaciones, cashbacks, reversals).
+- Skip ONLY: payments made (pagos), previous balances, credit limits, interest charges, taxes, subtotals.
+- Refunds/credits: use NEGATIVE monto (e.g. a 287,18- or -287,18 line → monto: -287.18). Negative amounts reduce the total.
 - monto: positive number, dot as decimal separator. Examples: 61.111,05 → 61111.05 | 1,234.56 → 1234.56 | $805.18 → 805.18
 - moneda: ISO 4217 code for each charge. Detect from the line and statement header: USD (USD/US$/U$S/dollar), BRL (R$/real/reais), EUR (€/EUR/euro), GBP (£/GBP), MXN, CLP, COP, UYU, ARS ($/pesos argentinos). Default to the statement's main currency if not explicit on the line.
 - cuotas: installment ratio like "06/12" only if explicitly on the same line, otherwise null
