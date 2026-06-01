@@ -58,7 +58,7 @@ Return ONLY a valid JSON object with this exact structure, no markdown, no expla
       "descripcion": "merchant name (max 50 chars)",
       "cuotas": "09/18 or null",
       "monto": 61111.05,
-      "moneda": "ARS or USD or EUR or BRL",
+      "moneda": "ISO 4217 code e.g. ARS, USD, BRL, EUR, GBP, MXN, CLP, COP, UYU, CAD, AUD, JPY, CHF",
       "tipo": "credito"
     }
   ]
@@ -69,7 +69,7 @@ Rules:
 - due_date: the payment due date found in the statement header. Set "fecha" of EVERY item to this same due_date.
 - Extract ONLY purchases/charges. Skip: payments made, previous balances, credit limits, interest charges, taxes, subtotals.
 - monto: positive number, dot as decimal separator. Examples: 61.111,05 → 61111.05 | 1,234.56 → 1234.56 | $805.18 → 805.18
-- moneda: detect from context — "USD" if line has USD/US$/U$S/dollar, "ARS" if pesos, otherwise the statement's main currency
+- moneda: ISO 4217 code for each charge. Detect from the line and statement header: USD (USD/US$/U$S/dollar), BRL (R$/real/reais), EUR (€/EUR/euro), GBP (£/GBP), MXN, CLP, COP, UYU, ARS ($/pesos argentinos). Default to the statement's main currency if not explicit on the line.
 - cuotas: installment ratio like "06/12" only if explicitly on the same line, otherwise null
 - descripcion: clean merchant name only, no dates, no coupon/reference numbers
 - Keep each charge as a separate item, do not merge or group

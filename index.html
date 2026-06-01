@@ -5328,6 +5328,54 @@ function parseOCRMoney(raw) {
   return parseFloat(s) || 0;
 }
 
+// Detects the ISO 4217 currency code from a text snippet.
+// Recognizes symbols, codes and local names for the most common world currencies.
+// Falls back to `fallback` (default 'ARS') when nothing is found.
+function detectCurrencyInText(text, fallback) {
+  const t = String(text || '');
+  // USD — must come before bare $ checks
+  if (/US\$|U\$S|\bUSD\b|U\.S\.D|DOLAR(ES)?|DOLLAR/i.test(t)) return 'USD';
+  // BRL
+  if (/\bR\$|\bBRL\b|REAL(ES)?|REAIS/i.test(t)) return 'BRL';
+  // EUR
+  if (/€|\bEUR\b|EURO(S)?/i.test(t)) return 'EUR';
+  // GBP
+  if (/£|\bGBP\b|POUND(S)?|LIBRA(S)?\s+ESTERLINA/i.test(t)) return 'GBP';
+  // MXN
+  if (/\bMXN\b|PESO(S)?\s+MEX|\bMEXICAN/i.test(t)) return 'MXN';
+  // CLP
+  if (/\bCLP\b|PESO(S)?\s+CHIL|\bCHILEAN/i.test(t)) return 'CLP';
+  // COP
+  if (/\bCOP\b|PESO(S)?\s+COL|\bCOLOMBIAN/i.test(t)) return 'COP';
+  // UYU
+  if (/\bUYU\b|\$U\b|PESO(S)?\s+UY|\bURUGUAY/i.test(t)) return 'UYU';
+  // PYG
+  if (/\bPYG\b|GUARAN[IÍ]|₲/i.test(t)) return 'PYG';
+  // PEN
+  if (/\bPEN\b|NUEVO(S)?\s+SOL(ES)?|\bSOLES\b/i.test(t)) return 'PEN';
+  // BOB
+  if (/\bBOB\b|BOLIVIANO/i.test(t)) return 'BOB';
+  // CAD
+  if (/\bCAD\b|CA\$|CANADIAN\s+DOLLAR/i.test(t)) return 'CAD';
+  // AUD
+  if (/\bAUD\b|AU\$|AUSTRALIAN\s+DOLLAR/i.test(t)) return 'AUD';
+  // JPY
+  if (/\bJPY\b|¥|\bYEN\b/i.test(t)) return 'JPY';
+  // CHF
+  if (/\bCHF\b|FRANCO\s+SUIZO|SWISS\s+FRANC/i.test(t)) return 'CHF';
+  return fallback || 'ARS';
+}
+
+// Detect the dominant (base) currency of an entire statement by scanning its header.
+function detectStatementMainCurrency(rawText) {
+  const header = String(rawText || '').split('\n').slice(0, 40).join('\n');
+  // Try to find an explicit currency declaration in the header
+  const detected = detectCurrencyInText(header, null);
+  if (detected) return detected;
+  // Bare $ is ambiguous — default to ARS (Argentine context is the most common use case)
+  return 'ARS';
+}
+
 function parseStatementDate(raw) {
   const months = {
     ene: 1, enero: 1,
@@ -5653,7 +5701,7 @@ function parseCardStatementRowsFromVision(data) {
       ...dateInfo,
       descripcion,
       monto,
-      moneda: /(?:US\$|U\$S|USD)/i.test(amountWord.text) ? 'USD' : 'ARS',
+      moneda: detectCurrencyInText(amountWord.text, 'ARS'),
       cat: 'Tarjeta',
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
@@ -5972,7 +6020,7 @@ function parseCardStatementRowsByCarriedMonth(text) {
       fecha: carryYear + '-' + String(carryMonth).padStart(2, '0') + '-' + String(day).padStart(2, '0'),
       descripcion,
       monto,
-      moneda: /(?:US\$|U\$S|USD)/i.test(restWithAmount) ? 'USD' : 'ARS',
+      moneda: detectCurrencyInText(restWithAmount, 'ARS'),
       cat: guessOCRCategory(descripcion),
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
@@ -6021,7 +6069,7 @@ function parseCardStatementRowsBySegments(text) {
       ...dateInfo,
       descripcion,
       monto,
-      moneda: /(?:US\$|U\$S|USD)/i.test(rest) ? 'USD' : 'ARS',
+      moneda: detectCurrencyInText(rest, 'ARS'),
       cat: guessOCRCategory(descripcion),
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
@@ -6066,7 +6114,7 @@ function parseStatementRowLine(line) {
     ...dateInfo,
     descripcion,
     monto,
-    moneda: /(?:US\$|U\$S|USD)/i.test(rest) ? 'USD' : 'ARS',
+    moneda: detectCurrencyInText(rest, 'ARS'),
     cat: guessOCRCategory(descripcion),
     cuotas: cuotasInfo.cuotas,
     cuota_actual: cuotasInfo.cuotaActual,
@@ -6240,7 +6288,7 @@ function parseCardStatementRowsByDateChunks(text) {
       ...dateInfo,
       descripcion,
       monto,
-      moneda: /(?:US\$|U\$S|USD)/i.test(amountToken.raw) ? 'USD' : 'ARS',
+      moneda: detectCurrencyInText(amountToken.raw, 'ARS'),
       cat: guessOCRCategory(descripcion),
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
@@ -6328,7 +6376,7 @@ function parseCardStatementRowsByColumns(text) {
     const amountMatch = amountMatches[amountMatches.length - 1];
     const amountObj = {
       monto: parseOCRMoney(amountMatch[0]),
-      moneda: /(?:US\$|U\$S|USD)/i.test(amountMatch[0] || rest) ? 'USD' : 'ARS',
+      moneda: detectCurrencyInText(amountMatch[0] || rest, 'ARS'),
       raw: amountMatch[0]
     };
     if (!amountObj.monto) return;
@@ -6381,7 +6429,7 @@ function parseCardStatementRowsByColumns(text) {
     if (isStatementAmountLine(line)) {
       const value = parseOCRMoney(line);
       if (value > 0) {
-        amounts.push({ monto: value, moneda: /(?:US\$|U\$S|USD)/i.test(line) ? 'USD' : 'ARS', raw: line });
+        amounts.push({ monto: value, moneda: detectCurrencyInText(line, 'ARS'), raw: line });
       } else if (value < 0 || statementLineHasNegativeAmount(line)) {
         // Mantiene alineadas fecha/descripcion/monto: una bonificacion o pago
         // ocupa su fila y se descarta completa, sin correr los importes siguientes.
@@ -6603,8 +6651,11 @@ function normalizeAIStatementRows(payload, rawText) {
       cuotasInfo.cuota_actual = Math.max(1, parseInt(item.cuota_actual, 10) || 1);
     }
 
-    const monedaRaw = String(item.moneda || item.currency || '').toUpperCase();
-    const moneda = monedaRaw.includes('USD') || monedaRaw.includes('DOL') || monedaRaw.includes('US$') ? 'USD' : 'ARS';
+    const monedaRaw = String(item.moneda || item.currency || '').toUpperCase().trim();
+    // If Groq/AI returned a known ISO code use it directly; otherwise detect from the raw value
+    const knownCodes = ['USD','ARS','BRL','EUR','GBP','MXN','CLP','COP','UYU','PYG','PEN','BOB','CAD','AUD','JPY','CHF'];
+    const stmtDefault = detectStatementMainCurrency(rawText);
+    const moneda = knownCodes.includes(monedaRaw) ? monedaRaw : detectCurrencyInText(monedaRaw, stmtDefault);
     if (!desc || !amount || !dateInfo) return null;
     return {
       ...dateInfo,
@@ -6683,7 +6734,7 @@ function extractStatementInstallmentHints(text) {
     hints.push({
       descripcion: desc.slice(0, 80),
       monto: monto || null,
-      moneda: /(?:US\$|U\$S|USD)/i.test(amountRaw || chunk) ? 'USD' : 'ARS',
+      moneda: detectCurrencyInText(amountRaw || chunk, 'ARS'),
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
       _hint: true
@@ -7312,7 +7363,7 @@ function parseCardStatementRowsByTableLines(text) {
       ...dateInfo,
       descripcion,
       monto,
-      moneda: /(?:US\$|U\$S|USD)/i.test(rest) ? 'USD' : 'ARS',
+      moneda: detectCurrencyInText(rest, 'ARS'),
       cat: guessOCRCategory(descripcion),
       cuotas: cuotasInfo.cuotas,
       cuota_actual: cuotasInfo.cuotaActual,
@@ -7366,7 +7417,7 @@ function parseCardStatementRows(text) {
     const monto = parseOCRMoney(amountRaw);
     if (!monto) continue;
 
-    let moneda = /(?:US\$|U\$S|USD)/i.test(amountRaw) || /(?:^|\s)(?:US\$|U\$S|USD)(?:\s|$)/i.test(rest) ? 'USD' : 'ARS';
+    let moneda = detectCurrencyInText(amountRaw + ' ' + rest, 'ARS');
 
     let descPart = rest.slice(0, amountMatch.index).trim();
     descPart = descPart
