@@ -5585,7 +5585,8 @@ function looksLikeStatementDateToken(text) {
 
 function looksLikeStatementMoneyToken(text) {
   const raw = String(text || '').trim();
-  return /^(?:US\$|U\$S|USD|\$)?\s*-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})$/.test(raw);
+  // Accepts both leading minus (-287,18) and trailing minus (287,18-)
+  return /^(?:US\$|U\$S|USD|\$)?\s*-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})-?$/.test(raw);
 }
 
 function parseCardStatementRowsFromVision(data) {
@@ -5967,7 +5968,7 @@ function parseCardStatementRowsByCarriedMonth(text) {
   const rows = [];
   let carryMonth = null;
   let carryYear = null;
-  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})/gi;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})-?/gi;
   const stopRx = /\b(Tarjeta\s+\d+\s+Total\s+Consumos|Plan\s+V|TNA|TEA|CFTEA|Cancelaci[oó]n|Condiciones|L[IÍ]MITES?|SALDO\s+ACTUAL|PAGO\s+MINIMO)\b/i;
   const ignoreRx = /\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|SALDO\s+ANTERIOR|TOTAL\s+CONSUMOS|CUOTAS?\s+DE|INTERESES?|FINANCIACI[OÓ]N|COMISI[OÓ]N|SEGURO|AVISOS?|LEGALES?)\b/i;
 
@@ -6052,7 +6053,7 @@ function parseCardStatementRowsBySegments(text) {
     .replace(/\s*(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})/g, '\n$1');
   const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
   const dateLine = /^(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\s+(.+)$/i;
-  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?-?|-?\d+,\d{2}-?)/gi;
   const rows = [];
 
   lines.forEach(function(line) {
@@ -6103,7 +6104,7 @@ function parseStatementRowLine(line) {
   const rest = dateMatch[2].trim();
   if (/saldo|total|pago minimo|su pago|limites|tasas|cierre|vencimiento|actual|anterior/i.test(rest)) return null;
 
-  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?-?|-?\d+,\d{2}-?)/gi;
   const amountMatches = [...rest.matchAll(amountRx)].filter(m => /,\d{2}\b|\d{1,3}(?:\.\d{3})+\b/.test(m[0]));
   if (!amountMatches.length) return null;
 
@@ -6230,8 +6231,9 @@ function isStatementCouponLine(line) {
 
 function isStatementAmountLine(line) {
   const raw = String(line || '').trim();
-  if (/^-?\d{5,8}$/.test(raw)) return false;
-  return /^(?:US\$|U\$S|USD|\$)?\s*(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})$/.test(raw);
+  if (/^-?\d{5,8}-?$/.test(raw)) return false;
+  // Accepts both leading and trailing minus
+  return /^(?:US\$|U\$S|USD|\$)?\s*(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})-?$/.test(raw);
 }
 
 function cleanupStatementDescription(line) {
@@ -6343,7 +6345,7 @@ function parseCardStatementRowsByColumns(text) {
 
   const rows = [];
   const dateRx = /^(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\b/i;
-  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2}|-?\d+\.\d{2})/gi;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?-?|-?\d+,\d{2}-?|-?\d+\.\d{2}-?)/gi;
   const installmentOnlyRx = /^C\.?\s*\d{1,2}\s*\/\s*\d{1,2}$/i;
 
   function cleanDesc(value) {
@@ -7349,7 +7351,7 @@ function parseCardStatementRowsByTableLines(text) {
 
   const rows = [];
   const dateRx = /^(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\s+(.+)$/i;
-  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})/gi;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})-?/gi;
 
   lines.forEach(function(line) {
     if (isStatementHeaderLine(line)) return;
@@ -7413,7 +7415,7 @@ function parseCardStatementRows(text) {
   const rows = [];
   const dateStart = /^(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\s+(.+)$/i;
   const dateAnywhere = /(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\s+(.+)$/i;
-  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?|-?\d+,\d{2})/gi;
+  const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?(?:-?\d{1,3}(?:\.\d{3})+(?:,\d{2})?-?|-?\d+,\d{2}-?)/gi;
 
   for (const entry of lines) {
     const line = entry.line;
