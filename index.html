@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <!-- BUILD: 20260601-003 -->
+  <!-- BUILD: 20260601-004 -->
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
@@ -5645,6 +5645,13 @@ function parseStatementDueDate(text) {
   if (headerMatch) {
     const parsedHeader = parseStatementDate(headerMatch[2]);
     if (parsedHeader) return parsedHeader;
+  }
+
+  // Banco Ciudad y similares: "CIERRE ACTUAL: DD Mon YY VENCIMIENTO ... DD Mon YY"
+  const cierreVtoMatch = compact.match(/cierre\s+actual[:\s]+(\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s+\d{2,4})\s+vencimiento[\s\S]{0,150}?(\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s+\d{2,4})/i);
+  if (cierreVtoMatch) {
+    const parsedCierreVto = parseStatementDate(cierreVtoMatch[2]);
+    if (parsedCierreVto) return parsedCierreVto;
   }
 
   const nextMatch = compact.match(/pr[oó]ximo\s+cierre\s+pr[oó]ximo\s+vencimiento[\s\S]{0,220}?(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\s+(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})/i);

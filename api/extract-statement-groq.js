@@ -63,11 +63,11 @@ Required format:
 
 Rules:
 - Extract ONLY purchases/charges. Skip: payments, balances, limits, taxes, totals, interest.
-- fecha: use the due date (vencimiento/fecha de vencimiento) for ALL rows. If not found, use the statement closing date.${preferredDueDate ? ' Use ' + preferredDueDate + ' as the due date.' : ''}
+- fecha: ALWAYS use "${preferredDueDate || 'the due date / vencimiento'}" for EVERY row — this is the payment due date, not the purchase date. Do NOT use individual transaction dates.
 - monto: positive decimal number with dot separator. Example: 61.111,05 → 61111.05 / 1,234.56 → 1234.56
 - moneda: "USD" if the line contains USD/US$/U$S or an explicit dollar amount, otherwise "ARS"
 - cuotas: installment info like "06/12" if present in the same line, otherwise null
-- Dates in the source may appear as DD/MM/YY, DD.MM.YY, MM/DD/YYYY or DD Mon YY — ignore them for fecha, always use the due date
+- Individual transaction dates in the source (DD/MM/YY, DD.MM.YY, etc.) are purchase dates — ignore them, always use the due date above
 - Keep each purchase as a separate item
 - descripcion: clean merchant name, remove coupon numbers and date fragments
 
