@@ -3013,30 +3013,33 @@ async function deleteTarjeta(id) {
 // ============================================
 // RENDER
 // ============================================
-// --- Exchange rates per card (persisted in localStorage) ---
+// --- Exchange rates per card+currency (persisted in localStorage) ---
+// Structure: { [cardId]: { [CURRENCY_CODE]: rate } }
 var cardFX = (function(){
   try { return JSON.parse(localStorage.getItem('nf_card_fx') || '{}'); } catch(_){ return {}; }
 })();
 function saveCardFX(){ try { localStorage.setItem('nf_card_fx', JSON.stringify(cardFX)); } catch(_){} }
-function getCardFX(cardId){ return cardFX[cardId] ? parseFloat(cardFX[cardId]) : null; }
-function setCardFX(cardId, rate){
-  if (!rate || isNaN(rate) || rate <= 0) { delete cardFX[cardId]; } else { cardFX[cardId] = parseFloat(rate); }
+function getCardFXRate(cardId, currency){ return (cardFX[cardId] && cardFX[cardId][currency]) ? parseFloat(cardFX[cardId][currency]) : null; }
+function setCardFXRate(cardId, currency, rate){
+  if (!cardFX[cardId]) cardFX[cardId] = {};
+  if (!rate || isNaN(rate) || rate <= 0) { delete cardFX[cardId][currency]; } else { cardFX[cardId][currency] = parseFloat(rate); }
+  if (!Object.keys(cardFX[cardId]).length) delete cardFX[cardId];
   saveCardFX();
   renderTab('tarjetas');
 }
-function toggleFXInput(cardId){
-  var row = document.getElementById('fx-row-'+cardId);
+function toggleFXInput(cardId, currency){
+  var row = document.getElementById('fx-row-'+cardId+'-'+currency);
   if (!row) return;
   row.style.display = row.style.display === 'none' ? 'flex' : 'none';
   if (row.style.display === 'flex') { var inp = row.querySelector('input'); if(inp) { inp.focus(); inp.select(); } }
 }
-function applyFXInput(cardId){
-  var inp = document.getElementById('fx-inp-'+cardId);
+function applyFXInput(cardId, currency){
+  var inp = document.getElementById('fx-inp-'+cardId+'-'+currency);
   if (!inp) return;
   var val = parseFloat(String(inp.value).replace(',','.').replace(/[^\d.]/g,''));
-  setCardFX(cardId, val);
+  setCardFXRate(cardId, currency, val);
 }
-function clearCardFX(cardId){ delete cardFX[cardId]; saveCardFX(); renderTab('tarjetas'); }
+function clearCardFXRate(cardId, currency){ setCardFXRate(cardId, currency, null); }
 
 function fmt(n) {
   if (isNaN(n) || n === null || n === undefined) return '$0';
@@ -3152,15 +3155,22 @@ function renderAll() {
   if (tarjetas.length===0) { tEl.innerHTML=`<div class="empty"><div class="empty-icon">💳</div><div class="empty-text">${L('emptyTarjetas')}</div></div>`; }
   else {
     tEl.innerHTML = tarjetas.map(t=>{
+      const _baseCur = getActiveBaseCurrency();
       const tG = gastos.filter(g=>getExpenseCardId(g)===t.id);
-      const tGUsd = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()==='USD');
-      const tGBase = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()!=='USD');
-      const tTot = tGBase.reduce((a,g)=>a+parseFloat(g.monto||0),0);
-      const tUsdTot = tGUsd.reduce((a,g)=>a+parseFloat(g.monto||0),0);
+      const _curGroups = {};
+      tG.forEach(g=>{ const c=String(g.moneda||_baseCur).toUpperCase(); if(!_curGroups[c])_curGroups[c]=[]; _curGroups[c].push(g); });
+      const _foreignCurs = Object.keys(_curGroups).filter(c=>c!==_baseCur.toUpperCase());
+      const _baseItems = _curGroups[_baseCur.toUpperCase()] || [];
+      let _tTot = _baseItems.reduce((a,g)=>a+parseFloat(g.monto||0),0);
+      _foreignCurs.forEach(cur=>{ const rate=getCardFXRate(t.id,cur); if(rate) _tTot+=_curGroups[cur].reduce((a,g)=>a+parseFloat(g.monto||0),0)*rate; });
       const tRows = rows => rows.map(g=>{const _cv=cuotaDisplayValue(g);return`<div class="card-item">
             <span>${gastoDisplayDescription(g)} ${_cv?`<span style="color:var(--text3);font-size:0.72rem">${_cv}</span>`:''}</span>
             <span style="font-family:var(--mono);font-size:0.82rem">${fmtCurrency(g.monto, g.moneda)}</span>
           </div>`}).join('');
+      const _foreignSections = _foreignCurs.map(cur=>{
+        const ct=_curGroups[cur].reduce((a,g)=>a+parseFloat(g.monto||0),0);
+        return `<div class="tcard-currency-section"><span>${cur}</span><strong>${fmtCurrency(ct,cur)}</strong></div>${tRows(_curGroups[cur])}`;
+      }).join('');
       return `<div class="card-block">
         <div class="card-block-head">
           <div>
@@ -3168,7 +3178,7 @@ function renderAll() {
             <div class="card-meta">${t.titular} · Cierre ${t.cierre||'?'}/${t.cierre_mes||'?'} · Vence ${t.vencimiento||'?'}/${t.venc_mes||'?'}</div>
           </div>
           <div style="text-align:right">
-            <div class="card-total">${fmt(tTot)}</div>
+            <div class="card-total">${fmt(_tTot)}</div>
             <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end">
               <button class="btn-icon edit" onclick="editTarjeta('${t.id}')" style="padding:4px 8px;font-size:0.75rem;border:1px solid var(--border);border-radius:6px">✏️ Editar</button>
               <button class="btn-icon del" onclick="deleteTarjeta('${t.id}')" style="padding:4px 8px;font-size:0.75rem;border:1px solid var(--border);border-radius:6px">✕</button>
@@ -3176,7 +3186,7 @@ function renderAll() {
           </div>
         </div>
         ${!tG.length?`<div style="font-size:0.8rem;color:var(--text3)">${L('emptyCardExpenses')}</div>`:
-          `${tGBase.length?`${tRows(tGBase)}`:''}${tGUsd.length?`<div class="tcard-currency-section"><span>Dólares</span><strong>${fmtCurrency(tUsdTot,'USD')}</strong></div>${tRows(tGUsd)}`:''}`}
+          `${_baseItems.length?tRows(_baseItems):''}${_foreignSections}`}
       </div>`;
     }).join('');
   }
@@ -4113,44 +4123,72 @@ renderAll = function() {
   } else {
     const MS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     tEl.innerHTML = tarjetas.map(t=>{
+      const baseCur = getActiveBaseCurrency();
       const tG = gastos.filter(g=>getExpenseCardId(g)===t.id);
-      const tGUsd = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()==='USD');
-      const tGBase = tG.filter(g=>String(g.moneda||'ARS').toUpperCase()!=='USD');
-      const tTot = tGBase.reduce((a,g)=>a+parseFloat(g.monto||0),0);
-      const tUsdTot = tGUsd.reduce((a,g)=>a+parseFloat(g.monto||0),0);
+      // Group by currency
+      const currencyGroups = {};
+      tG.forEach(g=>{
+        const cur = String(g.moneda||baseCur).toUpperCase();
+        if (!currencyGroups[cur]) currencyGroups[cur] = [];
+        currencyGroups[cur].push(g);
+      });
+      const foreignCurs = Object.keys(currencyGroups).filter(c=>c!==baseCur.toUpperCase());
+      const baseItems = currencyGroups[baseCur.toUpperCase()] || [];
+      const tTotBase = baseItems.reduce((a,g)=>a+parseFloat(g.monto||0),0);
+
+      // For each foreign currency: get TC and compute converted total
+      let totalConverted = tTotBase;
+      let anyFxSet = false;
+      foreignCurs.forEach(cur => {
+        const rate = getCardFXRate(t.id, cur);
+        if (rate) { totalConverted += currencyGroups[cur].reduce((a,g)=>a+parseFloat(g.monto||0),0) * rate; anyFxSet = true; }
+      });
+
       const tRows = rows => rows.map(g=>{const _cv=cuotaDisplayValue(g);return`<div class="tcard-item">
             <span>${gastoDisplayDescription(g)} ${_cv?`<span style="color:var(--text3);font-size:0.7rem">${_cv}</span>`:''}</span>
             <span class="tcard-item-amount">${fmtCurrency(g.monto, g.moneda)}</span>
           </div>`}).join('');
+
+      // Build one pill+input per foreign currency
+      const fxPills = foreignCurs.map(cur => {
+        const rate = getCardFXRate(t.id, cur);
+        const curTotal = currencyGroups[cur].reduce((a,g)=>a+parseFloat(g.monto||0),0);
+        const converted = rate ? curTotal * rate : 0;
+        const uid = t.id+'-'+cur;
+        return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">
+          <span class="fx-pill${rate?' active':''}" onclick="toggleFXInput('${t.id}','${cur}')">
+            💱 ${cur} ${rate ? '→ '+baseCur+' '+rate.toLocaleString('es-AR') : 'Fijar TC'}
+          </span>
+          ${rate ? `<span class="fx-converted">≈ ${fmt(converted)} incl.</span>` : ''}
+        </div>
+        <div class="fx-input-row" id="fx-row-${uid}" style="display:none">
+          <label>1 ${cur} =</label>
+          <input id="fx-inp-${uid}" type="number" min="0.0001" step="any" placeholder="1200" value="${rate||''}"
+            onkeydown="if(event.key==='Enter')applyFXInput('${t.id}','${cur}')" />
+          <button onclick="applyFXInput('${t.id}','${cur}')" style="background:rgba(56,220,180,.2);color:#38dcb4;border:1px solid rgba(56,220,180,.4);border-radius:6px;padding:3px 10px;font-size:.78rem;cursor:pointer">OK</button>
+          ${rate ? `<button onclick="clearCardFXRate('${t.id}','${cur}')" style="background:transparent;border:none;color:rgba(255,255,255,.35);font-size:.78rem;cursor:pointer">✕</button>` : ''}
+        </div>`;
+      }).join('');
+
       const cierreStr = t.cierre?(t.cierre+(t.cierre_mes?'/'+MS[t.cierre_mes-1]:'')):'?';
       const vencStr = t.vencimiento?(t.vencimiento+(t.venc_mes?'/'+MS[t.venc_mes-1]:'')):'?';
-      const fx = getCardFX(t.id);
-      const usdConverted = fx ? tGUsd.reduce((a,g)=>a+parseFloat(g.monto||0)*fx,0) : 0;
-      const grandTotal = fx ? tTot + usdConverted : tTot;
-      const fxPill = tGUsd.length ? `
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span class="fx-pill${fx?' active':''}" onclick="toggleFXInput('${t.id}')">
-            💱 ${fx ? '$'+fx.toLocaleString('es-AR') : 'Fijar TC'}
-          </span>
-          ${fx ? `<span class="fx-converted">≈ ${fmt(usdConverted)} incl.</span>` : ''}
-        </div>
-        <div class="fx-input-row" id="fx-row-${t.id}" style="display:none">
-          <label>1 USD =</label>
-          <input id="fx-inp-${t.id}" type="number" min="1" placeholder="1200" value="${fx||''}"
-            onkeydown="if(event.key==='Enter')applyFXInput('${t.id}')" />
-          <button onclick="applyFXInput('${t.id}')" style="background:rgba(56,220,180,.2);color:#38dcb4;border:1px solid rgba(56,220,180,.4);border-radius:6px;padding:3px 10px;font-size:.78rem;cursor:pointer">OK</button>
-          ${fx ? `<button onclick="clearCardFX('${t.id}')" style="background:transparent;border:none;color:rgba(255,255,255,.35);font-size:.78rem;cursor:pointer">✕</button>` : ''}
-        </div>` : '';
+
+      // Foreign currency sections in expense list
+      const foreignSections = foreignCurs.map(cur => {
+        const curTotal = currencyGroups[cur].reduce((a,g)=>a+parseFloat(g.monto||0),0);
+        return `<div class="tcard-currency-section"><span>${cur}</span><strong>${fmtCurrency(curTotal,cur)}</strong></div>${tRows(currencyGroups[cur])}`;
+      }).join('');
+
       return `<div class="tcard">
         <div class="tcard-head">
           <div>
             <div class="tcard-name">💳 ${t.nombre}</div>
             <div class="tcard-meta">${t.titular} · Cierra ${cierreStr} · Vence ${vencStr}</div>
-            ${fxPill}
+            ${fxPills}
           </div>
           <div style="text-align:right">
-            <div class="tcard-total">${fmt(grandTotal)}</div>
-            ${fx && tGUsd.length ? `<div style="font-size:.68rem;color:rgba(255,255,255,.4);margin-top:1px">ARS+USD conv.</div>` : ''}
+            <div class="tcard-total">${fmt(totalConverted)}</div>
+            ${anyFxSet ? `<div style="font-size:.68rem;color:rgba(255,255,255,.4);margin-top:1px">${baseCur} equiv.</div>` : ''}
             <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end">
               <button class="ibtn edit" onclick="editTarjeta('${t.id}')" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.72rem">✏️ Editar</button>
               <button class="ibtn del" onclick="deleteTarjeta('${t.id}')" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.72rem">✕</button>
@@ -4158,7 +4196,7 @@ renderAll = function() {
           </div>
         </div>
         ${!tG.length?`<div style="font-size:0.8rem;color:var(--text3)">${L('emptyCardExpenses')}</div>`:
-          `${tGBase.length?`${tRows(tGBase)}`:''}${tGUsd.length?`<div class="tcard-currency-section"><span>Dólares</span><strong>${fmtCurrency(tUsdTot,'USD')}</strong></div>${tRows(tGUsd)}`:''}`}
+          `${baseItems.length?tRows(baseItems):''}${foreignSections}`}
       </div>`;
     }).join('');
   }
