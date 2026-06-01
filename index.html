@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <!-- BUILD: 20260601-001 -->
+  <!-- BUILD: 20260601-003 -->
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
@@ -3184,32 +3184,48 @@ function renderAll() {
 // ============================================
 function renderInforme() {
   const {gastos,ingresos}=state;
-  const totalInc=ingresos.reduce((a,i)=>a+parseFloat(i.monto),0);
-  const totalGas=gastos.reduce((a,g)=>a+parseFloat(g.monto),0);
-  const fijos=gastos.filter(g=>g.tipo==='fijo').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const variables=gastos.filter(g=>g.tipo==='variable').reduce((a,g)=>a+parseFloat(g.monto),0);
+  const isUSD = r => String(r.moneda||'').toUpperCase()==='USD';
+  const gastosARS=gastos.filter(g=>!isUSD(g)), gastosUSD=gastos.filter(isUSD);
+  const ingresosARS=ingresos.filter(i=>!isUSD(i)), ingresosUSD=ingresos.filter(isUSD);
+  const totalInc=ingresosARS.reduce((a,i)=>a+parseFloat(i.monto),0);
+  const totalGas=gastosARS.reduce((a,g)=>a+parseFloat(g.monto),0);
+  const fijos=gastosARS.filter(g=>g.tipo==='fijo').reduce((a,g)=>a+parseFloat(g.monto),0);
+  const variables=gastosARS.filter(g=>g.tipo==='variable').reduce((a,g)=>a+parseFloat(g.monto),0);
   const saldo=totalInc-totalGas;
+  const totalIncUSD=ingresosUSD.reduce((a,i)=>a+parseFloat(i.monto),0);
+  const totalGasUSD=gastosUSD.reduce((a,g)=>a+parseFloat(g.monto),0);
+  const saldoUSD=totalIncUSD-totalGasUSD;
   const catTotals={};
-  gastos.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+moneyValue(g, getActiveBaseCurrency());});
+  gastosARS.forEach(g=>{catTotals[g.cat]=(catTotals[g.cat]||0)+moneyValue(g, getActiveBaseCurrency());});
   const catSorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
   const personaIngresos = personas.map(p => ({
     nombre: p,
-    total: ingresos.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
+    total: ingresosARS.filter(i=>i.quien===p).reduce((a,i)=>a+parseFloat(i.monto),0)
   }));
   const nachoInc = personaIngresos[0]?.total || 0;
   const celiInc = personaIngresos[1]?.total || 0;
   const compInc = 0;
-  const nachoG=gastos.filter(g=>g.quien==='Nacho').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const celiG=gastos.filter(g=>g.quien==='Celi').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const ambosG=gastos.filter(g=>g.quien==='Ambos').reduce((a,g)=>a+parseFloat(g.monto),0);
+  const nachoG=gastosARS.filter(g=>g.quien==='Nacho').reduce((a,g)=>a+parseFloat(g.monto),0);
+  const celiG=gastosARS.filter(g=>g.quien==='Celi').reduce((a,g)=>a+parseFloat(g.monto),0);
+  const ambosG=gastosARS.filter(g=>g.quien==='Ambos').reduce((a,g)=>a+parseFloat(g.monto),0);
 
+  const usdBlock = (totalIncUSD>0||totalGasUSD>0) ? `
+    <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(247,201,72,.25);border-radius:18px;padding:14px 16px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🇺🇸 Movimientos en USD</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+        ${totalIncUSD>0?`<div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">Ingresos</div><div style="font-size:15px;font-weight:800;color:#1ec98f">U$S ${fmt(totalIncUSD)}</div></div>`:''}
+        ${totalGasUSD>0?`<div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">Gastos</div><div style="font-size:15px;font-weight:800;color:#ff7a59">U$S ${fmt(totalGasUSD)}</div></div>`:''}
+        ${(totalIncUSD>0&&totalGasUSD>0)?`<div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">Saldo</div><div style="font-size:15px;font-weight:800;color:${saldoUSD>=0?'#1ec98f':'#ff7a59'}">U$S ${fmt(saldoUSD)}</div></div>`:''}
+      </div>
+    </div>` : '';
   document.getElementById('informeContent').innerHTML = `
     <div class="informe-grid">
       <div class="informe-card"><div class="sum-label">${L('balIngresos')}</div><div class="sum-val green" style="font-size:0.9rem">${fmtInt(totalInc)}</div></div>
       <div class="informe-card"><div class="sum-label">${L('balGastos')}</div><div class="sum-val red" style="font-size:0.9rem">${fmtInt(totalGas)}</div></div>
       <div class="informe-card"><div class="sum-label">${L('balSaldo')}</div><div class="sum-val ${saldo>=0?'green':'red'}" style="font-size:0.9rem">${fmtInt(saldo)}</div></div>
     </div>
+    ${usdBlock}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="card-block">
         <div style="font-size:0.75rem;font-weight:700;margin-bottom:10px">Por persona</div>
@@ -9839,11 +9855,18 @@ function renderFlujo() {
   if (!el || !state) return;
   var personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
   var gs = state.gastos||[], inc = state.ingresos||[];
-  var tI = inc.reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
-  var tG = gs.reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var fj = gs.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var vr = gs.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var eT = gs.filter(function(g){return isCardPayment(g);}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var isUSD = function(r){ return String(r.moneda||'').toUpperCase()==='USD'; };
+  var gsARS = gs.filter(function(g){return !isUSD(g);}), gsUSD = gs.filter(isUSD);
+  var incARS = inc.filter(function(i){return !isUSD(i);}), incUSD = inc.filter(isUSD);
+  var tI = incARS.reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
+  var tG = gsARS.reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var fj = gsARS.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var vr = gsARS.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var eT = gsARS.filter(function(g){return isCardPayment(g);}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var tIusd = incUSD.reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
+  var tGusd = gsUSD.reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var fjUsd = gsUSD.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var vrUsd = gsUSD.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
   var sl = tI - tG;
   var pctG = tI>0?Math.round(tG/tI*100):0;
   var pctF = tG>0?Math.round(fj/tG*100):0;
@@ -9884,6 +9907,16 @@ function renderFlujo() {
   if(eT>0)html+=fRow(L('flujoEnTarjeta'),fmtInt(eT),'#f7c948',false);
   html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px"><div style="font-size:15px;font-weight:800">'+L('flujoLibre')+'</div><div style="font-size:22px;font-weight:800;color:'+(sl>=0?'#1ec98f':'#ff7a59')+'">'+fmtInt(sl)+'</div></div>';
   html+='</div>';
+  if(tIusd>0||tGusd>0){
+    var slUsd=tIusd-tGusd;
+    html+='<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 10px">🇺🇸 Movimientos en USD</div>';
+    html+='<div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(247,201,72,.25);border-radius:18px;padding:16px;margin-bottom:14px">';
+    if(tIusd>0)html+=fRow('Ingresos USD','U$S '+fmt(tIusd),'#1ec98f',false);
+    if(fjUsd>0)html+=fRow('Gastos fijos USD','U$S '+fmt(fjUsd),'#6c63ff',false);
+    if(vrUsd>0)html+=fRow('Gastos variables USD','U$S '+fmt(vrUsd),'#ff7a59',false);
+    html+=fRow('Saldo USD','U$S '+fmt(slUsd),slUsd>=0?'#1ec98f':'#ff7a59',true);
+    html+='</div>';
+  }
   // BARRA DE PROGRESO
   if(tI>0){
     var pctFjBar=Math.min(100,Math.round(fj/tI*100));
