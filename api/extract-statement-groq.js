@@ -43,35 +43,38 @@ function buildPrompt(payload) {
   const visionLines = Array.isArray(payload.visionLines) ? payload.visionLines.slice(0, 500) : [];
   const preferredDueDate = payload.preferredDueDate || null;
 
-  return `You are a credit card statement parser. Extract all purchases/expenses from the statement text below.
+  const dueDateInstruction = preferredDueDate
+    ? `The payment due date is ${preferredDueDate}. Use this date for ALL items.`
+    : 'Find the payment due date (vencimiento/due date/data de vencimento) in the statement and use it for ALL items. It is always AFTER the closing/cierre date by 7-30 days.';
 
-Return ONLY a valid JSON object with an "items" array, no markdown, no explanation.
+  return `You are a credit card statement parser that works with ANY bank worldwide.
 
-Required format:
+Return ONLY a valid JSON object with this exact structure, no markdown, no explanation:
 {
+  "due_date": "YYYY-MM-DD",
   "items": [
     {
-      "fecha": "${preferredDueDate || 'YYYY-MM-DD'}",
+      "fecha": "YYYY-MM-DD",
       "descripcion": "merchant name (max 50 chars)",
       "cuotas": "09/18 or null",
       "monto": 61111.05,
-      "moneda": "ARS or USD",
+      "moneda": "ARS or USD or EUR or BRL",
       "tipo": "credito"
     }
   ]
 }
 
 Rules:
-- Extract ONLY purchases/charges. Skip: payments, balances, limits, taxes, totals, interest.
-- fecha: ALWAYS use "${preferredDueDate || 'the due date / vencimiento'}" for EVERY row — this is the payment due date, not the purchase date. Do NOT use individual transaction dates.
-- monto: positive decimal number with dot separator. Example: 61.111,05 → 61111.05 / 1,234.56 → 1234.56
-- moneda: "USD" if the line contains USD/US$/U$S or an explicit dollar amount, otherwise "ARS"
-- cuotas: installment info like "06/12" if present in the same line, otherwise null
-- Individual transaction dates in the source (DD/MM/YY, DD.MM.YY, etc.) are purchase dates — ignore them, always use the due date above
-- Keep each purchase as a separate item
-- descripcion: clean merchant name, remove coupon numbers and date fragments
+- ${dueDateInstruction}
+- due_date: the payment due date found in the statement header. Set "fecha" of EVERY item to this same due_date.
+- Extract ONLY purchases/charges. Skip: payments made, previous balances, credit limits, interest charges, taxes, subtotals.
+- monto: positive number, dot as decimal separator. Examples: 61.111,05 → 61111.05 | 1,234.56 → 1234.56 | $805.18 → 805.18
+- moneda: detect from context — "USD" if line has USD/US$/U$S/dollar, "ARS" if pesos, otherwise the statement's main currency
+- cuotas: installment ratio like "06/12" only if explicitly on the same line, otherwise null
+- descripcion: clean merchant name only, no dates, no coupon/reference numbers
+- Keep each charge as a separate item, do not merge or group
 
-Statement text (OCR):
+Statement text:
 ${visionLines.length ? visionLines.join('\n') + '\n\n' : ''}${rawText}`;
 }
 

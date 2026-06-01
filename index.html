@@ -5584,80 +5584,77 @@ function parseCardStatementRowsFromVision(data) {
   return applyStatementDueDate(deduped, extractVisionLines(data).join('\n'));
 }
 
+function parseStatementDueDateFromString(str) {
+  // Formato estándar DD/MM/YY o DD.MM.YY etc.
+  const std = parseStatementDate(str);
+  if (std) return std;
+  // Formato anglosajón: "June 10, 2026" o "June 10 2026"
+  const usFormat = str.match(/([A-Za-z]{3,})\s+(\d{1,2})[,\s]+(\d{4})/);
+  if (usFormat) return parseStatementDate(usFormat[2] + ' ' + usFormat[1] + ' ' + usFormat[3]);
+  return null;
+}
+
 function parseStatementDueDate(text) {
   const raw = String(text || '').replace(/\r/g, '\n');
   const dateRx = /(\d{1,2}\s*(?:[-\/.]|\s+)\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*(?:[-\/.]|\s+)\s*\d{2,4})/g;
+  // También captura "Month DD, YYYY" (formato anglosajón)
+  const usDateRx = /([A-Za-z]{3,}\s+\d{1,2}[,\s]+\d{4})/g;
 
-  const directPatterns = [
-    /vencimiento\s+actual\s*(\d{1,2}\s*(?:[-\/.]|\s+)\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*(?:[-\/.]|\s+)\s*\d{2,4})/i,
-    /\bvencimiento\s*(\d{1,2}\s*(?:[-\/.]|\s+)\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*(?:[-\/.]|\s+)\s*\d{2,4})/i,
-    /pr[oó]ximo\s+vencimiento\s*(\d{1,2}\s*(?:[-\/.]|\s+)\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*(?:[-\/.]|\s+)\s*\d{2,4})/i,
-    /\bvencimiento\b[^\n]{0,80}\n\s*(\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s+\d{2,4})/i
-  ];
-  for (const pattern of directPatterns) {
-    const match = raw.match(pattern);
-    if (match) {
-      const parsed = parseStatementDate(match[1]);
-      if (parsed) return parsed;
-    }
-  }
+  const extractDates = function(str) {
+    const found = [];
+    let m;
+    const r1 = new RegExp(dateRx.source, 'g');
+    while ((m = r1.exec(str)) !== null) { const p = parseStatementDueDateFromString(m[1]); if (p) found.push(p); }
+    const r2 = new RegExp(usDateRx.source, 'g');
+    while ((m = r2.exec(str)) !== null) { const p = parseStatementDueDateFromString(m[1]); if (p) found.push(p); }
+    return found;
+  };
 
-  const lines = raw.split('\n').map(function(line) {
-    return line.replace(/\s+/g, ' ').trim();
-  }).filter(Boolean);
+  // --- PASO 1: keywords de vencimiento en cualquier idioma ---------------
+  const DUE_KEYWORDS = /vencimiento|venciment[oa]|due\s*date|payment\s*due|pay\s*by|data\s*de\s*vencimento|data\s*de\s*pagamento|fecha\s*de\s*pago|fecha\s*venc/i;
+  const SKIP_KEYWORDS = /cierre|closing|corte|anterior|previo|prior|last|passado/i;
 
-  for (let i = 0; i < lines.length; i++) {
+  const lines = raw.split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+  for (let i = 0; i < Math.min(lines.length, 60); i++) {
     const line = lines[i];
-    if (!/vencimiento\s+actual/i.test(line)) continue;
-
-    const sameLineDates = line.match(dateRx) || [];
-    if (sameLineDates.length) {
-      const parsedSame = parseStatementDate(sameLineDates[sameLineDates.length - 1]);
-      if (parsedSame) return parsedSame;
+    if (!DUE_KEYWORDS.test(line)) continue;
+    if (SKIP_KEYWORDS.test(line) && !DUE_KEYWORDS.test(line.replace(SKIP_KEYWORDS, ''))) continue;
+    // Find the keyword position so we pick the date AFTER it, not before
+    const window = lines.slice(i, i + 4).join(' ');
+    const kwMatch = DUE_KEYWORDS.exec(window);
+    DUE_KEYWORDS.lastIndex = 0;
+    if (kwMatch) {
+      const afterKw = window.slice(kwMatch.index + kwMatch[0].length);
+      const datesAfter = extractDates(afterKw);
+      if (datesAfter.length) return datesAfter[0];
     }
-
-    const windowText = lines.slice(i, i + 5).join(' ');
-    const dates = windowText.match(dateRx) || [];
-    if (/cierre\s+actual/i.test(windowText) && dates.length >= 2) {
-      const parsedColumn = parseStatementDate(dates[1]);
-      if (parsedColumn) return parsedColumn;
-    }
-    if (dates.length) {
-      const parsedNext = parseStatementDate(dates[0]);
-      if (parsedNext) return parsedNext;
-    }
+    const dates = extractDates(window);
+    if (dates.length) return dates[0];
   }
 
-  // Algunos resúmenes digitales muestran solo una fila de fechas de cabecera
-  // en pares: cierre/vencimiento anterior, cierre/vencimiento actual,
-  // próximo cierre/próximo vencimiento. Si el texto pierde las etiquetas,
-  // la cuarta fecha corresponde al VENCIMIENTO ACTUAL.
-  const headerDateRows = lines.slice(0, 30)
-    .map(function(line) { return line.match(dateRx) || []; })
-    .filter(function(dates) { return dates.length >= 4; });
-  if (headerDateRows.length) {
-    const parsedPairedHeader = parseStatementDate(headerDateRows[0][3]);
-    if (parsedPairedHeader) return parsedPairedHeader;
+  // --- PASO 2: heurística de pares en el encabezado (primeras 50 líneas) --
+  // El encabezado tiene [cierre] [vencimiento] en ese orden.
+  // El vencimiento es siempre 7-45 días DESPUÉS del cierre.
+  // Limitamos a las primeras 50 líneas para evitar contaminar con fechas de transacciones.
+  const headerLines = lines.slice(0, 50).join('\n');
+  const allDates = extractDates(headerLines);
+  const uniqueDates = [];
+  const seen = new Set();
+  for (const d of allDates) {
+    if (!seen.has(d.fecha)) { seen.add(d.fecha); uniqueDates.push(d); }
+  }
+  uniqueDates.sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+  for (let i = 0; i < uniqueDates.length - 1; i++) {
+    const diffDays = (new Date(uniqueDates[i + 1].fecha) - new Date(uniqueDates[i].fecha)) / 86400000;
+    if (diffDays >= 7 && diffDays <= 45) return uniqueDates[i + 1];
   }
 
-  const compact = raw.replace(/\n+/g, ' ').replace(/\s+/g, ' ');
-  const headerMatch = compact.match(/cierre\s+actual\s+vencimiento\s+actual[\s\S]{0,220}?(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\s+(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})/i);
-  if (headerMatch) {
-    const parsedHeader = parseStatementDate(headerMatch[2]);
-    if (parsedHeader) return parsedHeader;
-  }
-
-  // Banco Ciudad y similares: "CIERRE ACTUAL: DD Mon YY VENCIMIENTO ... DD Mon YY"
-  const cierreVtoMatch = compact.match(/cierre\s+actual[:\s]+(\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s+\d{2,4})\s+vencimiento[\s\S]{0,150}?(\d{1,2}\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s+\d{2,4})/i);
-  if (cierreVtoMatch) {
-    const parsedCierreVto = parseStatementDate(cierreVtoMatch[2]);
-    if (parsedCierreVto) return parsedCierreVto;
-  }
-
-  const nextMatch = compact.match(/pr[oó]ximo\s+cierre\s+pr[oó]ximo\s+vencimiento[\s\S]{0,220}?(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\s+(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})/i);
-  if (nextMatch) {
-    const parsedNextHeader = parseStatementDate(nextMatch[2]);
-    if (parsedNextHeader) return parsedNextHeader;
+  // --- PASO 3: única fecha futura en el encabezado -----------------------
+  if (uniqueDates.length === 1) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (uniqueDates[0].fecha >= today) return uniqueDates[0];
   }
 
   return null;
@@ -6939,7 +6936,19 @@ async function extractCardStatementRowsWithGroq(rawText, onProgress) {
       preferredDueDate: due ? due.fecha : null
     };
     const result = await postJsonWithFallback('/api/extract-statement-groq', payload, 'Extractor Groq');
-    return normalizeAIStatementRows(result.data, rawText);
+    const raw = result.data;
+
+    // Groq devuelve { due_date, items } — extraer la fecha de vencimiento
+    const groqDueDate = raw && raw.due_date ? raw.due_date : null;
+    const items = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.items) ? raw.items : []);
+
+    // Forzar la fecha de vencimiento en todas las filas
+    const effectiveDue = groqDueDate || (due ? due.fecha : null);
+    if (effectiveDue) {
+      items.forEach(function(item) { item.fecha = effectiveDue; });
+    }
+
+    return normalizeAIStatementRows(items, rawText);
   } catch (err) {
     console.warn('Groq statement extraction failed:', err);
     return [];
