@@ -1,4 +1,4 @@
-const CACHE = 'nf-v5';
+const CACHE = 'nf-v6';
 const PRECACHE = [
   '/',
   '/index.html',

@@ -377,6 +377,14 @@
 .tcard-item-amount{color:white;font-weight:800}
 .tcard-currency-section{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 7px;padding-top:9px;border-top:1px solid rgba(255,255,255,.10);font-size:.74rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
 .tcard-currency-section strong{font-size:.9rem;letter-spacing:0;text-transform:none;color:#ffb86b}
+.fx-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:.7rem;font-weight:700;cursor:pointer;border:1.5px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);transition:all .18s;margin-top:5px;white-space:nowrap}
+.fx-pill.active{background:rgba(56,220,180,.18);border-color:rgba(56,220,180,.5);color:#38dcb4}
+.fx-pill:hover{background:rgba(255,255,255,.14);color:#fff}
+.fx-input-row{display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;background:rgba(0,0,0,.25);border-radius:10px}
+.fx-input-row input{flex:1;background:transparent;border:none;border-bottom:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:.9rem;font-weight:700;outline:none;padding:2px 4px;width:80px;min-width:0}
+.fx-input-row input::placeholder{color:rgba(255,255,255,.3);font-weight:400}
+.fx-input-row label{font-size:.7rem;color:rgba(255,255,255,.5);white-space:nowrap}
+.fx-converted{font-size:.72rem;color:rgba(56,220,180,.8);margin-top:2px;font-weight:600}
 
     /* CATS */
     .cat-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -3005,6 +3013,31 @@ async function deleteTarjeta(id) {
 // ============================================
 // RENDER
 // ============================================
+// --- Exchange rates per card (persisted in localStorage) ---
+var cardFX = (function(){
+  try { return JSON.parse(localStorage.getItem('nf_card_fx') || '{}'); } catch(_){ return {}; }
+})();
+function saveCardFX(){ try { localStorage.setItem('nf_card_fx', JSON.stringify(cardFX)); } catch(_){} }
+function getCardFX(cardId){ return cardFX[cardId] ? parseFloat(cardFX[cardId]) : null; }
+function setCardFX(cardId, rate){
+  if (!rate || isNaN(rate) || rate <= 0) { delete cardFX[cardId]; } else { cardFX[cardId] = parseFloat(rate); }
+  saveCardFX();
+  renderTab('tarjetas');
+}
+function toggleFXInput(cardId){
+  var row = document.getElementById('fx-row-'+cardId);
+  if (!row) return;
+  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+  if (row.style.display === 'flex') { var inp = row.querySelector('input'); if(inp) { inp.focus(); inp.select(); } }
+}
+function applyFXInput(cardId){
+  var inp = document.getElementById('fx-inp-'+cardId);
+  if (!inp) return;
+  var val = parseFloat(String(inp.value).replace(',','.').replace(/[^\d.]/g,''));
+  setCardFX(cardId, val);
+}
+function clearCardFX(cardId){ delete cardFX[cardId]; saveCardFX(); renderTab('tarjetas'); }
+
 function fmt(n) {
   if (isNaN(n) || n === null || n === undefined) return '$0';
   var num = Math.round((n||0) * 100) / 100;
@@ -4091,14 +4124,33 @@ renderAll = function() {
           </div>`}).join('');
       const cierreStr = t.cierre?(t.cierre+(t.cierre_mes?'/'+MS[t.cierre_mes-1]:'')):'?';
       const vencStr = t.vencimiento?(t.vencimiento+(t.venc_mes?'/'+MS[t.venc_mes-1]:'')):'?';
+      const fx = getCardFX(t.id);
+      const usdConverted = fx ? tGUsd.reduce((a,g)=>a+parseFloat(g.monto||0)*fx,0) : 0;
+      const grandTotal = fx ? tTot + usdConverted : tTot;
+      const fxPill = tGUsd.length ? `
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="fx-pill${fx?' active':''}" onclick="toggleFXInput('${t.id}')">
+            💱 ${fx ? '$'+fx.toLocaleString('es-AR') : 'Fijar TC'}
+          </span>
+          ${fx ? `<span class="fx-converted">≈ ${fmt(usdConverted)} incl.</span>` : ''}
+        </div>
+        <div class="fx-input-row" id="fx-row-${t.id}" style="display:none">
+          <label>1 USD =</label>
+          <input id="fx-inp-${t.id}" type="number" min="1" placeholder="1200" value="${fx||''}"
+            onkeydown="if(event.key==='Enter')applyFXInput('${t.id}')" />
+          <button onclick="applyFXInput('${t.id}')" style="background:rgba(56,220,180,.2);color:#38dcb4;border:1px solid rgba(56,220,180,.4);border-radius:6px;padding:3px 10px;font-size:.78rem;cursor:pointer">OK</button>
+          ${fx ? `<button onclick="clearCardFX('${t.id}')" style="background:transparent;border:none;color:rgba(255,255,255,.35);font-size:.78rem;cursor:pointer">✕</button>` : ''}
+        </div>` : '';
       return `<div class="tcard">
         <div class="tcard-head">
           <div>
             <div class="tcard-name">💳 ${t.nombre}</div>
             <div class="tcard-meta">${t.titular} · Cierra ${cierreStr} · Vence ${vencStr}</div>
+            ${fxPill}
           </div>
           <div style="text-align:right">
-            <div class="tcard-total">${fmt(tTot)}</div>
+            <div class="tcard-total">${fmt(grandTotal)}</div>
+            ${fx && tGUsd.length ? `<div style="font-size:.68rem;color:rgba(255,255,255,.4);margin-top:1px">ARS+USD conv.</div>` : ''}
             <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end">
               <button class="ibtn edit" onclick="editTarjeta('${t.id}')" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.72rem">✏️ Editar</button>
               <button class="ibtn del" onclick="deleteTarjeta('${t.id}')" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:0.72rem">✕</button>
