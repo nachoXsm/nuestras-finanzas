@@ -383,7 +383,7 @@
 .fx-pill.active{background:rgba(56,220,180,.18);border-color:rgba(56,220,180,.5);color:#38dcb4}
 .fx-pill:hover{background:rgba(255,255,255,.14);color:#fff}
 .fx-input-row{display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;background:rgba(0,0,0,.25);border-radius:10px;max-width:100%;box-sizing:border-box}
-.fx-input-row input{flex:1;background:transparent;border:none;border-bottom:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:.9rem;font-weight:700;outline:none;padding:2px 4px;width:80px;min-width:0}
+.fx-input-row input{flex:1;background:transparent;border:none;border-bottom:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:.9rem;font-weight:700;outline:none;padding:2px 4px;min-width:0;width:100%}
 .fx-input-row input::placeholder{color:rgba(255,255,255,.3);font-weight:400}
 .fx-input-row label{font-size:.7rem;color:rgba(255,255,255,.5);white-space:nowrap}
 .fx-converted{font-size:.72rem;color:rgba(56,220,180,.8);margin-top:2px;font-weight:600}
@@ -3039,7 +3039,13 @@ function toggleFXInput(cardId, currency){
 function applyFXInput(cardId, currency){
   var inp = document.getElementById('fx-inp-'+cardId+'-'+currency);
   if (!inp) return;
-  var val = parseFloat(String(inp.value).replace(',','.').replace(/[^\d.]/g,''));
+  // Handle both "1900" and "1.900" (Argentine thousands sep) and "1,900"
+  var raw = String(inp.value).trim()
+    .replace(/\.(?=\d{3}(?:[^\d]|$))/g, '') // remove thousands dots (1.900 → 1900)
+    .replace(',', '.');                        // comma decimal → dot
+  var val = parseFloat(raw);
+  if (!val || isNaN(val) || val <= 0) { inp.style.borderBottomColor = '#ff7a59'; return; }
+  inp.style.borderBottomColor = 'rgba(255,255,255,.3)';
   setCardFXRate(cardId, currency, val);
 }
 function clearCardFXRate(cardId, currency){ setCardFXRate(cardId, currency, null); }
@@ -4166,7 +4172,7 @@ renderAll = function() {
         </div>
         <div class="fx-input-row" id="fx-row-${uid}" style="display:none">
           <label>1 ${cur} =</label>
-          <input id="fx-inp-${uid}" type="number" min="0.0001" step="any" placeholder="1200" value="${rate||''}"
+          <input id="fx-inp-${uid}" type="text" inputmode="decimal" placeholder="1200" value="${rate||''}"
             onkeydown="if(event.key==='Enter')applyFXInput('${t.id}','${cur}')" />
           <button onclick="applyFXInput('${t.id}','${cur}')" style="background:rgba(56,220,180,.2);color:#38dcb4;border:1px solid rgba(56,220,180,.4);border-radius:6px;padding:3px 10px;font-size:.78rem;cursor:pointer">OK</button>
           ${rate ? `<button onclick="clearCardFXRate('${t.id}','${cur}')" style="background:transparent;border:none;color:rgba(255,255,255,.35);font-size:.78rem;cursor:pointer">✕</button>` : ''}
