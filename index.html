@@ -6905,6 +6905,24 @@ function enrichStatementRowsWithInstallments(primaryRows, candidateRows) {
   return primary;
 }
 
+async function extractCardStatementRowsWithGroq(rawText, onProgress) {
+  try {
+    if (onProgress) onProgress(72, 'Interpretando resumen con IA...', '🤖');
+    const visionLines = extractVisionLines(lastOCRVisionData || window.lastOCRVisionData);
+    const due = parseStatementDueDate(rawText);
+    const payload = {
+      rawText,
+      visionLines,
+      preferredDueDate: due ? due.fecha : null
+    };
+    const result = await postJsonWithFallback('/api/extract-statement-groq', payload, 'Extractor Groq');
+    return normalizeAIStatementRows(result.data, rawText);
+  } catch (err) {
+    console.warn('Groq statement extraction failed:', err);
+    return [];
+  }
+}
+
 async function extractCardStatementRowsWithAI(rawText, file, onProgress) {
   const endpoint = getAIStatementExtractorEndpoint();
   if (!endpoint) return [];
@@ -7522,7 +7540,24 @@ async function processOCR(input) {
     }
 
     if (isStatement) {
-      throw new Error('Detecté un resumen de tarjeta, pero no pude identificar los consumos línea por línea. Probá subir el PDF original o una captura más nítida del detalle.');
+      setProgress(68, 'Analizando con IA...', '🤖');
+      const groqItems = await extractCardStatementRowsWithGroq(text, setProgress);
+      if (groqItems && groqItems.length >= 1) {
+        const finalItems = finalizeStatementRowsForImport(applyStatementDueDate(
+          filterCardStatementConsumptionRows(groqItems), text
+        ));
+        const result = await importCardStatementExpenses(finalItems.length ? finalItems : groqItems, setProgress);
+        setProgress(100, 'Resumen importado con IA', '✅');
+        setTimeout(function() {
+          if (prog) prog.style.display = 'none';
+          const extra = result.skipped ? ' (' + result.skipped + ' duplicados omitidos)' : '';
+          toast('🤖 ' + result.imported + ' consumos cargados con IA' + extra);
+        }, 800);
+        if (btn) btn.disabled = false;
+        input.value = '';
+        return;
+      }
+      throw new Error('No se pudieron identificar los consumos. Probá subir el PDF original o una captura más nítida del detalle.');
     }
 
     setProgress(90, 'Archivo leído, extrayendo datos…', '✅');
