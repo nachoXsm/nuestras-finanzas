@@ -3027,7 +3027,8 @@ function setCardFXRate(cardId, currency, rate){
   if (!rate || isNaN(rate) || rate <= 0) { delete cardFX[cardId][currency]; } else { cardFX[cardId][currency] = parseFloat(rate); }
   if (!Object.keys(cardFX[cardId]).length) delete cardFX[cardId];
   saveCardFX();
-  renderTab('tarjetas');
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof renderFlujo === 'function') renderFlujo();
 }
 function toggleFXInput(cardId, currency){
   var row = document.getElementById('fx-row-'+cardId+'-'+currency);
@@ -9987,24 +9988,53 @@ function renderFlujo() {
   if (!el || !state) return;
   var personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
   var gs = state.gastos||[], inc = state.ingresos||[];
-  var isUSD = function(r){ return String(r.moneda||'').toUpperCase()==='USD'; };
-  var gsARS = gs.filter(function(g){return !isUSD(g);}), gsUSD = gs.filter(isUSD);
-  var incARS = inc.filter(function(i){return !isUSD(i);}), incUSD = inc.filter(isUSD);
-  var tI = incARS.reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
-  var tG = gsARS.reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var fj = gsARS.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var vr = gsARS.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var eT = gsARS.filter(function(g){return isCardPayment(g);}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var tIusd = incUSD.reduce(function(a,i){return a+parseFloat(i.monto||0);},0);
-  var tGusd = gsUSD.reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var fjUsd = gsUSD.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
-  var vrUsd = gsUSD.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+  var baseCur = getActiveBaseCurrency().toUpperCase();
+
+  // Helper: returns the TC rate for a record's card+currency, or null if none set
+  function fxRateFor(r) {
+    var cur = String(r.moneda||baseCur).toUpperCase();
+    if (cur === baseCur) return null;
+    var cardId = (typeof getExpenseCardId === 'function') ? getExpenseCardId(r) : null;
+    return cardId ? getCardFXRate(cardId, cur) : null;
+  }
+  // A record is "converted" if it's base currency OR has a TC set
+  function isConverted(r) {
+    var cur = String(r.moneda||baseCur).toUpperCase();
+    return cur === baseCur || !!fxRateFor(r);
+  }
+  // Returns the amount in base currency (applying TC if needed)
+  function baseAmount(r) {
+    var monto = parseFloat(r.monto||0);
+    var rate = fxRateFor(r);
+    return rate ? monto * rate : monto;
+  }
+
+  var gsBase = gs.filter(isConverted);
+  var gsForeign = gs.filter(function(g){ return !isConverted(g); });
+  var incBase = inc.filter(isConverted);
+  var incForeign = inc.filter(function(i){ return !isConverted(i); });
+
+  var tI = incBase.reduce(function(a,i){return a+baseAmount(i);},0);
+  var tG = gsBase.reduce(function(a,g){return a+baseAmount(g);},0);
+  var fj = gsBase.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+baseAmount(g);},0);
+  var vr = gsBase.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+baseAmount(g);},0);
+  var eT = gsBase.filter(function(g){return isCardPayment(g);}).reduce(function(a,g){return a+baseAmount(g);},0);
+
+  // Group remaining foreign currency records by currency code
+  var foreignGroups = {};
+  gsForeign.concat(incForeign).forEach(function(r){
+    var cur = String(r.moneda||'?').toUpperCase();
+    if (!foreignGroups[cur]) foreignGroups[cur] = {gs:[],inc:[]};
+    if (inc.indexOf(r) >= 0) foreignGroups[cur].inc.push(r);
+    else foreignGroups[cur].gs.push(r);
+  });
+
   var sl = tI - tG;
   var pctG = tI>0?Math.round(tG/tI*100):0;
   var pctF = tG>0?Math.round(fj/tG*100):0;
   var colors = ['#12c7b7','#6c63ff','#f7c948','#ff7a59','#1ec98f'];
   var pInc = personas.map(function(p,i){
-    return {nombre:p,color:colors[i]||'#888',inc:inc.filter(function(x){return x.quien===p;}).reduce(function(a,x){return a+parseFloat(x.monto||0);},0)};
+    return {nombre:p,color:colors[i]||'#888',inc:incBase.filter(function(x){return x.quien===p;}).reduce(function(a,x){return a+baseAmount(x);},0)};
   });
   function fRow(label,value,color,bold,sub){
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)">'+
@@ -10039,16 +10069,24 @@ function renderFlujo() {
   if(eT>0)html+=fRow(L('flujoEnTarjeta'),fmtInt(eT),'#f7c948',false);
   html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 2px"><div style="font-size:15px;font-weight:800">'+L('flujoLibre')+'</div><div style="font-size:22px;font-weight:800;color:'+(sl>=0?'#1ec98f':'#ff7a59')+'">'+fmtInt(sl)+'</div></div>';
   html+='</div>';
-  if(tIusd>0||tGusd>0){
-    var slUsd=tIusd-tGusd;
-    html+='<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 10px">🇺🇸 Movimientos en USD</div>';
+  // Foreign currency sections (only for currencies WITHOUT a TC configured)
+  Object.keys(foreignGroups).forEach(function(cur) {
+    var grp = foreignGroups[cur];
+    var tGrpI = grp.inc.reduce(function(a,r){return a+parseFloat(r.monto||0);},0);
+    var tGrpG = grp.gs.reduce(function(a,r){return a+parseFloat(r.monto||0);},0);
+    var tGrpFj = grp.gs.filter(function(g){return g.tipo==='fijo';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+    var tGrpVr = grp.gs.filter(function(g){return g.tipo==='variable';}).reduce(function(a,g){return a+parseFloat(g.monto||0);},0);
+    var slGrp = tGrpI - tGrpG;
+    if (tGrpI===0 && tGrpG===0) return;
+    html+='<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 10px">💱 Movimientos en '+cur+'</div>';
     html+='<div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(247,201,72,.25);border-radius:18px;padding:16px;margin-bottom:14px">';
-    if(tIusd>0)html+=fRow('Ingresos USD','U$S '+fmt(tIusd),'#1ec98f',false);
-    if(fjUsd>0)html+=fRow('Gastos fijos USD','U$S '+fmt(fjUsd),'#6c63ff',false);
-    if(vrUsd>0)html+=fRow('Gastos variables USD','U$S '+fmt(vrUsd),'#ff7a59',false);
-    html+=fRow('Saldo USD','U$S '+fmt(slUsd),slUsd>=0?'#1ec98f':'#ff7a59',true);
+    if(tGrpI>0)html+=fRow('Ingresos '+cur,fmtCurrency(tGrpI,cur),'#1ec98f',false);
+    if(tGrpFj>0)html+=fRow('Gastos fijos '+cur,fmtCurrency(tGrpFj,cur),'#6c63ff',false);
+    if(tGrpVr>0)html+=fRow('Gastos variables '+cur,fmtCurrency(tGrpVr,cur),'#ff7a59',false);
+    html+=fRow('Saldo '+cur,fmtCurrency(slGrp,cur),slGrp>=0?'#1ec98f':'#ff7a59',true);
+    html+='<div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:8px">Fijá el TC en la tarjeta para incluirlos en el total</div>';
     html+='</div>';
-  }
+  });
   // BARRA DE PROGRESO
   if(tI>0){
     var pctFjBar=Math.min(100,Math.round(fj/tI*100));
