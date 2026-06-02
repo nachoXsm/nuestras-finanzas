@@ -1592,7 +1592,7 @@
     <!-- Sección resumen: selector de tarjeta -->
     <div id="ocrCardSection" style="display:none;flex-direction:column;gap:10px">
       <div style="font-size:.72rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Tarjeta del resumen</div>
-      <select id="ocrTarjetaSelect" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-size:.9rem;font-weight:700;padding:12px 14px;width:100%;outline:none;cursor:pointer"></select>
+      <select id="ocrTarjetaSelect" onchange="onOcrTarjetaChange()" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-size:.9rem;font-weight:700;padding:12px 14px;width:100%;outline:none;cursor:pointer"></select>
       <button onclick="ocrConfirmResumen()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--primary);border:none;color:#06131f;padding:15px 18px;border-radius:16px;font-size:1rem;font-weight:800;cursor:pointer">
         Seleccionar archivo →
       </button>
@@ -5119,13 +5119,19 @@ function ocrShowFileTypeStep() {
   if (sel) {
     var tarjetas = (state && state.tarjetas) || [];
     if (!tarjetas.length) {
-      sel.innerHTML = '<option value="">Sin tarjetas cargadas</option>';
+      sel.innerHTML = '<option value="">Sin tarjetas cargadas</option><option value="__nueva__">＋ Agregar tarjeta</option>';
     } else {
       sel.innerHTML = tarjetas.map(function(t) {
         return '<option value="' + t.id + '">' + (t.nombre || 'Tarjeta') + '</option>';
-      }).join('');
+      }).join('') + '<option value="__nueva__">＋ Agregar tarjeta</option>';
     }
   }
+}
+function onOcrTarjetaChange() {
+  var sel = document.getElementById('ocrTarjetaSelect');
+  if (!sel || sel.value !== '__nueva__') return;
+  closeOcrActionSheet();
+  setTimeout(function() { toggleForm('fTarjeta'); }, 300);
 }
 function ocrSelectType(type) {
   var pc = document.getElementById('ocrPillComprobante');
