@@ -5160,7 +5160,11 @@ function selectOcrTarjeta(id, nombre) {
   if (menu) menu.style.display = 'none';
   if (id === '__nueva__') {
     closeOcrActionSheet();
-    setTimeout(function() { toggleForm('fTarjeta'); }, 300);
+    setTimeout(function() {
+      switchTab('tarjetas');
+      setNavActive('nav-tarjetas');
+      setTimeout(function() { toggleForm('fTarjeta'); }, 150);
+    }, 300);
     return;
   }
   if (label) label.textContent = nombre;
