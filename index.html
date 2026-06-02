@@ -254,6 +254,12 @@
     .form-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-top:2px solid var(--primary);border-radius:20px;padding:18px;margin-bottom:14px;display:none}
     .form-panel.open{display:block}
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .gf-monto-row{display:flex;gap:8px}.gf-monto-row .currency-select-mini{width:auto;min-width:90px;flex-shrink:0}.gf-monto-row input{flex:1;min-width:0}
+    .gf-quien-chips{display:flex;gap:8px;flex-wrap:wrap}
+    .gf-quien-chip{padding:9px 16px;border-radius:999px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.09);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text);white-space:nowrap}
+    .gf-quien-chip.active{background:rgba(18,199,183,.15);border-color:rgba(18,199,183,.5);color:var(--primary)}
+    .gf-fecha-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .gf-fecha-row .mini-lbl{font-size:9px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
     .field{display:flex;flex-direction:column;gap:6px}
     .field label{font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600}
     .field input,.field select{background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.08);color:white;padding:10px 13px;border-radius:13px;font-size:.9rem;width:100%;transition:border-color .2s}
@@ -1105,11 +1111,20 @@
             <input type="file" id="ocrInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv" style="display:none" onchange="processOCR(this)">
             <input type="file" id="ocrCameraInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
           </div>
-          <div class="field"><label id="g_monto_label">Monto</label><div class="amount-currency-row"><select id="g_moneda" class="currency-select-mini"></select><input type="number" id="g_monto" placeholder="0" step="any"></div></div>
-          <div class="field"><label id="g_cat_label">Categoría</label>
+          <!-- Monto: moneda + número en fila -->
+          <div class="field" style="grid-column:1/-1">
+            <label id="g_monto_label">Monto</label>
+            <div class="gf-monto-row">
+              <select id="g_moneda" class="currency-select-mini"></select>
+              <input type="number" id="g_monto" placeholder="0" step="any">
+            </div>
+          </div>
+          <!-- Categoría full width + nueva categoría integrada en el select -->
+          <div class="field" style="grid-column:1/-1">
+            <label id="g_cat_label">Categoría</label>
             <div class="category-select-wrap">
               <span id="g_cat_preview" class="cat-select-preview"></span>
-              <select id="g_cat" onchange="updateCategoryPreview()">
+              <select id="g_cat" onchange="onCatChange()">
                 <option value="Vivienda">Vivienda</option><option value="Alimentación">Alimentación</option>
                 <option value="Transporte">Transporte</option><option value="Salud">Salud</option>
                 <option value="Educación">Educación</option><option value="Entretenimiento">Entretenimiento</option>
@@ -1117,19 +1132,18 @@
                 <option value="Mascota">Mascota</option><option value="Suscripciones">Suscripciones</option>
                 <option value="Viajes">Viajes</option><option value="Seguros">Seguros</option><option value="Regalos">Regalos</option>
                 <option value="Tarjeta">Tarjeta</option><option value="Otros">Otros</option>
+                <option value="__nueva__">＋ Añadir categoría personalizada</option>
               </select>
             </div>
-          </div>
-          <div style="grid-column:1/-1;margin-top:-4px">
-            <div id="newCatForm" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;margin-bottom:6px">
+            <div id="newCatForm" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;margin-top:6px">
               <input type="text" id="newCatEmoji" placeholder="😀" maxlength="2" style="width:42px;height:36px;text-align:center;font-size:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:white;outline:none;flex-shrink:0">
               <input type="text" id="newCatName" placeholder="Nombre de la categoría" maxlength="24" style="flex:1;height:36px;padding:0 10px;font-size:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:white;outline:none" onkeydown="if(event.key==='Enter')saveCustomCat()">
               <button type="button" onclick="saveCustomCat()" style="height:36px;padding:0 14px;background:var(--primary);border:none;border-radius:8px;color:white;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0">OK</button>
               <button type="button" onclick="cancelCustomCat()" style="height:36px;width:36px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">✕</button>
             </div>
-            <button type="button" id="addCatBtn" onclick="showNewCatForm()" style="width:100%;padding:9px;background:transparent;border:1.5px dashed rgba(255,255,255,.15);border-radius:12px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.2px">＋ Añadir categoría personalizada</button>
           </div>
-          <div class="field"><label id="g_tipo_label">Tipo</label><select id="g_tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select></div>
+          <!-- Tipo + Medio de pago -->
+          <div class="field"><label id="g_tipo_label">Tipo</label><select id="g_tipo"><option value="variable">Variable</option><option value="fijo">Fijo</option></select></div>
           <div class="field"><label id="g_medio_label">Medio de pago</label>
             <select id="g_medio" onchange="toggleCardFields()"><option value="efectivo">Efectivo / Débito</option><option value="tarjeta">Tarjeta crédito</option></select>
           </div>
@@ -1137,14 +1151,39 @@
           <div class="field" id="gCuotasField" style="display:none"><label>Cuotas</label>
             <select id="g_cuotas"><option value="1">1 cuota</option><option value="2">2 cuotas</option><option value="3">3 cuotas</option><option value="4">4 cuotas</option><option value="5">5 cuotas</option><option value="6">6 cuotas</option><option value="7">7 cuotas</option><option value="8">8 cuotas</option><option value="9">9 cuotas</option><option value="10">10 cuotas</option><option value="11">11 cuotas</option><option value="12">12 cuotas</option><option value="13">13 cuotas</option><option value="14">14 cuotas</option><option value="15">15 cuotas</option><option value="16">16 cuotas</option><option value="17">17 cuotas</option><option value="18">18 cuotas</option><option value="19">19 cuotas</option><option value="20">20 cuotas</option><option value="21">21 cuotas</option><option value="22">22 cuotas</option><option value="23">23 cuotas</option><option value="24">24 cuotas</option></select>
           </div>
-          <div class="field"><label id="g_quien_label">¿Quién paga?</label><select id="g_quien" onchange="toggleDivision()"></select></div>
+          <!-- ¿Quién paga? chips -->
+          <div class="field" style="grid-column:1/-1">
+            <label id="g_quien_label">¿Quién paga?</label>
+            <div class="gf-quien-chips" id="gQuienChips"></div>
+            <!-- select oculto para compatibilidad con el JS existente -->
+            <select id="g_quien" onchange="toggleDivision();syncQuienChips()" style="display:none"></select>
+          </div>
           <div id="gDivisionField" style="display:none;grid-column:1/-1">
             <div style="background:rgba(255,255,255,.05);border-radius:14px;padding:12px;margin-top:-4px">
               <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px" id="g_division_label">¿Cuánto puso cada uno?</div>
               <div id="gDivisionInputs" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
           </div>
-          <div class="field" style="grid-column:1/-1"><label id="g_fecha_label">Fecha</label><input type="date" id="g_fecha" value="2026-05-13" style="width:100%;padding:10px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:var(--text);font-size:15px;font-weight:600"></div>
+          <!-- Fecha: día / mes / año compactos -->
+          <div class="field" style="grid-column:1/-1">
+            <label id="g_fecha_label">Fecha</label>
+            <div class="gf-fecha-row">
+              <div>
+                <div class="gf-fecha-row mini-lbl" id="g_dia_lbl">Día</div>
+                <input type="number" id="g_dia_f" min="1" max="31" placeholder="01" style="width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.08);color:white;padding:10px 13px;border-radius:13px;font-size:.9rem;text-align:center" oninput="syncFechaFromParts()">
+              </div>
+              <div>
+                <div class="gf-fecha-row mini-lbl" id="g_mes_lbl">Mes</div>
+                <select id="g_mes_f" style="width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.08);color:white;padding:10px 13px;border-radius:13px;font-size:.9rem" onchange="syncFechaFromParts()"></select>
+              </div>
+              <div>
+                <div class="gf-fecha-row mini-lbl" id="g_anio_lbl">Año</div>
+                <input type="number" id="g_anio_f" placeholder="2026" style="width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.08);color:white;padding:10px 13px;border-radius:13px;font-size:.9rem;text-align:center" oninput="syncFechaFromParts()">
+              </div>
+            </div>
+            <!-- campo oculto para compatibilidad con JS que lee g_fecha -->
+            <input type="date" id="g_fecha" style="display:none">
+          </div>
         </div>
         <div id="ocrProgress">
           <div style="font-size:1.5rem;margin-bottom:6px" id="ocrEmoji">📷</div>
@@ -1762,8 +1801,9 @@ function loadCustomCatsIntoSelect() {
   var sel = document.getElementById('g_cat');
   if (!sel) return;
   Array.from(sel.options).forEach(function(o){ if (o.dataset.custom) o.remove(); });
-  var otrosIdx = Array.from(sel.options).findIndex(function(o){ return o.value === 'Otros'; });
-  var insertAt = otrosIdx >= 0 ? otrosIdx : sel.options.length;
+  // Insert custom cats before the __nueva__ sentinel
+  var nuevaIdx = Array.from(sel.options).findIndex(function(o){ return o.value === '__nueva__'; });
+  var insertAt = nuevaIdx >= 0 ? nuevaIdx : sel.options.length;
   getCustomCats().forEach(function(cc, i) {
     var opt = document.createElement('option');
     opt.value = cc.name;
@@ -1772,22 +1812,29 @@ function loadCustomCatsIntoSelect() {
     sel.add(opt, insertAt + i);
   });
 }
+function onCatChange() {
+  var sel = document.getElementById('g_cat');
+  if (sel && sel.value === '__nueva__') {
+    showNewCatForm();
+  } else {
+    updateCategoryPreview();
+  }
+}
 function showNewCatForm() {
   var form = document.getElementById('newCatForm');
-  var btn = document.getElementById('addCatBtn');
   if (form) form.style.display = 'flex';
-  if (btn) btn.style.display = 'none';
   setTimeout(function(){ var e = document.getElementById('newCatEmoji'); if (e) e.focus(); }, 80);
 }
 function cancelCustomCat() {
   var form = document.getElementById('newCatForm');
-  var btn = document.getElementById('addCatBtn');
+  var sel = document.getElementById('g_cat');
   if (form) {
     form.style.display = 'none';
     var e = document.getElementById('newCatEmoji'); if (e) e.value = '';
     var n = document.getElementById('newCatName'); if (n) n.value = '';
   }
-  if (btn) btn.style.display = '';
+  // Revert select back to first real option
+  if (sel && sel.value === '__nueva__') { sel.selectedIndex = 0; updateCategoryPreview(); }
 }
 function saveCustomCat() {
   var emojiEl = document.getElementById('newCatEmoji');
@@ -1806,6 +1853,63 @@ function saveCustomCat() {
   if (sel) { sel.value = name; updateCategoryPreview(); }
   cancelCustomCat();
 }
+// ── ¿Quién paga? chips ──────────────────────────────────────────────────────
+function renderQuienChips() {
+  var sel = document.getElementById('g_quien');
+  var wrap = document.getElementById('gQuienChips');
+  if (!sel || !wrap) return;
+  wrap.innerHTML = '';
+  Array.from(sel.options).forEach(function(opt) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gf-quien-chip' + (opt.value === sel.value ? ' active' : '');
+    btn.textContent = optionLabel(opt.value) || opt.textContent;
+    btn.dataset.value = opt.value;
+    btn.onclick = function() {
+      sel.value = opt.value;
+      sel.dispatchEvent(new Event('change'));
+      renderQuienChips();
+    };
+    wrap.appendChild(btn);
+  });
+}
+function syncQuienChips() { renderQuienChips(); }
+
+// ── Fecha: día/mes/año ───────────────────────────────────────────────────────
+function syncFechaFromParts() {
+  var d = parseInt(document.getElementById('g_dia_f').value) || 1;
+  var m = parseInt(document.getElementById('g_mes_f').value) || 1;
+  var y = parseInt(document.getElementById('g_anio_f').value) || new Date().getFullYear();
+  var dd = String(d).padStart(2,'0'), mm = String(m).padStart(2,'0');
+  var hidden = document.getElementById('g_fecha');
+  if (hidden) hidden.value = y + '-' + mm + '-' + dd;
+}
+function setFechaPartsFromDate(dateStr) {
+  // dateStr: YYYY-MM-DD
+  var parts = (dateStr || '').split('-');
+  if (parts.length < 3) return;
+  var dEl = document.getElementById('g_dia_f');
+  var mEl = document.getElementById('g_mes_f');
+  var yEl = document.getElementById('g_anio_f');
+  if (dEl) dEl.value = parseInt(parts[2], 10);
+  if (mEl) mEl.value = parseInt(parts[1], 10);
+  if (yEl) yEl.value = parseInt(parts[0], 10);
+}
+function populateMesFSelect() {
+  var sel = document.getElementById('g_mes_f');
+  if (!sel) return;
+  var current = sel.value;
+  sel.innerHTML = '';
+  var m = (NF_LANGS[nfLang] || NF_LANGS['es']).meses;
+  m.forEach(function(name, i) {
+    var opt = document.createElement('option');
+    opt.value = i + 1;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+}
+
 function optionLabel(value){ if(value==='Todos') return L('optTodos'); if(value==='Ambos'||value==='Compartido') return L('optCompartido'); if(value==='Compartida') return L('optCompartida'); return value || ''; }
 function pctIncomeText(pct){ return pct + L('pctIngreso'); }
 function pctTotalText(pct){ return pct + L('sumDelTotal'); }
@@ -2221,6 +2325,9 @@ function nfSetLang(c){
   // IA placeholder
   var iaInp = document.getElementById('iaInput');
   if (iaInp) iaInp.placeholder = LD.iaPlaceholder || 'Preguntame sobre tus finanzas…';
+
+  // Fecha partes — repoblar select de mes con nombres traducidos
+  populateMesFSelect();
 
   // Reiniciar chat del asesor si ya fue inicializado (para mostrar chips en nuevo idioma)
   if (typeof iaInitDone !== 'undefined' && iaInitDone) {
@@ -2679,12 +2786,13 @@ function toggleForm(id) {
       }
     }
     if (id==='fGasto') {
-      const _hoy = new Date(); const _gf = document.getElementById('g_fecha');
-      if(_gf) {
-        const _mesDefault = (typeof esModoGrupo === 'function' && esModoGrupo()) ? (_hoy.getMonth()+1) : state.mes;
-        _gf.value = _hoy.getFullYear()+'-'+String(_mesDefault).padStart(2,'0')+'-'+String(_hoy.getDate()).padStart(2,'0');
-      }
-      // g_mes y g_anio ya no existen como campos separados
+      const _hoy = new Date();
+      const _mesDefault = (typeof esModoGrupo === 'function' && esModoGrupo()) ? (_hoy.getMonth()+1) : state.mes;
+      const _fechaDefault = _hoy.getFullYear()+'-'+String(_mesDefault).padStart(2,'0')+'-'+String(_hoy.getDate()).padStart(2,'0');
+      const _gf = document.getElementById('g_fecha');
+      if (_gf) _gf.value = _fechaDefault;
+      populateMesFSelect();
+      setFechaPartsFromDate(_fechaDefault);
       if (typeof loadCustomCatsIntoSelect === 'function') loadCustomCatsIntoSelect();
       updateCategoryPreview();
       // Default quien to current user
@@ -2695,6 +2803,7 @@ function toggleForm(id) {
         const _defQuien = (_miNombre && _personas.includes(_miNombre)) ? _miNombre : (_personas[0] || '');
         if (_defQuien && _quienSel.value !== _defQuien) { _quienSel.value = _defQuien; toggleDivision(); }
       }
+      renderQuienChips();
     }
     if (id==='fTarjeta') {
       document.getElementById('t_cierre_mes').value = state.mes;
@@ -2968,13 +3077,16 @@ function editGasto(id) {
   document.getElementById('g_desc').value=gastoDisplayDescription(g);
   document.getElementById('g_monto').value=g.monto;
   document.getElementById('g_moneda').value=g.moneda || getDefaultCurrency();
-  const _ef = document.getElementById('g_fecha'); if(_ef) { const _em=String(g.mes||state.mes).padStart(2,'0'); const _ed=String(g.dia||1).padStart(2,'0'); _ef.value=(g.anio||state.anio)+'-'+_em+'-'+_ed; }
-  // g_mes y g_anio ya no existen
+  const _em=String(g.mes||state.mes).padStart(2,'0'); const _ed=String(g.dia||1).padStart(2,'0');
+  const _efv=(g.anio||state.anio)+'-'+_em+'-'+_ed;
+  const _ef = document.getElementById('g_fecha'); if(_ef) _ef.value=_efv;
+  populateMesFSelect(); setFechaPartsFromDate(_efv);
   document.getElementById('g_cat').value=g.cat||'Otros';
   updateCategoryPreview();
   document.getElementById('g_tipo').value=g.tipo||'variable';
   document.getElementById('g_medio').value=normalizedPaymentMedium(g);
   document.getElementById('g_quien').value=g.quien||'Todos';
+  renderQuienChips();
   toggleDivision();
   if (g.division) {
     try {
@@ -9065,6 +9177,8 @@ function updatePersonaNames() {
     ).join('');
     if (options.includes(current)) sel.value = current;
   });
+  // Refresh quien chips after options are rebuilt
+  if (typeof renderQuienChips === 'function') renderQuienChips();
 
   // Update titular select for tarjetas
   const tit = document.getElementById('t_titular');
