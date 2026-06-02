@@ -2439,7 +2439,7 @@ function nfSetLang(c){
   T('groupPanelTitle', LD.groupPanelTitle);
   T('groupPanelSub', LD.groupPanelSub);
   var catSel = document.getElementById('g_cat');
-  if(catSel){ var cv = catSel.value; Array.from(catSel.options).forEach(function(o){ o.textContent = catLabel(o.value); }); catSel.value = cv; updateCategoryPreview(); }
+  if(catSel){ var cv = catSel.value; Array.from(catSel.options).forEach(function(o){ if(o.value!=='__nueva__') o.textContent = catLabel(o.value); }); catSel.value = cv; updateCategoryPreview(); }
 
   // Botones cancelar/guardar en formularios
   document.querySelectorAll('.btn-cancel').forEach(function(el){ el.textContent=LD.btnCancelar; });
