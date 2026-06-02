@@ -16,18 +16,13 @@
   .field{margin-bottom:14px}
   .row{display:flex;gap:10px}
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .chip-row{display:flex;gap:8px;flex-wrap:wrap}
-  .chip{padding:9px 16px;border-radius:999px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.09);font-size:14px;font-weight:600;cursor:pointer;color:#e8edf5;white-space:nowrap}
-  .chip.active{background:rgba(18,199,183,.15);border-color:rgba(18,199,183,.5);color:#12c7b7}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .btn-save{width:100%;padding:14px;background:#12c7b7;border:none;border-radius:14px;color:#0f1923;font-weight:800;font-size:15px;cursor:pointer;margin-top:4px}
   .btn-cancel{width:100%;padding:12px;background:transparent;border:1.5px solid rgba(255,255,255,.1);border-radius:14px;color:#64748b;font-weight:700;font-size:14px;cursor:pointer;margin-top:8px}
   .currency-mini{width:auto;min-width:90px;flex-shrink:0}
-  .date-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .mini-lbl{font-size:9px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#64748b;margin-bottom:4px}
   .section-head{display:flex;align-items:center;gap:8px;margin-bottom:18px}
   .section-head span{font-size:18px;font-weight:800}
-  .vs{display:flex;align-items:center;justify-content:center;font-size:11px;color:#64748b;font-weight:700;letter-spacing:1px;gap:12px;margin:0 16px}
-  .vs::before,.vs::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
 </style>
 </head>
 <body>
@@ -90,7 +85,7 @@
       <input class="inp" type="text" placeholder="Sueldo, Freelance…">
     </div>
 
-    <!-- Monto: moneda + número en una fila -->
+    <!-- Monto: moneda + número en una sola fila -->
     <div class="field">
       <span class="label">Monto</span>
       <div class="row">
@@ -101,28 +96,26 @@
       </div>
     </div>
 
-    <!-- Tipo chips -->
-    <div class="field">
-      <span class="label">Tipo</span>
-      <div class="chip-row">
-        <span class="chip active">📌 Fijo</span>
-        <span class="chip">📊 Variable</span>
+    <!-- ¿Quién? y Tipo en la misma fila -->
+    <div class="two-col field">
+      <div>
+        <span class="label">¿Quién?</span>
+        <select class="inp"><option>Nacho</option><option>Celi</option></select>
+      </div>
+      <div>
+        <span class="label">Tipo</span>
+        <select class="inp"><option>Fijo</option><option>Variable</option></select>
       </div>
     </div>
 
-    <!-- ¿Quién? chips -->
+    <!-- Fecha: día / mes / año igual que en gastos -->
     <div class="field">
-      <span class="label">¿Quién?</span>
-      <div class="chip-row">
-        <span class="chip active">Nacho</span>
-        <span class="chip">Celi</span>
-      </div>
-    </div>
-
-    <!-- Fecha: mes y año en 2 cols (sin día — ingresos son mensuales) -->
-    <div class="field">
-      <span class="label">Período</span>
-      <div class="two-col">
+      <span class="label">Fecha</span>
+      <div class="three-col">
+        <div>
+          <div class="mini-lbl">Día</div>
+          <input class="inp" type="number" value="2" style="text-align:center">
+        </div>
         <div>
           <div class="mini-lbl">Mes</div>
           <select class="inp">
