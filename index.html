@@ -1592,7 +1592,16 @@
     <!-- Sección resumen: selector de tarjeta -->
     <div id="ocrCardSection" style="display:none;flex-direction:column;gap:10px">
       <div style="font-size:.72rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Tarjeta del resumen</div>
-      <select id="ocrTarjetaSelect" onchange="onOcrTarjetaChange()" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-size:.9rem;font-weight:700;padding:12px 14px;width:100%;outline:none;cursor:pointer"></select>
+      <!-- Custom dropdown reemplaza select nativo para mantener estética dark -->
+      <div id="ocrTarjetaDropdown" style="position:relative">
+        <button type="button" onclick="toggleOcrTarjetaDropdown()" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-size:.9rem;font-weight:700;padding:12px 14px;cursor:pointer;text-align:left">
+          <span id="ocrTarjetaLabel">Seleccioná una tarjeta</span>
+          <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+        <div id="ocrTarjetaMenu" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:#1a2535;border:1.5px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.5)" id="ocrTarjetaMenu"></div>
+      </div>
+      <!-- select oculto para compatibilidad con JS existente -->
+      <select id="ocrTarjetaSelect" style="display:none"></select>
       <button onclick="ocrConfirmResumen()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--primary);border:none;color:#06131f;padding:15px 18px;border-radius:16px;font-size:1rem;font-weight:800;cursor:pointer">
         Seleccionar archivo →
       </button>
@@ -5085,6 +5094,7 @@ function triggerOCRFiles() {
 function closeOcrActionSheet() {
   document.getElementById('ocrActionOverlay').style.display = 'none';
   document.getElementById('ocrActionSheet').style.display = 'none';
+  var m = document.getElementById('ocrTarjetaMenu'); if (m) m.style.display = 'none';
   ocrResetSteps();
 }
 function ocrResetSteps() {
@@ -5118,21 +5128,43 @@ function ocrShowFileTypeStep() {
   var sel = document.getElementById('ocrTarjetaSelect');
   if (sel) {
     var tarjetas = (state && state.tarjetas) || [];
+    var menu = document.getElementById('ocrTarjetaMenu');
+    var label = document.getElementById('ocrTarjetaLabel');
+    var itemStyle = 'display:block;width:100%;background:none;border:none;color:var(--text);font-size:.9rem;font-weight:700;padding:13px 16px;cursor:pointer;text-align:left;border-bottom:1px solid rgba(255,255,255,.06)';
+    var nuevaStyle = 'display:block;width:100%;background:none;border:none;color:var(--primary);font-size:.9rem;font-weight:700;padding:13px 16px;cursor:pointer;text-align:left';
     if (!tarjetas.length) {
-      sel.innerHTML = '<option value="">Sin tarjetas cargadas</option><option value="__nueva__">＋ Agregar tarjeta</option>';
+      sel.innerHTML = '<option value="">Sin tarjetas</option>';
+      if (label) label.textContent = 'Sin tarjetas cargadas';
+      if (menu) menu.innerHTML = '<button type="button" style="'+nuevaStyle+'" onclick="selectOcrTarjeta(\'__nueva__\',\'\')">＋ Agregar tarjeta</button>';
     } else {
-      sel.innerHTML = tarjetas.map(function(t) {
-        return '<option value="' + t.id + '">' + (t.nombre || 'Tarjeta') + '</option>';
-      }).join('') + '<option value="__nueva__">＋ Agregar tarjeta</option>';
+      sel.innerHTML = tarjetas.map(function(t){ return '<option value="'+t.id+'">'+(t.nombre||'Tarjeta')+'</option>'; }).join('');
+      if (label) label.textContent = tarjetas[0].nombre || 'Tarjeta';
+      sel.value = tarjetas[0].id;
+      if (menu) menu.innerHTML = tarjetas.map(function(t){
+        return '<button type="button" style="'+itemStyle+'" onclick="selectOcrTarjeta(\''+t.id+'\',\''+((t.nombre||'Tarjeta').replace(/'/g,"\\'"))+'\')">'+( t.nombre||'Tarjeta')+'</button>';
+      }).join('') + '<button type="button" style="'+nuevaStyle+'" onclick="selectOcrTarjeta(\'__nueva__\',\'\')">＋ Agregar tarjeta</button>';
     }
   }
 }
-function onOcrTarjetaChange() {
-  var sel = document.getElementById('ocrTarjetaSelect');
-  if (!sel || sel.value !== '__nueva__') return;
-  closeOcrActionSheet();
-  setTimeout(function() { toggleForm('fTarjeta'); }, 300);
+function toggleOcrTarjetaDropdown() {
+  var menu = document.getElementById('ocrTarjetaMenu');
+  if (!menu) return;
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
 }
+function selectOcrTarjeta(id, nombre) {
+  var menu = document.getElementById('ocrTarjetaMenu');
+  var label = document.getElementById('ocrTarjetaLabel');
+  var sel = document.getElementById('ocrTarjetaSelect');
+  if (menu) menu.style.display = 'none';
+  if (id === '__nueva__') {
+    closeOcrActionSheet();
+    setTimeout(function() { toggleForm('fTarjeta'); }, 300);
+    return;
+  }
+  if (label) label.textContent = nombre;
+  if (sel) sel.value = id;
+}
+function onOcrTarjetaChange() {}
 function ocrSelectType(type) {
   var pc = document.getElementById('ocrPillComprobante');
   var pr = document.getElementById('ocrPillResumen');
