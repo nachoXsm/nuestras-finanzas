@@ -2966,7 +2966,8 @@ async function saveIngreso() {
   const iMes = parseInt(document.getElementById('i_mes_f').value)||parseInt(document.getElementById('i_mes').value)||state.mes;
   const iAnio = parseInt(document.getElementById('i_anio_f').value)||parseInt(document.getElementById('i_anio').value)||state.anio;
   const iDia = parseInt(document.getElementById('i_dia_f').value)||1;
-  const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, descripcion:desc, monto, moneda:selectedCurrency('i_moneda'),
+  const iDia = parseInt(document.getElementById('i_dia_f').value)||1;
+  const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, dia:iDia, descripcion:desc, monto, moneda:selectedCurrency('i_moneda'),
     quien:document.getElementById('i_quien').value, tipo:document.getElementById('i_tipo').value };
   setSyncing('syncing');
   try {
@@ -4283,6 +4284,8 @@ renderAll = function() {
       ${items.map(i=>{
         const tipoClass = i.tipo==='fijo'?'nfi-tipo-fijo':'nfi-tipo-var';
         const tipoLabel = i.tipo==='fijo'?L('tagFijo'):L('tagVar');
+        const _idd = String(i.dia||1).padStart(2,'0');
+        const _imm = String(i.mes||state.mes).padStart(2,'0');
         return `<div class="nfi">
           <div class="nfi-iconwrap">
             <div class="nfi-icon" style="background:rgba(18,199,183,.15)">
@@ -4291,7 +4294,7 @@ renderAll = function() {
           </div>
           <div class="nfi-body">
             <div class="nfi-name">${i.descripcion||''}</div>
-            <div class="nfi-meta">${i.quien}</div>
+            <div class="nfi-meta">${i.quien} <span style="display:inline-block;background:rgba(99,120,155,.18);color:#8fa3c0;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px">${_idd}/${_imm}</span></div>
           </div>
           <div class="nfi-right">
             <div class="nfi-amt-inc">${fmtCurrency(i.monto, i.moneda)}</div>
