@@ -8167,12 +8167,19 @@ async function parseTicketWithAI(text) {
 
 function isSinglePaymentReceipt(text) {
   const lower = text.toLowerCase();
-  return (
-    lower.includes('pagaste a') ||
-    lower.includes('total pagado') ||
-    (lower.includes('mercado pago') && lower.includes('comprobante')) ||
-    (lower.includes('comprobante de pago') && !lower.includes('resumen'))
-  );
+  // Mercado Pago
+  if (lower.includes('pagaste a') || lower.includes('total pagado')) return true;
+  if (lower.includes('mercado pago') && lower.includes('comprobante')) return true;
+  if (lower.includes('comprobante de pago') && !lower.includes('resumen')) return true;
+  // Ticket fiscal argentino: tiene CAE, CUIT, IVA pero NO es un resumen de tarjeta
+  const esFiscal = /\bcae\b|\bcuit\b|\bafip\b|\bfactura\b/i.test(text);
+  const esResumen = /resumen|estado\s+de\s+cuenta|extracto|tarjeta\s+de\s+cr[eé]dito/i.test(lower);
+  if (esFiscal && !esResumen) return true;
+  // Ticket con TOTAL destacado y pocas líneas de items
+  const tieneTotal = /\btotal\b.*\$\s*[\d.,]+/i.test(text);
+  const lines = text.split('\n').filter(l => l.trim()).length;
+  if (tieneTotal && lines < 40 && !esResumen) return true;
+  return false;
 }
 
 function parseTicketText(text) {
