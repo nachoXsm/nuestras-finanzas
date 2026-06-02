@@ -4285,15 +4285,17 @@ renderAll = function() {
         const tipoLabel = i.tipo==='fijo'?L('tagFijo'):L('tagVar');
         const _idd = String(i.dia||1).padStart(2,'0');
         const _imm = String(i.mes||state.mes).padStart(2,'0');
+        const _iMoAbrev = MONTHS_SHORT[(i.mes||state.mes)-1]||'';
         return `<div class="nfi">
           <div class="nfi-iconwrap">
             <div class="nfi-icon" style="background:rgba(18,199,183,.15)">
               <svg viewBox="0 0 24 24" style="width:55%;height:55%;fill:none;stroke:#12c7b7;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
             </div>
+            <div class="nfi-date">${_iMoAbrev} ${i.dia||'—'}</div>
           </div>
           <div class="nfi-body">
             <div class="nfi-name">${i.descripcion||''}</div>
-            <div class="nfi-meta">${i.quien} <span style="display:inline-block;background:rgba(99,120,155,.18);color:#8fa3c0;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px">${_idd}/${_imm}</span></div>
+            <div class="nfi-meta">${i.quien}</div>
           </div>
           <div class="nfi-right">
             <div class="nfi-amt-inc">${fmtCurrency(i.monto, i.moneda)}</div>
