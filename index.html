@@ -2981,7 +2981,7 @@ async function saveIngreso() {
     document.getElementById('i_desc').value=''; document.getElementById('i_monto').value=''; document.getElementById('i_moneda').value=getDefaultCurrency();
     document.getElementById('fIngreso').classList.remove('open');
     setSyncing('ok'); renderAll();
-  } catch(e) { setSyncing('error'); toast('❌ Error al guardar'); }
+  } catch(e) { setSyncing('error'); console.error('saveIngreso error:', e); toast('❌ ' + (e&&e.message?e.message.slice(0,80):'Error al guardar')); }
 }
 function editIngreso(id) {
   const i = state.ingresos.find(x=>x.id===id); if(!i) return;
