@@ -5751,9 +5751,17 @@ function parseStatementDueDate(text) {
     const kwMatch = DUE_KEYWORDS.exec(window);
     DUE_KEYWORDS.lastIndex = 0;
     if (kwMatch) {
+      const beforeKw = window.slice(0, kwMatch.index);
       const afterKw = window.slice(kwMatch.index + kwMatch[0].length);
       const datesAfter = extractDates(afterKw);
-      if (datesAfter.length) return datesAfter[0];
+      if (datesAfter.length) {
+        // Columnar layout (e.g. BBVA): "CIERRE ACTUAL  VENCIMIENTO ACTUAL" as column
+        // headers on one line, "28-May-26  05-Jun-26" on the next. The first date after
+        // VENCIMIENTO keyword is actually the CIERRE column value; skip it.
+        const cierreHeaderBeforeKw = /cierre|closing|corte/i.test(beforeKw) && !extractDates(beforeKw).length;
+        if (cierreHeaderBeforeKw && datesAfter.length >= 2) return datesAfter[1];
+        return datesAfter[0];
+      }
     }
     const dates = extractDates(window);
     if (dates.length) return dates[0];
