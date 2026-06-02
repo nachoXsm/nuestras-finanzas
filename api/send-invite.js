@@ -30,9 +30,8 @@ function buildInviteEmail(codigo, grupo, de) {
 
           <tr>
             <td align="center" style="padding-bottom:28px">
-              <img src="https://nuestras-finanzas-two.vercel.app/icon-192.png" width="72" height="72" alt="NuestrasFinanzas" style="border-radius:18px;display:block;margin:0 auto">
-              <div style="color:#12c7b7;font-size:21px;font-weight:800;margin-top:10px;letter-spacing:-0.5px">NuestrasFinanzas</div>
-              <div style="color:rgba(255,255,255,.35);font-size:11px;margin-top:3px;letter-spacing:2px;text-transform:uppercase">Finanzas del hogar</div>
+              <img src="https://nuestrasfinanzas.app/icon-192.png" width="72" height="72" alt="nuestras finanzas" style="border-radius:18px;display:block;margin:0 auto">
+              <div style="margin-top:10px;letter-spacing:-0.5px;font-size:21px;font-weight:800"><span style="color:#ffffff">nuestras</span><span style="color:#12c7b7">finanzas</span></div>
             </td>
           </tr>
 
@@ -80,7 +79,7 @@ function buildInviteEmail(codigo, grupo, de) {
                     <table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:10px">
                       <tr>
                         <td style="width:26px;height:26px;background:rgba(18,199,183,.15);border-radius:50%;text-align:center;vertical-align:middle;color:#12c7b7;font-size:11px;font-weight:800">1</td>
-                        <td style="padding-left:10px;color:rgba(255,255,255,.65);font-size:13px">Abrí <strong style="color:#fff">nuestrasfinanzas.app</strong></td>
+                        <td style="padding-left:10px;color:rgba(255,255,255,.65);font-size:13px">Descargá la app en <strong style="color:#fff">Play Store</strong> o <strong style="color:#fff">App Store</strong></td>
                       </tr>
                     </table>
                     <table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:10px">
