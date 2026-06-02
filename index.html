@@ -2249,7 +2249,7 @@ function applyRecordInstallments(table, rows){
 function isUnknownColumnError(e){
   var msg=String((e&&e.message)||e||'');
   return (msg.includes('column') || msg.includes('schema') || msg.includes('PGRST204') || msg.includes('PGRST'))
-    && /moneda|tarjeta_id|cuotas|cuota_actual|gasto_origen_id|division/i.test(msg);
+    && /moneda|tarjeta_id|cuotas|cuota_actual|gasto_origen_id|division|dia/i.test(msg);
 }
 async function dbPostMoney(table, body){
   try {
@@ -2267,7 +2267,7 @@ async function dbPostMoney(table, body){
 
     var moneda = body.moneda;
     var clean = Object.assign({}, body);
-    ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
+    ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division','dia'].forEach(function(k){ delete clean[k]; });
     if (body.tarjeta_id && table === 'gastos') {
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
     }
@@ -2304,7 +2304,7 @@ async function dbPatchMoney(table, id, body){
 
     var moneda = body.moneda;
     var clean = Object.assign({}, body);
-    ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
+    ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division','dia'].forEach(function(k){ delete clean[k]; });
     if (body.tarjeta_id && table === 'gastos') {
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
     }
