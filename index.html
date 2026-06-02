@@ -1807,7 +1807,7 @@ function loadCustomCatsIntoSelect() {
   getCustomCats().forEach(function(cc, i) {
     var opt = document.createElement('option');
     opt.value = cc.name;
-    opt.textContent = (cc.emoji ? cc.emoji + ' ' : '') + cc.name;
+    opt.textContent = cc.name;
     opt.dataset.custom = '1';
     sel.add(opt, insertAt + i);
   });
