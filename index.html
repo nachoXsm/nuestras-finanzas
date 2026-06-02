@@ -2984,9 +2984,10 @@ async function saveIngreso() {
   } catch(e) { setSyncing('error'); toast('❌ Error al guardar'); }
 }
 function editIngreso(id) {
-  populateCurrencySelects();
   const i = state.ingresos.find(x=>x.id===id); if(!i) return;
   editingIngresoId = id;
+  updatePersonaNames();
+  populateCurrencySelects();
   document.getElementById('i_desc').value = i.descripcion||'';
   document.getElementById('i_monto').value = i.monto;
   document.getElementById('i_moneda').value = i.moneda || getDefaultCurrency();
