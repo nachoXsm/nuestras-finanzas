@@ -7606,14 +7606,15 @@ async function importCardStatementExpenses(items, setProgress) {
       consumedExistingStatementCounts[duplicateKey] = consumedCount + 1;
       const needsPatch =
         duplicate.quien !== body.quien ||
-        duplicate.cat !== body.cat ||
         normalizedPaymentMedium(duplicate) !== normalizedPaymentMedium(body) ||
         Number(duplicate.cuotas || 1) !== Number(body.cuotas || 1) ||
         Number(duplicate.cuota_actual || 1) !== Number(body.cuota_actual || 1) ||
         duplicate.division != null ||
         duplicate.tarjeta_id !== body.tarjeta_id;
       if (needsPatch && duplicate.id) {
-        const resDup = await dbPatchMoney('gastos', duplicate.id, body);
+        // No incluir cat en el patch — respeta la categoría que el usuario haya editado
+        const { cat: _cat, ...patchBody } = body;
+        const resDup = await dbPatchMoney('gastos', duplicate.id, patchBody);
         if (resDup && resDup[0]) {
           state.gastos = state.gastos.map(g => g.id === duplicate.id ? resDup[0] : g);
         }
