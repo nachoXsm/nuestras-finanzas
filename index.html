@@ -7619,8 +7619,29 @@ async function importCardStatementExpenses(items, setProgress) {
       const syncedOrigen = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [origen])))[0] || origen;
       state.gastos.push(syncedOrigen);
       imported++;
-      // Los resúmenes importados ya traen la cuota del período. No se generan cuotas futuras
-      // para evitar duplicar cargos cuando se importen los próximos resúmenes.
+
+      // Generar cuotas futuras si hay más de una cuota y aún quedan por vencer.
+      // Cuando el usuario importe el resumen del mes siguiente, la cuota ya existe
+      // y el detector de duplicados la saltea automáticamente.
+      const totalCuotas = cuotasParts.cuotas;
+      const actualCuota = cuotasParts.cuota_actual;
+      if (totalCuotas > 1 && actualCuota < totalCuotas) {
+        const futures = [];
+        for (let c = actualCuota + 1; c <= totalCuotas; c++) {
+          let m = item.mes + (c - actualCuota);
+          let y = item.anio;
+          while (m > 12) { m -= 12; y++; }
+          futures.push({ ...body, mes: m, anio: y, cuota_actual: c, gasto_origen_id: origen.id });
+        }
+        for (const f of futures) {
+          dbPostMoney('gastos', f).then(function(fr) {
+            if (fr && fr[0]) {
+              const sf = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [fr[0]])))[0] || fr[0];
+              state.gastos.push(sf);
+            }
+          }).catch(function() {});
+        }
+      }
     }
   }
 
