@@ -2966,7 +2966,6 @@ async function saveIngreso() {
   const iMes = parseInt(document.getElementById('i_mes_f').value)||parseInt(document.getElementById('i_mes').value)||state.mes;
   const iAnio = parseInt(document.getElementById('i_anio_f').value)||parseInt(document.getElementById('i_anio').value)||state.anio;
   const iDia = parseInt(document.getElementById('i_dia_f').value)||1;
-  const iDia = parseInt(document.getElementById('i_dia_f').value)||1;
   const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, dia:iDia, descripcion:desc, monto, moneda:selectedCurrency('i_moneda'),
     quien:document.getElementById('i_quien').value, tipo:document.getElementById('i_tipo').value };
   setSyncing('syncing');
