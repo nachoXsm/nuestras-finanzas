@@ -1054,12 +1054,40 @@
       </div>
       <div class="form-panel" id="fIngreso">
         <div class="form-grid">
-          <div class="field" style="grid-column:1/-1"><label>Descripción</label><input type="text" id="i_desc" placeholder="Sueldo, Freelance…"></div>
-          <div class="field"><label id="i_monto_label">Monto</label><div class="amount-currency-row"><select id="i_moneda" class="currency-select-mini"></select><input type="number" id="i_monto" placeholder="0"></div></div>
-          <div class="field"><label>¿Quién?</label><select id="i_quien"></select></div>
-          <div class="field"><label>Tipo</label><select id="i_tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select></div>
-          <div class="field"><label>Mes</label><select id="i_mes"><option value="1">Ene</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Ago</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dic</option></select></div>
-          <div class="field"><label>Año</label><input type="number" id="i_anio" placeholder="2026"></div>
+          <!-- Descripción -->
+          <div class="field" style="grid-column:1/-1"><label id="i_desc_label">Descripción</label><input type="text" id="i_desc" placeholder="Sueldo, Freelance…"></div>
+          <!-- Monto: moneda + número en una fila -->
+          <div class="field" style="grid-column:1/-1">
+            <label id="i_monto_label">Monto</label>
+            <div class="gf-monto-row">
+              <select id="i_moneda" class="currency-select-mini"></select>
+              <input type="number" id="i_monto" placeholder="0" step="any">
+            </div>
+          </div>
+          <!-- ¿Quién? y Tipo en la misma fila -->
+          <div class="field"><label id="i_quien_label">¿Quién?</label><select id="i_quien"></select></div>
+          <div class="field"><label id="i_tipo_label">Tipo</label><select id="i_tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select></div>
+          <!-- Fecha: día / mes / año igual que en gastos -->
+          <div class="field" style="grid-column:1/-1">
+            <label id="i_fecha_label">Fecha</label>
+            <div class="gf-fecha-row">
+              <div>
+                <div class="gf-fecha-row mini-lbl" id="i_dia_lbl">Día</div>
+                <input type="number" id="i_dia_f" min="1" max="31" placeholder="01" style="width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.08);color:white;padding:10px 13px;border-radius:13px;font-size:.9rem;text-align:center" oninput="syncIFechaFromParts()">
+              </div>
+              <div>
+                <div class="gf-fecha-row mini-lbl" id="i_mes_lbl">Mes</div>
+                <select id="i_mes_f" style="width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.08);color:white;padding:10px 13px;border-radius:13px;font-size:.9rem" onchange="syncIFechaFromParts()"></select>
+              </div>
+              <div>
+                <div class="gf-fecha-row mini-lbl" id="i_anio_lbl">Año</div>
+                <input type="number" id="i_anio_f" placeholder="2026" style="width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.08);color:white;padding:10px 13px;border-radius:13px;font-size:.9rem;text-align:center" oninput="syncIFechaFromParts()">
+              </div>
+            </div>
+            <!-- campos ocultos para compatibilidad con JS existente -->
+            <input type="hidden" id="i_mes">
+            <input type="hidden" id="i_anio">
+          </div>
         </div>
         <div class="form-actions"><button class="btn-cancel" onclick="toggleForm('fIngreso')">Cancelar</button><button class="btn-save" onclick="saveIngreso()">Guardar</button></div>
       </div>
@@ -1910,6 +1938,39 @@ function populateMesFSelect() {
   if (current) sel.value = current;
 }
 
+function syncIFechaFromParts() {
+  var d = parseInt(document.getElementById('i_dia_f').value) || 1;
+  var m = parseInt(document.getElementById('i_mes_f').value) || 1;
+  var y = parseInt(document.getElementById('i_anio_f').value) || new Date().getFullYear();
+  var mesHidden = document.getElementById('i_mes');
+  var anioHidden = document.getElementById('i_anio');
+  if (mesHidden) mesHidden.value = m;
+  if (anioHidden) anioHidden.value = y;
+}
+function setIFechaPartsFromDate(dia, mes, anio) {
+  var dEl = document.getElementById('i_dia_f');
+  var mEl = document.getElementById('i_mes_f');
+  var yEl = document.getElementById('i_anio_f');
+  if (dEl) dEl.value = dia || 1;
+  if (mEl) mEl.value = mes || 1;
+  if (yEl) yEl.value = anio || new Date().getFullYear();
+  syncIFechaFromParts();
+}
+function populateIMesFSelect() {
+  var sel = document.getElementById('i_mes_f');
+  if (!sel) return;
+  var current = sel.value;
+  sel.innerHTML = '';
+  var m = (NF_LANGS[nfLang] || NF_LANGS['es']).meses;
+  m.forEach(function(name, i) {
+    var opt = document.createElement('option');
+    opt.value = i + 1;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+}
+
 function optionLabel(value){ if(value==='Todos') return L('optTodos'); if(value==='Ambos'||value==='Compartido') return L('optCompartido'); if(value==='Compartida') return L('optCompartida'); return value || ''; }
 function pctIncomeText(pct){ return pct + L('pctIngreso'); }
 function pctTotalText(pct){ return pct + L('sumDelTotal'); }
@@ -2298,12 +2359,13 @@ function nfSetLang(c){
   });
 
   // Selects de meses
-  ['i_mes','g_mes','t_cierre_mes','t_venc_mes'].forEach(function(id){
+  ['g_mes','t_cierre_mes','t_venc_mes'].forEach(function(id){
     var s=document.getElementById(id); if(!s)return;
     var v=s.value;
     s.innerHTML=m.map(function(x,i){return '<option value="'+(i+1)+'">'+x+'</option>';}).join('');
     s.value=v;
   });
+  if (typeof populateIMesFSelect === 'function') populateIMesFSelect();
 
   // Helper para setear texto si existe el elemento
   function T(id, txt){ var el=document.getElementById(id); if(el) el.textContent=txt; }
@@ -2412,6 +2474,14 @@ function nfSetLang(c){
   var montoLbl = document.getElementById('g_monto_label');
   if(montoLbl) montoLbl.textContent = LD.fMonto;
 
+  T('i_desc_label', LD.fDesc);
+  T('i_monto_label', LD.fMonto);
+  T('i_quien_label', LD.fQuien);
+  T('i_tipo_label', LD.fTipo);
+  T('i_fecha_label', LD.fFecha);
+  T('i_dia_lbl', LD.fDia || 'Día');
+  T('i_mes_lbl', LD.fMes);
+  T('i_anio_lbl', LD.fAnio);
   T('g_cat_label', LD.fCategoria);
   T('g_tipo_label', LD.fTipo);
   T('g_medio_label', LD.fMedioPago);
@@ -2775,8 +2845,9 @@ function toggleForm(id) {
   if (!wasOpen) {
     // Set default month/year to currently selected
     if (id==='fIngreso') {
-      document.getElementById('i_mes').value = state.mes;
-      document.getElementById('i_anio').value = state.anio;
+      const _hoyI = new Date();
+      populateIMesFSelect();
+      setIFechaPartsFromDate(_hoyI.getDate(), state.mes, state.anio);
       const _iQuienSel = document.getElementById('i_quien');
       if (_iQuienSel && !_iQuienSel.value) {
         const _iMiNombre = localStorage.getItem('nf_mi_nombre') || '';
@@ -2892,9 +2963,10 @@ async function saveIngreso() {
   const desc = document.getElementById('i_desc').value.trim();
   const monto = parseFloat(document.getElementById('i_monto').value);
   if (!desc||!monto) return toast('Completá descripción y monto');
-  const iMes = parseInt(document.getElementById('i_mes').value)||state.mes;
-  const iAnio = parseInt(document.getElementById('i_anio').value)||state.anio;
-  const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, descripcion:desc, monto, moneda:selectedCurrency('i_moneda'),
+  const iMes = parseInt(document.getElementById('i_mes_f').value)||parseInt(document.getElementById('i_mes').value)||state.mes;
+  const iAnio = parseInt(document.getElementById('i_anio_f').value)||parseInt(document.getElementById('i_anio').value)||state.anio;
+  const iDia = parseInt(document.getElementById('i_dia_f').value)||1;
+  const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, dia:iDia, descripcion:desc, monto, moneda:selectedCurrency('i_moneda'),
     quien:document.getElementById('i_quien').value, tipo:document.getElementById('i_tipo').value };
   setSyncing('syncing');
   try {
@@ -2920,8 +2992,8 @@ function editIngreso(id) {
   document.getElementById('i_moneda').value = i.moneda || getDefaultCurrency();
   document.getElementById('i_quien').value = i.quien;
   document.getElementById('i_tipo').value = i.tipo;
-  document.getElementById('i_mes').value = i.mes||state.mes;
-  document.getElementById('i_anio').value = i.anio||state.anio;
+  populateIMesFSelect();
+  setIFechaPartsFromDate(i.dia||1, i.mes||state.mes, i.anio||state.anio);
   document.getElementById('fIngreso').classList.add('open');
   document.getElementById('fIngreso').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
