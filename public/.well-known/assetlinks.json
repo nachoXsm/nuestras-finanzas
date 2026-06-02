@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.nuestrasfinanzas",
+    "sha256_cert_fingerprints": ["1E:6B:26:A0:36:C2:99:03:44:59:5A:A4:C8:F2:D1:FF:CE:AA:BE:EB:4F:40:08:B2:FF:A6:FA:D4:54:7F:CA:18"]
+  }
+}]
