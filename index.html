@@ -7567,6 +7567,7 @@ async function importCardStatementExpenses(items, setProgress) {
   const consumedExistingStatementCounts = {};
   let imported = 0;
   let skipped = 0;
+  const pendingFutureCuotas = [];
 
   setSyncing('syncing');
   for (let i = 0; i < list.length; i++) {
@@ -7642,15 +7643,22 @@ async function importCardStatementExpenses(items, setProgress) {
           futures.push({ ...body, mes: m, anio: y, cuota_actual: c, gasto_origen_id: origen.id });
         }
         for (const f of futures) {
-          dbPostMoney('gastos', f).then(function(fr) {
-            if (fr && fr[0]) {
-              const sf = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [fr[0]])))[0] || fr[0];
-              state.gastos.push(sf);
-            }
-          }).catch(function() {});
+          pendingFutureCuotas.push(
+            dbPostMoney('gastos', f).then(function(fr) {
+              if (fr && fr[0]) {
+                const sf = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [fr[0]])))[0] || fr[0];
+                state.gastos.push(sf);
+              }
+            }).catch(function(e) { console.error('Error creando cuota futura:', e); })
+          );
         }
       }
     }
+  }
+
+  if (pendingFutureCuotas.length) {
+    if (setProgress) setProgress(97, 'Creando cuotas futuras…', '📅');
+    await Promise.all(pendingFutureCuotas);
   }
 
   setSyncing('ok');
