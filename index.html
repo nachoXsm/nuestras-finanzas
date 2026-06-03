@@ -739,6 +739,32 @@
     .inf-chart-card .inf-cat-val{font-size:12.5px!important}
   }
 
+
+  /* ---- PAYWALL MODAL ---- */
+  #paywallModal{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .25s}
+  #paywallModal.open{opacity:1;pointer-events:all}
+  .pw-sheet{background:#101828;border-radius:26px 26px 0 0;width:100%;max-width:480px;padding:28px 22px 40px;position:relative;transform:translateY(40px);transition:transform .28s cubic-bezier(.22,1,.36,1)}
+  #paywallModal.open .pw-sheet{transform:translateY(0)}
+  .pw-pill{width:38px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:0 auto 22px}
+  .pw-badge{display:inline-block;background:linear-gradient(135deg,#12c7b7,#0ea89a);color:#0a0f1e;font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:99px;margin-bottom:12px}
+  .pw-title{color:#fff;font-size:22px;font-weight:900;line-height:1.2;margin-bottom:8px}
+  .pw-title span{color:#12c7b7}
+  .pw-sub{color:rgba(255,255,255,.5);font-size:13px;line-height:1.6;margin-bottom:22px}
+  .pw-features{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+  .pw-feat{display:flex;align-items:center;gap:12px;font-size:13.5px;color:rgba(255,255,255,.8);font-weight:600}
+  .pw-feat-icon{width:32px;height:32px;border-radius:10px;background:rgba(18,199,183,.13);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .pw-plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .pw-plan{border:1.5px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 12px;cursor:pointer;transition:all .18s;text-align:center;position:relative;background:rgba(255,255,255,.03)}
+  .pw-plan.selected{border-color:#12c7b7;background:rgba(18,199,183,.1)}
+  .pw-plan-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#12c7b7;color:#0a0f1e;font-size:9px;font-weight:900;letter-spacing:1px;padding:3px 8px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .pw-plan-name{color:rgba(255,255,255,.5);font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+  .pw-plan-price{color:#fff;font-size:20px;font-weight:900}
+  .pw-plan-price span{font-size:11px;font-weight:600;color:rgba(255,255,255,.4)}
+  .pw-plan-trial{color:#12c7b7;font-size:10px;font-weight:700;margin-top:3px}
+  .pw-cta{width:100%;padding:16px;background:linear-gradient(135deg,#12c7b7,#0ea89a);border:none;border-radius:15px;color:#0a0f1e;font-weight:900;font-size:16px;cursor:pointer;margin-bottom:10px}
+  .pw-cta:disabled{opacity:.5}
+  .pw-dismiss{width:100%;padding:11px;background:transparent;border:none;color:rgba(255,255,255,.3);font-size:13px;cursor:pointer}
+  .pw-restore{display:block;text-align:center;color:rgba(255,255,255,.2);font-size:11px;margin-top:6px;cursor:pointer;background:none;border:none;width:100%}
   </style>
 </head>
 <body>
@@ -2569,6 +2595,46 @@ function nfSetLang(c){
 
 
 
+
+// ============================================
+// PREMIUM / MASTER ACCESS
+// ============================================
+// Group UUIDs that always have full premium access (developers / owners).
+// Add your grupo.id values here — never expires, no paywall shown.
+const MASTER_GROUP_IDS = [
+  // 'PASTE-YOUR-UUID-HERE',   // Nacho
+  // 'PASTE-CELINA-UUID-HERE', // Celi
+];
+// Recovery emails as secondary check (case-insensitive)
+const MASTER_EMAILS = [
+  'isanchezmoser@gmail.com',
+];
+
+function isMasterUser() {
+  var gid = (loadGroup() || {}).id || '';
+  if (gid && MASTER_GROUP_IDS.includes(gid)) return true;
+  var email = (localStorage.getItem('nf_recovery_email') || '').toLowerCase().trim();
+  return email && MASTER_EMAILS.map(function(e){ return e.toLowerCase(); }).includes(email);
+}
+
+// isPremium: master OR purchased subscription
+function isPremium() {
+  if (isMasterUser()) return true;
+  try {
+    var sub = JSON.parse(localStorage.getItem('nf_premium') || 'null');
+    if (!sub) return false;
+    // sub = { expiresAt: ISO string, productId: string }
+    return sub.expiresAt && new Date(sub.expiresAt) > new Date();
+  } catch(e) { return false; }
+}
+
+function setPremiumSubscription(expiresAt, productId) {
+  localStorage.setItem('nf_premium', JSON.stringify({ expiresAt: expiresAt, productId: productId }));
+}
+
+function clearPremiumSubscription() {
+  localStorage.removeItem('nf_premium');
+}
 
 // ============================================
 // SUPABASE CONFIG
@@ -5079,6 +5145,7 @@ function getMutedColor(){return document.documentElement.getAttribute('data-them
 // ============================================
 
 function triggerOCR() {
+  if (!requirePremium('ocr')) return;
   ocrResetSteps();
   const overlay = document.getElementById('ocrActionOverlay');
   const sheet = document.getElementById('ocrActionSheet');
@@ -5086,6 +5153,7 @@ function triggerOCR() {
   if (sheet) sheet.style.display = 'block';
 }
 function triggerOCRFiles() {
+  if (!requirePremium('ocr')) return;
   ocrResetSteps();
   const overlay = document.getElementById('ocrActionOverlay');
   const sheet = document.getElementById('ocrActionSheet');
@@ -10610,6 +10678,7 @@ function iaBuildContext() {
 }
 
 function iaInitIfNeeded() {
+  if (!requirePremium('ia')) return;
   if (iaInitDone) return;
   iaInitDone = true;
   var el = document.getElementById('iaChatMessages');
@@ -10692,6 +10761,201 @@ async function iaSend() {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+// ============================================
+// PAYWALL
+// ============================================
+var _pwSelectedPlan = 'yearly';
+
+var PW_COPY = {
+  es: {
+    badge: 'Premium',
+    title: 'Desbloqueá todos los <span>superpoderes</span>',
+    sub: '7 días gratis, luego cancelá cuando quieras. Sin permanencia.',
+    features: [
+      ['📷', 'Escaneá comprobantes automáticamente'],
+      ['💳', 'Importá resúmenes de tarjeta con IA'],
+      ['🤖', 'Asesor financiero con IA'],
+      ['📊', 'Informes avanzados y análisis inteligentes'],
+      ['👥', 'Sin límites de integrantes'],
+      ['⚡', 'Acceso anticipado a nuevas funciones'],
+    ],
+    monthly: 'Mensual', yearly: 'Anual',
+    save: 'Ahorrás 40%',
+    trial: '7 días gratis',
+    cta: 'Probar gratis 7 días →',
+    dismiss: 'Ahora no',
+    restore: 'Restaurar compra',
+    priceMonth: '/mes', priceYear: '/año',
+  },
+  en: {
+    badge: 'Premium',
+    title: 'Unlock all <span>superpowers</span>',
+    sub: '7-day free trial, then cancel anytime. No commitment.',
+    features: [
+      ['📷', 'Scan receipts automatically'],
+      ['💳', 'Import card statements with AI'],
+      ['🤖', 'AI financial advisor'],
+      ['📊', 'Advanced reports & smart analytics'],
+      ['👥', 'Unlimited members'],
+      ['⚡', 'Early access to new features'],
+    ],
+    monthly: 'Monthly', yearly: 'Yearly',
+    save: 'Save 40%',
+    trial: '7-day free trial',
+    cta: 'Start free trial →',
+    dismiss: 'Not now',
+    restore: 'Restore purchase',
+    priceMonth: '/mo', priceYear: '/yr',
+  },
+  pt: {
+    badge: 'Premium',
+    title: 'Desbloqueie todos os <span>superpoderes</span>',
+    sub: '7 dias grátis, depois cancele quando quiser. Sem fidelidade.',
+    features: [
+      ['📷', 'Digitalize comprovantes automaticamente'],
+      ['💳', 'Importe faturas de cartão com IA'],
+      ['🤖', 'Consultor financeiro com IA'],
+      ['📊', 'Relatórios avançados e análises inteligentes'],
+      ['👥', 'Membros ilimitados'],
+      ['⚡', 'Acesso antecipado a novos recursos'],
+    ],
+    monthly: 'Mensal', yearly: 'Anual',
+    save: 'Economize 40%',
+    trial: '7 dias grátis',
+    cta: 'Experimente grátis 7 dias →',
+    dismiss: 'Agora não',
+    restore: 'Restaurar compra',
+    priceMonth: '/mês', priceYear: '/ano',
+  },
+};
+
+function openPaywall(featureName) {
+  if (isPremium()) return; // master / already subscribed → skip
+  var modal = document.getElementById('paywallModal');
+  if (!modal) return;
+  _renderPaywall();
+  modal.classList.add('open');
+}
+
+function closePaywall() {
+  var modal = document.getElementById('paywallModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function selectPwPlan(plan) {
+  _pwSelectedPlan = plan;
+  document.querySelectorAll('.pw-plan').forEach(function(el) {
+    el.classList.toggle('selected', el.dataset.plan === plan);
+  });
+}
+
+function _renderPaywall() {
+  var lang = (nfLang || 'es');
+  var c = PW_COPY[lang] || PW_COPY['es'];
+  var feats = c.features.map(function(f) {
+    return '<div class="pw-feat"><div class="pw-feat-icon">' + f[0] + '</div>' + f[1] + '</div>';
+  }).join('');
+  var html = '<div class="pw-pill"></div>'
+    + '<div class="pw-badge">' + c.badge + '</div>'
+    + '<div class="pw-title">' + c.title + '</div>'
+    + '<div class="pw-sub">' + c.sub + '</div>'
+    + '<div class="pw-features">' + feats + '</div>'
+    + '<div class="pw-plans">'
+    + '<div class="pw-plan' + (_pwSelectedPlan==='monthly'?' selected':'') + '" data-plan="monthly" onclick="selectPwPlan(\'monthly\')">'
+    + '<div class="pw-plan-name">' + c.monthly + '</div>'
+    + '<div class="pw-plan-price">$2.99<span>' + c.priceMonth + '</span></div>'
+    + '<div class="pw-plan-trial">' + c.trial + '</div>'
+    + '</div>'
+    + '<div class="pw-plan' + (_pwSelectedPlan==='yearly'?' selected':'') + '" data-plan="yearly" onclick="selectPwPlan(\'yearly\')">'
+    + '<div class="pw-plan-badge">' + c.save + '</div>'
+    + '<div class="pw-plan-name">' + c.yearly + '</div>'
+    + '<div class="pw-plan-price">$29.99<span>' + c.priceYear + '</span></div>'
+    + '<div class="pw-plan-trial">' + c.trial + '</div>'
+    + '</div>'
+    + '</div>'
+    + '<button class="pw-cta" id="pwCtaBtn" onclick="startPremiumPurchase()">' + c.cta + '</button>'
+    + '<button class="pw-dismiss" onclick="closePaywall()">' + c.dismiss + '</button>'
+    + '<button class="pw-restore" onclick="restorePremiumPurchase()">' + c.restore + '</button>';
+  var sheet = document.querySelector('.pw-sheet');
+  if (sheet) sheet.innerHTML = html;
+}
+
+async function startPremiumPurchase() {
+  // Digital Goods API (TWA / Play Store)
+  if (window.getDigitalGoodsService) {
+    try {
+      var service = await window.getDigitalGoodsService('https://play.google.com/billing');
+      var productId = _pwSelectedPlan === 'yearly' ? 'premium_yearly' : 'premium_monthly';
+      var request = new PaymentRequest(
+        [{ supportedMethods: 'https://play.google.com/billing', data: { sku: productId } }],
+        { total: { label: 'Premium', amount: { currency: 'USD', value: _pwSelectedPlan === 'yearly' ? '29.99' : '2.99' } } }
+      );
+      var response = await request.show();
+      await response.complete('success');
+      // Verify with backend
+      var result = await fetch('/api/verify-purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: response.details.token, productId: productId })
+      }).then(function(r){ return r.json(); });
+      if (result && result.ok && result.expiresAt) {
+        setPremiumSubscription(result.expiresAt, productId);
+        closePaywall();
+        toast('✅ ¡Premium activado!');
+      } else {
+        toast('❌ ' + (result && result.error || 'Error al verificar compra'));
+      }
+    } catch(e) {
+      if (e.name !== 'AbortError') toast('❌ ' + (e.message || 'Error en la compra'));
+    }
+    return;
+  }
+  // Fallback: web purchase not yet implemented
+  toast('Disponible en la app de Play Store');
+}
+
+async function restorePremiumPurchase() {
+  if (window.getDigitalGoodsService) {
+    try {
+      var service = await window.getDigitalGoodsService('https://play.google.com/billing');
+      var purchases = await service.listPurchases();
+      var active = purchases.find(function(p){ return p.itemId === 'premium_monthly' || p.itemId === 'premium_yearly'; });
+      if (active) {
+        var result = await fetch('/api/verify-purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: active.purchaseToken, productId: active.itemId })
+        }).then(function(r){ return r.json(); });
+        if (result && result.ok && result.expiresAt) {
+          setPremiumSubscription(result.expiresAt, active.itemId);
+          closePaywall();
+          toast('✅ Compra restaurada');
+          return;
+        }
+      }
+      toast('No se encontró una compra activa');
+    } catch(e) {
+      toast('❌ ' + (e.message || 'Error al restaurar'));
+    }
+    return;
+  }
+  toast('Disponible en la app de Play Store');
+}
+
+// Guard helper: call before any premium feature.
+// Returns true if allowed, false if paywall was shown.
+function requirePremium(featureName) {
+  if (isPremium()) return true;
+  openPaywall(featureName);
+  return false;
+}
 </script>
+
+<!-- PAYWALL MODAL -->
+<div id="paywallModal" onclick="if(event.target===this)closePaywall()">
+  <div class="pw-sheet"></div>
+</div>
+
 </body>
 </html>
