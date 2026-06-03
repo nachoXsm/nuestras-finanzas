@@ -9550,6 +9550,7 @@ function switchGroup() {
 
 
 function openAnalisisNav() {
+  if (!requirePremium('analisis')) return;
   if (typeof esModoGrupo === 'function' && esModoGrupo()) {
     switchTab('informe');
   } else {
