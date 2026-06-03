@@ -1062,7 +1062,7 @@
       <button class="tab active" onclick="switchTab('gastos')">Gastos</button>
       <button class="tab" onclick="switchTab('tarjetas')">Tarjetas</button>
       <button class="tab" onclick="switchTab('categorias')">Categ.</button>
-      <button class="tab" onclick="switchTab('flujo')">Flujo</button>
+      <button class="tab" onclick="if(requirePremium('flujo'))switchTab('flujo')">Flujo</button>
       <button class="tab" onclick="switchTab('informe')">Informe</button>
       <button class="tab" onclick="switchTab('conversor')">💱 Conversor</button>
       <button class="tab" id="tab-btn-ia" onclick="switchTab('ia');setNavActive('nav-ia')">🤖 IA</button>
@@ -9550,11 +9550,11 @@ function switchGroup() {
 
 
 function openAnalisisNav() {
-  if (!requirePremium('analisis')) return;
+  // Informe is free; Flujo is premium
   if (typeof esModoGrupo === 'function' && esModoGrupo()) {
     switchTab('informe');
   } else {
-    switchTab('flujo');
+    if (requirePremium('flujo')) switchTab('flujo');
   }
 }
 
@@ -10499,6 +10499,7 @@ function renderAIAdvicePanel(kind) {
 }
 
 function renderFlujo() {
+  if (!requirePremium('flujo')) return;
   var el = document.getElementById('flujoContent');
   if (!el || !state) return;
   var personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
