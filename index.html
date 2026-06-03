@@ -5748,12 +5748,17 @@ function guessOCRCategory(text) {
 
 function looksLikeCardStatement(text) {
   const t = String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const hasDueDate = /vencimiento\s+actual|proximo\s+vencimiento|proximo\s+vto|cierre\s+actual/.test(t);
-  const hasTableHeaders = /fecha/.test(t)
-    && /(descripcion|referencia|comercio|establecimiento|detalle)/.test(t)
-    && /(cuota|cupon|comprobante|pesos|dolares|importe|monto)/.test(t);
-  const hasCardContext = /tarjeta|visa|mastercard|master|amex|resumen/.test(t);
-  const hasConsumptionContext = /detalle\s+del\s+consumo|detalle\s+de\s+consumos|consumos|movimientos|compras/.test(t);
+  // ES
+  const hasDueDate = /vencimiento\s+actual|proximo\s+vencimiento|proximo\s+vto|cierre\s+actual/.test(t)
+    // EN
+    || /payment\s+due\s+date|due\s+date|closing\s+date|statement\s+date/.test(t)
+    // PT
+    || /data\s+de\s+vencimento|data\s+vencimento|fatura/.test(t);
+  const hasTableHeaders = /fecha|date|data/.test(t)
+    && /(descripcion|referencia|comercio|establecimiento|detalle|description|merchant|estabelecimento)/.test(t)
+    && /(cuota|cupon|comprobante|pesos|dolares|importe|monto|amount|valor)/.test(t);
+  const hasCardContext = /tarjeta|visa|mastercard|master|amex|resumen|credit\s+card|card\s+statement|cartao|cart\u00e3o/.test(t);
+  const hasConsumptionContext = /detalle\s+del\s+consumo|detalle\s+de\s+consumos|consumos|movimientos|compras|transactions|purchases|lancamentos|lan\u00e7amentos/.test(t);
   return (hasCardContext && hasDueDate && (hasTableHeaders || hasConsumptionContext))
     || (hasTableHeaders && hasConsumptionContext);
 }
@@ -8167,16 +8172,21 @@ async function parseTicketWithAI(text) {
 
 function isSinglePaymentReceipt(text) {
   const lower = text.toLowerCase();
-  // Mercado Pago
+  // Mercado Pago / ES payment receipts
   if (lower.includes('pagaste a') || lower.includes('total pagado')) return true;
   if (lower.includes('mercado pago') && lower.includes('comprobante')) return true;
   if (lower.includes('comprobante de pago') && !lower.includes('resumen')) return true;
-  // Ticket fiscal argentino: tiene CAE, CUIT, IVA pero NO es un resumen de tarjeta
+  // EN: payment/purchase receipt keywords
+  if (/\breceipt\b/i.test(text) && !/credit\s+card\s+statement|account\s+statement/i.test(text)) return true;
+  if (/\bpurchase\s+receipt\b|\bsales\s+receipt\b|\border\s+receipt\b/i.test(text)) return true;
+  // PT: nota fiscal / cupom fiscal (Brazil)
+  if (/nota\s+fiscal|cupom\s+fiscal|nf-?e\b|\bcpf\b|\bcnpj\b/i.test(text) && !/fatura|extrato/i.test(lower)) return true;
+  // Ticket fiscal argentino: tiene CAE, CUIT, AFIP pero NO es un resumen de tarjeta
   const esFiscal = /\bcae\b|\bcuit\b|\bafip\b|\bfactura\b/i.test(text);
-  const esResumen = /resumen|estado\s+de\s+cuenta|extracto|tarjeta\s+de\s+cr[eé]dito/i.test(lower);
+  const esResumen = /resumen|estado\s+de\s+cuenta|extracto|tarjeta\s+de\s+cr[eé]dito|credit\s+card\s+statement|account\s+statement|fatura\s+de\s+cart/i.test(lower);
   if (esFiscal && !esResumen) return true;
-  // Ticket con TOTAL destacado y pocas líneas de items
-  const tieneTotal = /\btotal\b.*\$\s*[\d.,]+/i.test(text);
+  // Ticket con TOTAL destacado y pocas líneas de items (ES/EN/PT)
+  const tieneTotal = /\btotal\b.*[\$R\$€£]?\s*[\d.,]+/i.test(text);
   const lines = text.split('\n').filter(l => l.trim()).length;
   if (tieneTotal && lines < 40 && !esResumen) return true;
   return false;
@@ -8225,7 +8235,8 @@ function parseTicketText(text) {
       }
     }
     // Category hint: servicios for utilities
-    const servKeywords = ['naturgy','edenor','edesur','metrogas','aysa','telecom','personal','claro','movistar','fibertel','cablevision','gas','luz','agua'];
+    const servKeywords = ['naturgy','edenor','edesur','metrogas','aysa','telecom','personal','claro','movistar','fibertel','cablevision','gas','luz','agua',
+      'electric','utility','internet','phone','water','cable','verizon','att','comcast','energia','eletricidade','vivo','tim'];
     const descLower = (result.descripcion || '').toLowerCase();
     if (servKeywords.some(kw => descLower.includes(kw) || lower.includes(kw))) {
       result.categoria = 'Servicios';
@@ -8255,6 +8266,15 @@ function parseTicketText(text) {
       /a\s*pagar\s*:?\s*\$?\s*([\d.,]+)/i,
       /monto\s*total\s*:?\s*\$?\s*([\d.,]+)/i,
       /total\s+a\s+abonar\s*:?\s*\$?\s*([\d.,]+)/i,
+      // EN
+      /amount\s+due\s*:?\s*[\$£€]?\s*([\d.,]+)/i,
+      /grand\s+total\s*:?\s*[\$£€]?\s*([\d.,]+)/i,
+      /total\s+amount\s*:?\s*[\$£€]?\s*([\d.,]+)/i,
+      /subtotal\s*:?\s*[\$£€]?\s*([\d.,]+)/i,
+      // PT
+      /valor\s+total\s*:?\s*R?\$?\s*([\d.,]+)/i,
+      /total\s+a\s+pagar\s*:?\s*R?\$?\s*([\d.,]+)/i,
+      /valor\s+a\s+pagar\s*:?\s*R?\$?\s*([\d.,]+)/i,
     ];
     for (const pattern of fallbackPatterns) {
       const m = text.match(pattern);
@@ -8272,7 +8292,11 @@ function parseTicketText(text) {
 
   // ---- FIND DESCRIPTION ----
   const skipWords = ['ticket','factura','recibo','fecha','cuit','iva','subtotal',
-    'total','tel','direccion','domicilio','gracias','vuelto','efectivo','tarjeta'];
+    'total','tel','direccion','domicilio','gracias','vuelto','efectivo','tarjeta',
+    // EN
+    'receipt','invoice','date','tax','change','cash','payment','order','subtotal',
+    // PT
+    'nota fiscal','cupom','data','cnpj','cpf','troco','dinheiro','pagamento'];
 
   for (const line of lines.slice(0, 8)) {
     const lower = line.toLowerCase();
@@ -8291,16 +8315,56 @@ function parseTicketText(text) {
   // ---- GUESS CATEGORY ----
   const textLower = text.toLowerCase();
   const catKeywords = {
-    'Alimentación':    ['super','mercado','carrefour','disco','jumbo','coto','dia','farmacity','verduleria','panaderia','carniceria','almacen','kiosco','cafe','coffee','starbucks','restaurant','delivery','pedidos','rappi','mc donalds','burger','pizza','sushi'],
-    'Transporte':      ['uber','cabify','taxi','nafta','combustible','ypf','shell','axion','peaje','subte','colectivo','tren','bus'],
-    'Salud':           ['farmacia','medico','clinica','hospital','sanatorio','laboratorio','drogueria'],
-    'Entretenimiento': ['cine','teatro','spotify','netflix','disney','hbo','amazon','juego'],
-    'Servicios':       ['edenor','edesur','metrogas','aysa','telecom','personal','claro','movistar','fibertel','cablevision'],
-    'Ropa':            ['zara','hym','kosiuko','legacy','rapsodia','indumentaria','calzado','zapateria'],
-    'Educación':       ['universidad','colegio','instituto','libreria','udemy','coursera'],
-    'Vivienda':        ['alquiler','expensas','inmobiliaria','ferreteria','sodimac','easy'],
-    'Mascota':         ['veterinaria','petshop','balanceado'],
-    'Suscripciones':   ['suscripcion','subscripcion','mensualidad','cuota'],
+    'Alimentación':    ['super','mercado','carrefour','disco','jumbo','coto','dia','farmacity','verduleria','panaderia','carniceria','almacen','kiosco','cafe','coffee','starbucks','restaurant','delivery','pedidos','rappi','mc donalds','burger','pizza','sushi',
+      // EN
+      'grocery','supermarket','bakery','butcher','deli','fast food','doordash','grubhub','instacart','whole foods','walmart','target','costco',
+      // PT
+      'supermercado','padaria','acougue','lanchonete','ifood','mercado livre'],
+    'Transporte':      ['uber','cabify','taxi','nafta','combustible','ypf','shell','axion','peaje','subte','colectivo','tren','bus',
+      // EN
+      'lyft','gas station','fuel','toll','subway','metro','parking','transport',
+      // PT
+      'gasolina','combustivel','estacionamento','onibus','metrô','pedágio'],
+    'Salud':           ['farmacia','medico','clinica','hospital','sanatorio','laboratorio','drogueria',
+      // EN
+      'pharmacy','doctor','clinic','health','medical','drugstore','cvs','walgreens',
+      // PT
+      'farmácia','médico','clínica','hospital','drogaria'],
+    'Entretenimiento': ['cine','teatro','spotify','netflix','disney','hbo','amazon','juego',
+      // EN
+      'cinema','movie','theater','game','gaming','prime video','apple tv',
+      // PT
+      'cinema','teatro','jogo'],
+    'Servicios':       ['edenor','edesur','metrogas','aysa','telecom','personal','claro','movistar','fibertel','cablevision',
+      // EN
+      'electric','utility','internet','phone','water','cable','verizon','att','comcast',
+      // PT
+      'energia','eletricidade','agua','telefone','internet','vivo','tim','oi','claro'],
+    'Ropa':            ['zara','hym','kosiuko','legacy','rapsodia','indumentaria','calzado','zapateria',
+      // EN
+      'clothing','apparel','shoes','fashion','h&m','gap','nike','adidas',
+      // PT
+      'roupa','calcado','moda','vestuario','renner','riachuelo'],
+    'Educación':       ['universidad','colegio','instituto','libreria','udemy','coursera',
+      // EN
+      'university','school','college','education','book','library','course','tuition',
+      // PT
+      'universidade','escola','faculdade','educacao','livro','livraria'],
+    'Vivienda':        ['alquiler','expensas','inmobiliaria','ferreteria','sodimac','easy',
+      // EN
+      'rent','utilities','hardware','home depot','lowe','furniture','ikea',
+      // PT
+      'aluguel','condominio','imobiliaria','ferragem','leroy merlin'],
+    'Mascota':         ['veterinaria','petshop','balanceado',
+      // EN
+      'veterinary','vet','pet store','petco','petsmart',
+      // PT
+      'veterinário','petshop','ração'],
+    'Suscripciones':   ['suscripcion','subscripcion','mensualidad','cuota',
+      // EN
+      'subscription','monthly','membership','annual',
+      // PT
+      'assinatura','mensalidade'],
   };
 
   for (const [cat, keywords] of Object.entries(catKeywords)) {
