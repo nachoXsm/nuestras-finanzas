@@ -6137,15 +6137,25 @@ function parseStatementDueDate(text) {
   }
   uniqueDates.sort((a, b) => a.fecha.localeCompare(b.fecha));
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const validPairs = [];
   for (let i = 0; i < uniqueDates.length - 1; i++) {
     const diffDays = (new Date(uniqueDates[i + 1].fecha) - new Date(uniqueDates[i].fecha)) / 86400000;
-    if (diffDays >= 7 && diffDays <= 45) return uniqueDates[i + 1];
+    if (diffDays >= 7 && diffDays <= 45) validPairs.push(uniqueDates[i + 1]);
+  }
+  if (validPairs.length) {
+    // Pick the candidate whose due date is closest to today (prefer recent/upcoming over old)
+    validPairs.sort(function(a, b) {
+      return Math.abs(new Date(a.fecha) - today) - Math.abs(new Date(b.fecha) - today);
+    });
+    return validPairs[0];
   }
 
   // --- PASO 3: única fecha futura en el encabezado -----------------------
   if (uniqueDates.length === 1) {
-    const today = new Date().toISOString().slice(0, 10);
-    if (uniqueDates[0].fecha >= today) return uniqueDates[0];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (uniqueDates[0].fecha >= todayStr) return uniqueDates[0];
   }
 
   return null;
