@@ -7996,7 +7996,26 @@ async function importCardStatementExpenses(items, setProgress) {
   }
 
   setSyncing('ok');
-  try { renderAll(); } catch(e) { console.error('renderAll:', e); }
+
+  // If items were saved to a different month, navigate there so they're visible on reload.
+  const firstSaved = list.find(function(r) { return r.mes && r.anio; });
+  if (firstSaved && imported > 0) {
+    const tMes = firstSaved.mes;
+    const tAnio = firstSaved.anio;
+    if (tMes !== state.mes || tAnio !== state.anio) {
+      state.mes = tMes;
+      state.anio = tAnio;
+      var ml = document.getElementById('monthLabel');
+      if (ml && typeof MONTHS_SHORT !== 'undefined') {
+        ml.textContent = (MONTHS_SHORT[tMes - 1] || '') + ' ' + tAnio;
+      }
+    }
+  }
+
+  try { await loadAll(); } catch(e) {
+    console.error('loadAll post-import:', e);
+    try { renderAll(); } catch(_) {}
+  }
   return { imported, skipped };
 }
 
