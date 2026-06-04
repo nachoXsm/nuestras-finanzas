@@ -1619,12 +1619,11 @@
     <div id="ocrCardSection" style="display:none;flex-direction:column;gap:10px">
       <div style="font-size:.72rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Tarjeta del resumen</div>
       <!-- Custom dropdown reemplaza select nativo para mantener estética dark -->
-      <div id="ocrTarjetaDropdown" style="position:relative">
-        <button type="button" onclick="toggleOcrTarjetaDropdown()" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-size:.9rem;font-weight:700;padding:12px 14px;cursor:pointer;text-align:left">
+      <div id="ocrTarjetaDropdown">
+        <button type="button" id="ocrTarjetaTrigger" onclick="toggleOcrTarjetaDropdown()" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text);font-size:.9rem;font-weight:700;padding:12px 14px;cursor:pointer;text-align:left">
           <span id="ocrTarjetaLabel">Seleccioná una tarjeta</span>
           <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
-        <div id="ocrTarjetaMenu" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:#1a2535;border:1.5px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.5)" id="ocrTarjetaMenu"></div>
       </div>
       <!-- select oculto para compatibilidad con JS existente -->
       <select id="ocrTarjetaSelect" style="display:none"></select>
@@ -2317,6 +2316,7 @@ async function dbPostMoney(table, body){
       res[0].tarjeta_id = body.tarjeta_id || res[0].tarjeta_id || null;
       res[0].cuotas = body.cuotas || 1;
       res[0].cuota_actual = body.cuota_actual || 1;
+      if (body.dia != null) res[0].dia = body.dia;
       rememberRecordCurrency(table, res[0].id, moneda);
       rememberRecordInstallments(table, res[0].id, body);
       rememberRecordCardRelation(table, res[0].id, body);
@@ -2355,6 +2355,7 @@ async function dbPatchMoney(table, id, body){
       res[0].tarjeta_id = body.tarjeta_id || res[0].tarjeta_id || null;
       res[0].cuotas = body.cuotas || 1;
       res[0].cuota_actual = body.cuota_actual || 1;
+      if (body.dia != null) res[0].dia = body.dia;
       rememberRecordCurrency(table, res[0].id, moneda);
       rememberRecordInstallments(table, res[0].id, body);
       rememberRecordCardRelation(table, res[0].id, body);
@@ -5215,10 +5216,30 @@ function ocrShowFileTypeStep() {
     }
   }
 }
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('ocrTarjetaMenu');
+  var trigger = document.getElementById('ocrTarjetaTrigger');
+  if (menu && menu.style.display !== 'none') {
+    if (!menu.contains(e.target) && e.target !== trigger && !trigger.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  }
+});
+
 function toggleOcrTarjetaDropdown() {
   var menu = document.getElementById('ocrTarjetaMenu');
   if (!menu) return;
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  var isOpen = menu.style.display !== 'none';
+  if (isOpen) { menu.style.display = 'none'; return; }
+  // Position the fixed menu under the trigger button
+  var trigger = document.getElementById('ocrTarjetaTrigger');
+  if (trigger) {
+    var r = trigger.getBoundingClientRect();
+    menu.style.top = (r.bottom + 6) + 'px';
+    menu.style.left = r.left + 'px';
+    menu.style.width = r.width + 'px';
+  }
+  menu.style.display = 'block';
 }
 function selectOcrTarjeta(id, nombre) {
   var menu = document.getElementById('ocrTarjetaMenu');
@@ -10957,6 +10978,9 @@ function requirePremium(featureName) {
 <div id="paywallModal" onclick="if(event.target===this)closePaywall()">
   <div class="pw-sheet"></div>
 </div>
+
+<!-- OCR card dropdown: rendered at root level so it's never clipped by parent overflow -->
+<div id="ocrTarjetaMenu" style="display:none;position:fixed;background:#1a2535;border:1.5px solid rgba(255,255,255,.12);border-radius:12px;overflow-y:auto;max-height:220px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.6)"></div>
 
 </body>
 </html>
