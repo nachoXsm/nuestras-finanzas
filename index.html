@@ -8224,7 +8224,24 @@ async function processOCR(input) {
     }));
     console.log(window.lastStatementImportDebug);
     console.groupEnd();
-    if (!isSinglePaymentReceipt(text) && ((isStatement && statementItems.length) || statementItems.length >= 3)) {
+    // Validate quality of regex-parsed items before deciding to import or escalate to Groq
+    const thisYear = new Date().getFullYear();
+    function statementItemsHaveQualityIssues(items) {
+      if (!items || !items.length) return false;
+      let badYear = 0, badMonto = 0, longDesc = 0;
+      items.forEach(function(it) {
+        const yr = it.anio || (it.fecha ? parseInt(String(it.fecha).slice(0, 4)) : 0);
+        if (yr && (yr < thisYear - 2 || yr > thisYear + 3)) badYear++;
+        if (!it.monto || it.monto <= 0) badMonto++;
+        // Descriptions much longer than normal (~60 chars) suggest line-merging
+        if (it.descripcion && it.descripcion.length > 80) longDesc++;
+      });
+      const pct = function(n) { return n / items.length; };
+      return pct(badYear) > 0.15 || pct(badMonto) > 0.3 || pct(longDesc) > 0.2;
+    }
+    const regexQualityOk = !statementItemsHaveQualityIssues(statementItems);
+
+    if (!isSinglePaymentReceipt(text) && ((isStatement && statementItems.length) || statementItems.length >= 3) && regexQualityOk) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
       setTimeout(function() {
@@ -8237,7 +8254,7 @@ async function processOCR(input) {
       return;
     }
 
-    if (isStatement) {
+    if (isStatement || !regexQualityOk) {
       setProgress(68, 'Analizando con IA...', '🤖');
       const groqItems = await extractCardStatementRowsWithGroq(text, setProgress);
       if (groqItems && groqItems.length >= 1) {
