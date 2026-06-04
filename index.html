@@ -8092,8 +8092,31 @@ async function processOCR(input) {
     if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
     lastStatementDueDateForImport = parseStatementDueDate(text);
     window.lastStatementDueDateForImport = lastStatementDueDateForImport;
-    setProgress(60, 'Resumen leído, reconstruyendo filas…', '✅');
+    setProgress(60, 'Resumen leído, analizando con IA…', '🤖');
     const isStatement = looksLikeCardStatement(text);
+
+    // For card statements: always use Groq AI — local multi-parser causes duplicates.
+    if (!isSinglePaymentReceipt(text) && isStatement) {
+      setProgress(68, 'Analizando resumen con IA...', '🤖');
+      const groqItems = await extractCardStatementRowsWithGroq(text, setProgress);
+      if (groqItems && groqItems.length >= 1) {
+        const finalItems = finalizeStatementRowsForImport(applyStatementDueDate(
+          filterCardStatementConsumptionRows(groqItems), text
+        ));
+        const result = await importCardStatementExpenses(finalItems.length ? finalItems : groqItems, setProgress);
+        setProgress(100, 'Resumen importado con IA', '✅');
+        setTimeout(function() {
+          if (prog) prog.style.display = 'none';
+          const extra = result.skipped ? ' (' + result.skipped + ' duplicados omitidos)' : '';
+          toast('🤖 ' + result.imported + ' consumos cargados con IA' + extra);
+        }, 800);
+        if (btn) btn.disabled = false;
+        input.value = '';
+        return;
+      }
+      // Groq returned nothing — fall through to local parsers as last resort
+    }
+
     const currentVisionData = lastOCRVisionData || window.lastOCRVisionData;
     const visualLineStatementItems = parseCardStatementRowsByVisualLines(text, currentVisionData);
     const visionStatementItems = parseCardStatementRowsFromVision(currentVisionData);
@@ -8168,7 +8191,7 @@ async function processOCR(input) {
     }));
     console.log(window.lastStatementImportDebug);
     console.groupEnd();
-    if (!isSinglePaymentReceipt(text) && ((isStatement && statementItems.length) || statementItems.length >= 3)) {
+    if (!isSinglePaymentReceipt(text) && statementItems.length >= 3) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
       setTimeout(function() {
