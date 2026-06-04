@@ -6235,7 +6235,7 @@ function isCardStatementConsumptionRow(row) {
   }
 
   if (isStatementTaxDescription(upper)) {
-    return true;
+    return false; // taxes/fees are not consumption items
   }
 
   const merchantText = upper
@@ -8004,8 +8004,22 @@ async function importCardStatementExpenses(items, setProgress) {
       const totalCuotas = cuotasParts.cuotas;
       const actualCuota = cuotasParts.cuota_actual;
       if (totalCuotas > 1 && actualCuota < totalCuotas) {
+        // Build a set of cuota numbers already present in this import batch
+        // (same description, same total cuotas). Skip generating futures that
+        // the statement already lists explicitly to avoid duplicates.
+        const descNorm = normalizeStatementMatchText(item.descripcion || '');
+        const batchCuotaNumbers = new Set(
+          list
+            .filter(function(r) {
+              return normalizeStatementMatchText(r.descripcion || '') === descNorm
+                && Number(r.cuotas || 1) === totalCuotas;
+            })
+            .map(function(r) { return Number(r.cuota_actual || 1); })
+        );
+
         const futures = [];
         for (let c = actualCuota + 1; c <= totalCuotas; c++) {
+          if (batchCuotaNumbers.has(c)) continue; // already in this import batch
           let m = item.mes + (c - actualCuota);
           let y = item.anio;
           while (m > 12) { m -= 12; y++; }
