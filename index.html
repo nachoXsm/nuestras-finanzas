@@ -1412,6 +1412,22 @@
       </div>
       <div class="perfil-row-right">📋</div>
     </div>
+    <div class="perfil-row" onclick="perfilInvitarWhatsApp()">
+      <div class="perfil-row-icon" style="background:rgba(37,211,102,.12)">📱</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">Invitar por WhatsApp</div>
+        <div class="perfil-row-sub">Compartir enlace con el código del grupo</div>
+      </div>
+      <div class="perfil-row-right">›</div>
+    </div>
+    <div class="perfil-row" onclick="perfilInvitarEmail()">
+      <div class="perfil-row-icon" style="background:rgba(108,99,255,.12)">✉️</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">Invitar por email</div>
+        <div class="perfil-row-sub">Enviar invitación a un correo</div>
+      </div>
+      <div class="perfil-row-right">›</div>
+    </div>
     <div class="perfil-row" onclick="switchGroup()">
       <div class="perfil-row-icon" style="background:rgba(108,99,255,.12)">🔄</div>
       <div class="perfil-row-info">
@@ -4009,6 +4025,73 @@ function copyGroupCode() {
   const grupo = loadGroup();
   if (!grupo) return;
   navigator.clipboard.writeText(grupo.codigo).then(() => toast('✅ Código copiado'));
+}
+
+function perfilInvitarWhatsApp() {
+  const grupo = loadGroup();
+  if (!grupo) return;
+  const codigo = grupo.codigo;
+  const nombre = grupo.nombre || 'NuestrasFinanzas';
+  const msg = encodeURIComponent(`¡Te invito al grupo "${nombre}" en NuestrasFinanzas! 💰\nUsá este código para unirte: *${codigo}*\nhttps://nuestrasfinanzas.app`);
+  window.open('https://wa.me/?text=' + msg, '_blank');
+}
+
+function perfilInvitarEmail() {
+  const grupo = loadGroup();
+  if (!grupo) return;
+  const codigo = grupo.codigo;
+  const nombre = grupo.nombre || 'NuestrasFinanzas';
+
+  // Remove any existing sheet
+  const prev = document.getElementById('perfilInviteEmailSheet');
+  if (prev) prev.remove();
+
+  const sheet = document.createElement('div');
+  sheet.id = 'perfilInviteEmailSheet';
+  sheet.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:flex-end;justify-content:center';
+  sheet.innerHTML = `
+    <div onclick="document.getElementById('perfilInviteEmailSheet').remove()" style="position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)"></div>
+    <div style="position:relative;width:min(420px,100%);background:var(--card);border-radius:24px 24px 0 0;padding:28px 24px 40px;z-index:1">
+      <div style="width:40px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:0 auto 20px"></div>
+      <div style="font-size:15px;font-weight:800;margin-bottom:4px">✉️ Invitar por email</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Código del grupo: <b style="color:var(--primary);letter-spacing:2px">${codigo}</b></div>
+      <div style="display:flex;gap:8px">
+        <input id="perfilInviteEmailInput" type="email" placeholder="email@ejemplo.com" autocomplete="email"
+          style="flex:1;padding:13px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:var(--text);font-size:14px;outline:none">
+        <button onclick="perfilEnviarEmailInvite('${codigo}','${nombre.replace(/'/g,"\\'")}')"
+          style="background:var(--primary);border:none;color:#000;font-weight:700;border-radius:14px;padding:0 18px;font-size:14px;cursor:pointer">Enviar</button>
+      </div>
+      <div id="perfilInviteEmailMsg" style="font-size:12px;margin-top:10px;min-height:18px"></div>
+    </div>`;
+  document.body.appendChild(sheet);
+  setTimeout(() => { const inp = document.getElementById('perfilInviteEmailInput'); if (inp) inp.focus(); }, 100);
+}
+
+async function perfilEnviarEmailInvite(codigo, nombre) {
+  const inp = document.getElementById('perfilInviteEmailInput');
+  const msg = document.getElementById('perfilInviteEmailMsg');
+  const contact = (inp ? inp.value : '').trim();
+  if (!contact || !contact.includes('@')) {
+    if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'Ingresá un email válido'; }
+    return;
+  }
+  if (msg) { msg.style.color = 'var(--muted)'; msg.textContent = 'Enviando…'; }
+  const remitente = (state.personas && state.personas[0]) || state.persona1 || 'Un amigo';
+  try {
+    const res = await fetch('/api/send-invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: contact, codigo, grupoNombre: nombre, remitente }),
+    });
+    if (res.ok) {
+      if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✅ Invitación enviada'; }
+      if (inp) inp.value = '';
+    } else {
+      if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'Error al enviar. Intentá de nuevo.'; }
+    }
+  } catch {
+    if (msg) { msg.style.color = 'var(--danger)'; msg.textContent = 'Sin conexión. Intentá de nuevo.'; }
+  }
 }
 
 function cerrarSesion() {
