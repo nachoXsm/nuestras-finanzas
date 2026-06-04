@@ -5270,6 +5270,7 @@ function ocrConfirmComprobante() {
 function ocrConfirmResumen() {
   var tarjetaSelect = document.getElementById('ocrTarjetaSelect');
   if (tarjetaSelect && tarjetaSelect.value) {
+    lastOcrTarjetaId = tarjetaSelect.value;
     var formTarjeta = document.getElementById('g_tarjeta');
     if (formTarjeta) formTarjeta.value = tarjetaSelect.value;
     var formMedio = document.getElementById('g_medio');
@@ -5408,6 +5409,7 @@ async function fileToBase64Content(file) {
 
 let lastOCRVisionData = null;
 let lastStatementDueDateForImport = null;
+let lastOcrTarjetaId = null;
 
 function getGoogleVisionTextFromImageResponse(data) {
   const response = data && data.responses ? data.responses[0] : data;
@@ -7932,7 +7934,7 @@ async function importCardStatementExpenses(items, setProgress) {
   const selectedQuien = quienEl && quienEl.value ? quienEl.value : '';
   const activePayer = (state.personas && state.personas[0]) || state.persona1 || selectedQuien || 'Persona 1';
   const quien = selectedQuien && selectedQuien !== 'Todos' ? selectedQuien : activePayer;
-  const tarjeta_id = tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null;
+  const tarjeta_id = lastOcrTarjetaId || (tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null);
   const existingStatementExpenses = (state.gastos || []).slice();
   const targetStatementCounts = countStatementExpenseKeys(list);
   const existingStatementCounts = countStatementExpenseKeys(existingStatementExpenses);
@@ -8035,6 +8037,7 @@ async function processOCR(input) {
     window.lastOCRVisionData = null;
     lastStatementDueDateForImport = null;
     window.lastStatementDueDateForImport = null;
+    lastOcrTarjetaId = null;
 
     const aiStatementItems = [];
     const text = await extractTextFromOCRFile(file, setProgress);
