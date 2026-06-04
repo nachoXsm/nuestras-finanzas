@@ -7920,10 +7920,26 @@ function isDuplicateStatementExpense(item) {
 
 async function importCardStatementExpenses(items, setProgress) {
   const dueForImport = lastStatementDueDateForImport || window.lastStatementDueDateForImport || null;
-  const list = forceRowsStatementDate(
+  const rawList = forceRowsStatementDate(
     filterCardStatementConsumptionRows(items || []),
     dueForImport
   ).filter(Boolean);
+
+  // Deduplicate the batch itself — multiple parsers often extract the same row.
+  // Key: normalizedDesc + monto + moneda + cuota_actual (day is unreliable).
+  const seenKeys = new Set();
+  const list = rawList.filter(function(row) {
+    const k = [
+      normalizeStatementMatchText(row.descripcion),
+      Number(row.monto || 0).toFixed(2),
+      String(row.moneda || getDefaultCurrency()).toUpperCase(),
+      Number(row.cuota_actual || 1)
+    ].join('|');
+    if (seenKeys.has(k)) return false;
+    seenKeys.add(k);
+    return true;
+  });
+
   if (!list.length) return { imported: 0, skipped: 0 };
 
   const quienEl = document.getElementById('g_quien');
