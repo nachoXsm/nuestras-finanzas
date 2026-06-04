@@ -6129,12 +6129,15 @@ function parseStatementDueDate(text) {
   // --- PASO 2: heurística de pares en el encabezado (primeras 50 líneas) --
   // El encabezado tiene [cierre] [vencimiento] en ese orden.
   // El vencimiento es siempre 7-45 días DESPUÉS del cierre.
-  // Limitamos a las primeras 50 líneas para evitar contaminar con fechas de transacciones.
-  const headerLines = lines.slice(0, 50).join('\n');
+  // Limitamos a las primeras 20 líneas para evitar contaminar con fechas de transacciones.
+  const headerLines = lines.slice(0, 20).join('\n');
   const allDates = extractDates(headerLines);
+  const thisYear = new Date().getFullYear();
   const uniqueDates = [];
   const seen = new Set();
   for (const d of allDates) {
+    // Reject dates with implausible year (e.g. 2005 from cuota ratios misread as dates)
+    if (d.anio < thisYear - 2 || d.anio > thisYear + 3) continue;
     if (!seen.has(d.fecha)) { seen.add(d.fecha); uniqueDates.push(d); }
   }
   uniqueDates.sort((a, b) => a.fecha.localeCompare(b.fecha));
