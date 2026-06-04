@@ -7099,6 +7099,7 @@ function normalizeStatementMatchText(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\([^)]*\)/g, ' ')
     .replace(/\bc\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, ' ')
     .replace(/\b\d{1,2}\s*[-\/.]\s*[a-z]{3,}\.?\s*[-\/.]\s*\d{2,4}\b/gi, ' ')
     .replace(/mercado\s*pago/g, 'merpago')
