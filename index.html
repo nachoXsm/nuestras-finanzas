@@ -7957,7 +7957,7 @@ async function importCardStatementExpenses(items, setProgress) {
   const consumedExistingStatementCounts = {};
   let imported = 0;
   let skipped = 0;
-  const pendingFutureCuotas = [];
+
 
   setSyncing('syncing');
   for (let i = 0; i < list.length; i++) {
@@ -8019,51 +8019,7 @@ async function importCardStatementExpenses(items, setProgress) {
       const syncedOrigen = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [origen])))[0] || origen;
       state.gastos.push(syncedOrigen);
       imported++;
-
-      // Generar cuotas futuras si hay más de una cuota y aún quedan por vencer.
-      // Cuando el usuario importe el resumen del mes siguiente, la cuota ya existe
-      // y el detector de duplicados la saltea automáticamente.
-      const totalCuotas = cuotasParts.cuotas;
-      const actualCuota = cuotasParts.cuota_actual;
-      if (totalCuotas > 1 && actualCuota < totalCuotas) {
-        // Build a set of cuota numbers already present in this import batch
-        // (same description, same total cuotas). Skip generating futures that
-        // the statement already lists explicitly to avoid duplicates.
-        const descNorm = normalizeStatementMatchText(item.descripcion || '');
-        const batchCuotaNumbers = new Set(
-          list
-            .filter(function(r) {
-              return normalizeStatementMatchText(r.descripcion || '') === descNorm
-                && Number(r.cuotas || 1) === totalCuotas;
-            })
-            .map(function(r) { return Number(r.cuota_actual || 1); })
-        );
-
-        const futures = [];
-        for (let c = actualCuota + 1; c <= totalCuotas; c++) {
-          if (batchCuotaNumbers.has(c)) continue; // already in this import batch
-          let m = item.mes + (c - actualCuota);
-          let y = item.anio;
-          while (m > 12) { m -= 12; y++; }
-          futures.push({ ...body, mes: m, anio: y, cuota_actual: c, gasto_origen_id: origen.id });
-        }
-        for (const f of futures) {
-          pendingFutureCuotas.push(
-            dbPostMoney('gastos', f).then(function(fr) {
-              if (fr && fr[0]) {
-                const sf = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [fr[0]])))[0] || fr[0];
-                state.gastos.push(sf);
-              }
-            }).catch(function(e) { console.error('Error creando cuota futura:', e); })
-          );
-        }
-      }
     }
-  }
-
-  if (pendingFutureCuotas.length) {
-    if (setProgress) setProgress(97, 'Creando cuotas futuras…', '📅');
-    await Promise.all(pendingFutureCuotas);
   }
 
   setSyncing('ok');
