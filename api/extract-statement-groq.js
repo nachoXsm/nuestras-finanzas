@@ -22,18 +22,27 @@ function getBody(req) {
   return req.body;
 }
 
-function extractJsonArray(text) {
+function extractJsonResult(text) {
   const raw = String(text || '').trim()
     .replace(/^```(?:json)?/i, '')
     .replace(/```$/i, '')
     .trim();
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : (parsed.items || parsed.gastos || parsed.consumos || []);
+    // Return full object with due_date + items if available
+    if (!Array.isArray(parsed) && parsed && (parsed.items || parsed.gastos || parsed.consumos)) {
+      return {
+        due_date: parsed.due_date || parsed.fecha_vencimiento || null,
+        items: parsed.items || parsed.gastos || parsed.consumos || []
+      };
+    }
+    // Bare array — no due_date info
+    const items = Array.isArray(parsed) ? parsed : [];
+    return { due_date: null, items };
   } catch (_) {
     const start = raw.indexOf('[');
     const end = raw.lastIndexOf(']');
-    if (start >= 0 && end > start) return JSON.parse(raw.slice(start, end + 1));
+    if (start >= 0 && end > start) return { due_date: null, items: JSON.parse(raw.slice(start, end + 1)) };
     throw new Error('Groq no devolvió JSON válido.');
   }
 }
@@ -111,7 +120,7 @@ async function callGroq(payload) {
     && data.choices[0].message
     && data.choices[0].message.content;
 
-  return extractJsonArray(text);
+  return extractJsonResult(text);
 }
 
 async function handler(req, res) {
@@ -119,8 +128,8 @@ async function handler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
 
   try {
-    const gastos = await callGroq(getBody(req));
-    sendJson(res, 200, gastos);
+    const result = await callGroq(getBody(req));
+    sendJson(res, 200, result);
   } catch (err) {
     sendJson(res, 500, { error: err.message || 'Error extrayendo resumen con Groq.' });
   }

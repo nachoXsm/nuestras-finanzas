@@ -5743,6 +5743,16 @@ function parseStatementDate(raw) {
   };
   const value = String(raw || '').trim();
 
+  // ISO format: YYYY-MM-DD
+  const iso = value.match(/^(\d{4})\s*[-]\s*(\d{1,2})\s*[-]\s*(\d{1,2})$/);
+  if (iso) {
+    const anio = parseInt(iso[1], 10);
+    const mes = parseInt(iso[2], 10);
+    const dia = parseInt(iso[3], 10);
+    if (!dia || !mes || !anio || mes > 12 || dia > 31) return null;
+    return { dia, mes, anio, fecha: anio + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0') };
+  }
+
   const numeric = value.match(/^(\d{1,2})\s*(?:[-\/.]|\s+)\s*(\d{1,2})\s*(?:[-\/.]|\s+)\s*(\d{2,4})$/);
   if (numeric) {
     const dia = parseInt(numeric[1], 10);
@@ -7483,26 +7493,42 @@ async function extractCardStatementRowsWithGroq(rawText, onProgress) {
   try {
     if (onProgress) onProgress(72, 'Interpretando resumen con IA...', '🤖');
     const visionLines = extractVisionLines(lastOCRVisionData || window.lastOCRVisionData);
-    const due = parseStatementDueDate(rawText);
+    const localDue = parseStatementDueDate(rawText);
     const payload = {
       rawText,
       visionLines,
-      preferredDueDate: due ? due.fecha : null
+      preferredDueDate: localDue ? localDue.fecha : null
     };
     const result = await postJsonWithFallback('/api/extract-statement-groq', payload, 'Extractor Groq');
     const raw = result.data;
 
-    // Groq devuelve { due_date, items } — extraer la fecha de vencimiento
+    // API now returns { due_date, items }
     const groqDueDate = raw && raw.due_date ? raw.due_date : null;
     const items = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.items) ? raw.items : []);
 
-    // Forzar la fecha de vencimiento en todas las filas
-    const effectiveDue = groqDueDate || (due ? due.fecha : null);
+    // Best due date: prefer Groq's result, then local parser
+    const effectiveDue = groqDueDate || (localDue ? localDue.fecha : null);
+
+    // Force ALL items to the due date — no purchase dates ever
     if (effectiveDue) {
       items.forEach(function(item) { item.fecha = effectiveDue; });
+      // Store so importCardStatementExpenses can also use it
+      const dueParts = parseStatementDate(effectiveDue) || localDue;
+      if (dueParts) {
+        lastStatementDueDateForImport = dueParts;
+        window.lastStatementDueDateForImport = dueParts;
+      }
     }
 
-    return normalizeAIStatementRows(items, rawText);
+    const normalized = normalizeAIStatementRows(items, rawText);
+    // Extra safety: force due date on all normalized rows
+    if (effectiveDue && lastStatementDueDateForImport) {
+      const d = lastStatementDueDateForImport;
+      normalized.forEach(function(row) {
+        row.mes = d.mes; row.anio = d.anio; row.dia = d.dia; row.fecha = d.fecha;
+      });
+    }
+    return normalized;
   } catch (err) {
     console.warn('Groq statement extraction failed:', err);
     return [];
@@ -7920,15 +7946,17 @@ function isDuplicateStatementExpense(item) {
 
 async function importCardStatementExpenses(items, setProgress) {
   const dueForImport = lastStatementDueDateForImport || window.lastStatementDueDateForImport || null;
-  const rawList = forceRowsStatementDate(
-    filterCardStatementConsumptionRows(items || []),
-    dueForImport
-  ).filter(Boolean);
 
-  // Deduplicate the batch itself — multiple parsers often extract the same row.
-  // Key: normalizedDesc + monto + moneda + cuota_actual (day is unreliable).
+  // Step 1: filter to consumption rows only
+  const filtered = filterCardStatementConsumptionRows(items || []).filter(Boolean);
+
+  // Step 2: force ALL items to the statement due date — no purchase dates
+  const withDate = dueForImport ? forceRowsStatementDate(filtered, dueForImport) : filtered;
+
+  // Step 3: deduplicate by (normalizedDesc, monto, moneda, cuota_actual)
   const seenKeys = new Set();
-  const list = rawList.filter(function(row) {
+  const list = withDate.filter(function(row) {
+    if (!row || !row.descripcion || !row.monto) return false;
     const k = [
       normalizeStatementMatchText(row.descripcion),
       Number(row.monto || 0).toFixed(2),
