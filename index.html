@@ -7929,7 +7929,29 @@ async function importCardStatementExpenses(items, setProgress) {
   const activePayer = (state.personas && state.personas[0]) || state.persona1 || selectedQuien || 'Persona 1';
   const quien = selectedQuien && selectedQuien !== 'Todos' ? selectedQuien : activePayer;
   const tarjeta_id = tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null;
-  const existingStatementExpenses = (state.gastos || []).slice();
+
+  // Determine the target month from the statement's due date.
+  // Statement items are forced to that month by forceRowsStatementDate.
+  const firstWithDate = list.find(function(r) { return r.mes && r.anio; });
+  const targetMes = firstWithDate ? firstWithDate.mes : state.mes;
+  const targetAnio = firstWithDate ? firstWithDate.anio : state.anio;
+
+  // Pre-fetch existing gastos for the TARGET month so duplicate detection
+  // works even when the user is viewing a different month.
+  let existingStatementExpenses;
+  if (targetMes !== state.mes || targetAnio !== state.anio) {
+    try {
+      if (setProgress) setProgress(62, 'Verificando duplicados…', '🔍');
+      const fetched = await dbGet('gastos', `grupo_id=eq.${state.grupoId}&mes=eq.${targetMes}&anio=eq.${targetAnio}`);
+      existingStatementExpenses = applyRecordCardRelations('gastos',
+        applyRecordInstallments('gastos', applyRecordCurrencies('gastos', fetched || [])));
+    } catch(e) {
+      existingStatementExpenses = (state.gastos || []).slice();
+    }
+  } else {
+    existingStatementExpenses = (state.gastos || []).slice();
+  }
+
   const targetStatementCounts = countStatementExpenseKeys(list);
   const existingStatementCounts = countStatementExpenseKeys(existingStatementExpenses);
   const consumedExistingStatementCounts = {};
@@ -8046,26 +8068,21 @@ async function importCardStatementExpenses(items, setProgress) {
 
   setSyncing('ok');
 
-  // Navigate to the month of the imported expenses so they're visible immediately.
-  // Statement due dates are often one month ahead of the current view.
-  const firstImported = list.find(function(item) { return item.mes && item.anio; });
-  if (firstImported && imported > 0) {
-    const targetMes = firstImported.mes;
-    const targetAnio = firstImported.anio;
-    if (targetMes !== state.mes || targetAnio !== state.anio) {
-      state.mes = targetMes;
-      state.anio = targetAnio;
-      var ml = document.getElementById('monthLabel');
-      if (ml && typeof MONTHS_SHORT !== 'undefined') {
-        ml.textContent = (MONTHS_SHORT[targetMes - 1] || '') + ' ' + targetAnio;
-      }
-      // Reload data for the new month so all users see it consistently
-      try { await loadAll(); } catch(e) { console.error('loadAll post-import:', e); }
-      return { imported, skipped };
+  // Always navigate to the statement's month and reload from Supabase.
+  // This ensures both users see the imported data immediately, and the
+  // correct month is shown regardless of what the user was viewing before.
+  if (targetMes !== state.mes || targetAnio !== state.anio) {
+    state.mes = targetMes;
+    state.anio = targetAnio;
+    var ml = document.getElementById('monthLabel');
+    if (ml && typeof MONTHS_SHORT !== 'undefined') {
+      ml.textContent = (MONTHS_SHORT[targetMes - 1] || '') + ' ' + targetAnio;
     }
   }
-
-  try { renderAll(); } catch(e) { console.error('renderAll:', e); }
+  try { await loadAll(); } catch(e) {
+    console.error('loadAll post-import:', e);
+    try { renderAll(); } catch(_) {}
+  }
   return { imported, skipped };
 }
 
