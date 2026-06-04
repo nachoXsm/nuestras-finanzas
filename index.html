@@ -8123,15 +8123,16 @@ async function processOCR(input) {
     setProgress(60, 'Resumen leído, analizando con IA…', '🤖');
     const isStatement = looksLikeCardStatement(text);
 
-    // For card statements: always use Groq AI — local multi-parser causes duplicates.
+    // For card statements: always use Groq AI — single clean list, no local parsers.
     if (!isSinglePaymentReceipt(text) && isStatement) {
       setProgress(68, 'Analizando resumen con IA...', '🤖');
       const groqItems = await extractCardStatementRowsWithGroq(text, setProgress);
+      console.log('[NF] Groq items:', groqItems ? groqItems.length : 0, groqItems);
+      console.log('[NF] Due date for import:', lastStatementDueDateForImport);
       if (groqItems && groqItems.length >= 1) {
-        const finalItems = finalizeStatementRowsForImport(applyStatementDueDate(
-          filterCardStatementConsumptionRows(groqItems), text
-        ));
-        const result = await importCardStatementExpenses(finalItems.length ? finalItems : groqItems, setProgress);
+        // Pass directly — no finalizeStatementRowsForImport, no extra filtering.
+        // importCardStatementExpenses will force due date and deduplicate.
+        const result = await importCardStatementExpenses(groqItems, setProgress);
         setProgress(100, 'Resumen importado con IA', '✅');
         setTimeout(function() {
           if (prog) prog.style.display = 'none';
