@@ -5525,11 +5525,15 @@ function normalizeDigitalPdfText(text) {
   return String(text || '')
     .replace(/\u00a0/g, ' ')
     .replace(/[ \t]+/g, ' ')
-    // Banco Ciudad uses "_" as a visual horizontal-rule separator; pdf.js concatenates
-    // the preceding line with the next transaction line. Strip trailing " _" segments
-    // before joining lines so the separator never merges two unrelated rows.
-    .replace(/[ _]+\n/g, '\n')
-    .replace(/[ _]+$/gm, '')
+    // Some banks (e.g. Banco Ciudad) use underscore sequences as visual horizontal-rule
+    // separators. pdf.js appends them to the preceding line, merging it with the next
+    // transaction. Strip:
+    //   1. lines that consist solely of underscores (pure separator rows)
+    //   2. trailing " _+" at the end of any line (space + underscores = separator suffix)
+    // We intentionally do NOT strip underscores that are mid-word or preceded by \S,
+    // so legitimate identifiers like AMAZON_RETA or account codes are preserved.
+    .replace(/^ *_+ *$/gm, '')
+    .replace(/ _+(\n|$)/gm, '$1')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
