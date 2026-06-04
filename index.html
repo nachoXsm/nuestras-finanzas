@@ -5188,31 +5188,37 @@ function ocrChooseFiles() {
   closeOcrActionSheet();
   document.getElementById('ocrInput').click();
 }
+function ocrPopulateTarjetaDropdown() {
+  var sel = document.getElementById('ocrTarjetaSelect');
+  if (!sel) return;
+  var tarjetas = (state && state.tarjetas) || [];
+  var menu = document.getElementById('ocrTarjetaMenu');
+  var label = document.getElementById('ocrTarjetaLabel');
+  var itemStyle = 'display:block;width:100%;background:none;border:none;color:var(--text);font-size:.9rem;font-weight:700;padding:13px 16px;cursor:pointer;text-align:left;border-bottom:1px solid rgba(255,255,255,.06)';
+  var nuevaStyle = 'display:block;width:100%;background:none;border:none;color:var(--primary);font-size:.9rem;font-weight:700;padding:13px 16px;cursor:pointer;text-align:left';
+  if (!tarjetas.length) {
+    sel.innerHTML = '<option value="">Sin tarjetas</option>';
+    if (label) label.textContent = 'Sin tarjetas cargadas';
+    if (menu) menu.innerHTML = '<button type="button" style="'+nuevaStyle+'" onclick="selectOcrTarjeta(\'__nueva__\',\'\')">＋ Agregar tarjeta</button>';
+  } else {
+    var currentVal = sel.value;
+    sel.innerHTML = tarjetas.map(function(t){ return '<option value="'+t.id+'">'+(t.nombre||'Tarjeta')+'</option>'; }).join('');
+    if (currentVal && tarjetas.find(function(t){ return t.id === currentVal; })) {
+      sel.value = currentVal;
+    } else {
+      if (label) label.textContent = tarjetas[0].nombre || 'Tarjeta';
+      sel.value = tarjetas[0].id;
+    }
+    if (menu) menu.innerHTML = tarjetas.map(function(t){
+      return '<button type="button" style="'+itemStyle+'" onclick="selectOcrTarjeta(\''+t.id+'\',\''+((t.nombre||'Tarjeta').replace(/'/g,"\\'"))+'\')">'+( t.nombre||'Tarjeta')+'</button>';
+    }).join('') + '<button type="button" style="'+nuevaStyle+'" onclick="selectOcrTarjeta(\'__nueva__\',\'\')">＋ Agregar tarjeta</button>';
+  }
+}
 function ocrShowFileTypeStep() {
   document.getElementById('ocrStep1').style.display = 'none';
   var step2 = document.getElementById('ocrStep2');
   step2.style.display = 'block';
-  // Populate card dropdown
-  var sel = document.getElementById('ocrTarjetaSelect');
-  if (sel) {
-    var tarjetas = (state && state.tarjetas) || [];
-    var menu = document.getElementById('ocrTarjetaMenu');
-    var label = document.getElementById('ocrTarjetaLabel');
-    var itemStyle = 'display:block;width:100%;background:none;border:none;color:var(--text);font-size:.9rem;font-weight:700;padding:13px 16px;cursor:pointer;text-align:left;border-bottom:1px solid rgba(255,255,255,.06)';
-    var nuevaStyle = 'display:block;width:100%;background:none;border:none;color:var(--primary);font-size:.9rem;font-weight:700;padding:13px 16px;cursor:pointer;text-align:left';
-    if (!tarjetas.length) {
-      sel.innerHTML = '<option value="">Sin tarjetas</option>';
-      if (label) label.textContent = 'Sin tarjetas cargadas';
-      if (menu) menu.innerHTML = '<button type="button" style="'+nuevaStyle+'" onclick="selectOcrTarjeta(\'__nueva__\',\'\')">＋ Agregar tarjeta</button>';
-    } else {
-      sel.innerHTML = tarjetas.map(function(t){ return '<option value="'+t.id+'">'+(t.nombre||'Tarjeta')+'</option>'; }).join('');
-      if (label) label.textContent = tarjetas[0].nombre || 'Tarjeta';
-      sel.value = tarjetas[0].id;
-      if (menu) menu.innerHTML = tarjetas.map(function(t){
-        return '<button type="button" style="'+itemStyle+'" onclick="selectOcrTarjeta(\''+t.id+'\',\''+((t.nombre||'Tarjeta').replace(/'/g,"\\'"))+'\')">'+( t.nombre||'Tarjeta')+'</button>';
-      }).join('') + '<button type="button" style="'+nuevaStyle+'" onclick="selectOcrTarjeta(\'__nueva__\',\'\')">＋ Agregar tarjeta</button>';
-    }
-  }
+  ocrPopulateTarjetaDropdown();
 }
 document.addEventListener('click', function(e) {
   var menu = document.getElementById('ocrTarjetaMenu');
@@ -5262,6 +5268,7 @@ function ocrSelectType(type) {
   if (pr) pr.classList.toggle('ocr-pill-active', type === 'resumen');
   if (cs) cs.style.display = type === 'resumen' ? 'flex' : 'none';
   if (cmp) cmp.style.display = type === 'comprobante' ? 'flex' : 'none';
+  if (type === 'resumen') ocrPopulateTarjetaDropdown();
 }
 function ocrConfirmComprobante() {
   closeOcrActionSheet();
