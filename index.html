@@ -6353,7 +6353,7 @@ function parseCardStatementRowsByCarriedMonth(text) {
   let carryYear = null;
   const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})-?/gi;
   const stopRx = /\b(Tarjeta\s+\d+\s+Total\s+Consumos|Plan\s+V|TNA|TEA|CFTEA|Cancelaci[oó]n|Condiciones|L[IÍ]MITES?|SALDO\s+ACTUAL|PAGO\s+MINIMO)\b/i;
-  const ignoreRx = /\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|SALDO\s+ANTERIOR|TOTAL\s+CONSUMOS|CUOTAS?\s+DE|INTERESES?|FINANCIACI[OÓ]N|COMISI[OÓ]N|SEGURO|AVISOS?|LEGALES?)\b/i;
+  const ignoreRx = /\b(SU\s+PAGO|PAGO\s+EN\s+PESOS|PAGO\s+EN\s+USD|SALDO\s+ANTERIOR|TOTAL\s+CONSUMOS|CUOTAS?\s+DE|INTERESES?|FINANCIACI[OÓ]N|COMISI[OÓ]N|AVISOS?|LEGALES?)\b/i;
 
   lines.forEach(function(rawLine) {
     let line = String(rawLine || '').replace(/[·•|]+/g, ' ').replace(/\s+/g, ' ').trim();
