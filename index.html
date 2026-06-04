@@ -5525,6 +5525,11 @@ function normalizeDigitalPdfText(text) {
   return String(text || '')
     .replace(/\u00a0/g, ' ')
     .replace(/[ \t]+/g, ' ')
+    // Banco Ciudad uses "_" as a visual horizontal-rule separator; pdf.js concatenates
+    // the preceding line with the next transaction line. Strip trailing " _" segments
+    // before joining lines so the separator never merges two unrelated rows.
+    .replace(/[ _]+\n/g, '\n')
+    .replace(/[ _]+$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
