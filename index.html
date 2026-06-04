@@ -6590,7 +6590,12 @@ function getStatementDetailText(text) {
       continue;
     }
     if (!active) continue;
-    if (isFinalStop(line)) break;
+    if (isFinalStop(line)) {
+      // Don't break — PDFs like BBVA have a summary section before the real detail section.
+      // Pause collection and keep scanning for another start marker.
+      active = false;
+      continue;
+    }
     if (isSoftStop(line)) {
       active = false;
       continue;
