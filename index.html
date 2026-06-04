@@ -7991,25 +7991,7 @@ async function importCardStatementExpenses(items, setProgress) {
   }
 
   setSyncing('ok');
-
-  // Navigate to the statement's month so imported expenses are visible immediately.
-  const firstImported = list.find(function(r) { return r.mes && r.anio; });
-  if (firstImported && imported > 0) {
-    const targetMes = firstImported.mes;
-    const targetAnio = firstImported.anio;
-    if (targetMes !== state.mes || targetAnio !== state.anio) {
-      state.mes = targetMes;
-      state.anio = targetAnio;
-      var ml = document.getElementById('monthLabel');
-      if (ml && typeof MONTHS_SHORT !== 'undefined') {
-        ml.textContent = (MONTHS_SHORT[targetMes - 1] || '') + ' ' + targetAnio;
-      }
-    }
-  }
-  try { await loadAll(); } catch(e) {
-    console.error('loadAll post-import:', e);
-    try { renderAll(); } catch(_) {}
-  }
+  try { renderAll(); } catch(e) { console.error('renderAll:', e); }
   return { imported, skipped };
 }
 
