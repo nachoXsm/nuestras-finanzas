@@ -5743,16 +5743,6 @@ function parseStatementDate(raw) {
   };
   const value = String(raw || '').trim();
 
-  // ISO format: YYYY-MM-DD
-  const iso = value.match(/^(\d{4})\s*[-]\s*(\d{1,2})\s*[-]\s*(\d{1,2})$/);
-  if (iso) {
-    const anio = parseInt(iso[1], 10);
-    const mes = parseInt(iso[2], 10);
-    const dia = parseInt(iso[3], 10);
-    if (!dia || !mes || !anio || mes > 12 || dia > 31) return null;
-    return { dia, mes, anio, fecha: anio + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0') };
-  }
-
   const numeric = value.match(/^(\d{1,2})\s*(?:[-\/.]|\s+)\s*(\d{1,2})\s*(?:[-\/.]|\s+)\s*(\d{2,4})$/);
   if (numeric) {
     const dia = parseInt(numeric[1], 10);
@@ -6245,7 +6235,7 @@ function isCardStatementConsumptionRow(row) {
   }
 
   if (isStatementTaxDescription(upper)) {
-    return false; // taxes/fees are not consumption items
+    return true;
   }
 
   const merchantText = upper
@@ -7493,42 +7483,26 @@ async function extractCardStatementRowsWithGroq(rawText, onProgress) {
   try {
     if (onProgress) onProgress(72, 'Interpretando resumen con IA...', '🤖');
     const visionLines = extractVisionLines(lastOCRVisionData || window.lastOCRVisionData);
-    const localDue = parseStatementDueDate(rawText);
+    const due = parseStatementDueDate(rawText);
     const payload = {
       rawText,
       visionLines,
-      preferredDueDate: localDue ? localDue.fecha : null
+      preferredDueDate: due ? due.fecha : null
     };
     const result = await postJsonWithFallback('/api/extract-statement-groq', payload, 'Extractor Groq');
     const raw = result.data;
 
-    // API now returns { due_date, items }
+    // Groq devuelve { due_date, items } — extraer la fecha de vencimiento
     const groqDueDate = raw && raw.due_date ? raw.due_date : null;
     const items = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.items) ? raw.items : []);
 
-    // Best due date: prefer Groq's result, then local parser
-    const effectiveDue = groqDueDate || (localDue ? localDue.fecha : null);
-
-    // Force ALL items to the due date — no purchase dates ever
+    // Forzar la fecha de vencimiento en todas las filas
+    const effectiveDue = groqDueDate || (due ? due.fecha : null);
     if (effectiveDue) {
       items.forEach(function(item) { item.fecha = effectiveDue; });
-      // Store so importCardStatementExpenses can also use it
-      const dueParts = parseStatementDate(effectiveDue) || localDue;
-      if (dueParts) {
-        lastStatementDueDateForImport = dueParts;
-        window.lastStatementDueDateForImport = dueParts;
-      }
     }
 
-    const normalized = normalizeAIStatementRows(items, rawText);
-    // Extra safety: force due date on all normalized rows
-    if (effectiveDue && lastStatementDueDateForImport) {
-      const d = lastStatementDueDateForImport;
-      normalized.forEach(function(row) {
-        row.mes = d.mes; row.anio = d.anio; row.dia = d.dia; row.fecha = d.fecha;
-      });
-    }
-    return normalized;
+    return normalizeAIStatementRows(items, rawText);
   } catch (err) {
     console.warn('Groq statement extraction failed:', err);
     return [];
@@ -7898,12 +7872,12 @@ function parseCardStatementRows(text) {
 function statementExpenseDuplicateKey(item) {
   const taxKey = canonicalStatementTaxKey(item);
   return [
+    Number(item && item.dia || 0),
     Number(item && item.mes || 0),
     Number(item && item.anio || 0),
     taxKey || normalizeStatementMatchText(item && item.descripcion),
     Number(item && item.monto || 0).toFixed(2),
-    String(item && item.moneda || getDefaultCurrency()).toUpperCase(),
-    Number(item && item.cuota_actual || 1)
+    String(item && item.moneda || getDefaultCurrency()).toUpperCase()
   ].join('|');
 }
 
@@ -7918,26 +7892,23 @@ function countStatementExpenseKeys(rows) {
 
 function findDuplicateStatementExpense(item, sourceList) {
   const gastos = Array.isArray(sourceList) ? sourceList : (state.gastos || []);
-  // Do NOT include dia in the match — dia can be null in old records or differ
-  // between parse runs, causing false negatives and infinite duplicates.
   const sameBasics = gastos.filter(function(g) {
-    return Number(g.mes) === Number(item.mes)
+    return Number(g.dia) === Number(item.dia)
+      && Number(g.mes) === Number(item.mes)
       && Number(g.anio) === Number(item.anio)
       && Math.abs(Number(g.monto || 0) - Number(item.monto || 0)) < 0.01
-      && String(g.moneda || getDefaultCurrency()).toUpperCase() === String(item.moneda || getDefaultCurrency()).toUpperCase()
-      && Number(g.cuota_actual || 1) === Number(item.cuota_actual || 1);
+      && String(g.moneda || getDefaultCurrency()) === String(item.moneda || getDefaultCurrency());
   });
   if (!sameBasics.length) return null;
-  const descNorm = normalizeStatementMatchText(item.descripcion);
   const exact = sameBasics.find(function(g) {
-    return normalizeStatementMatchText(g.descripcion) === descNorm;
+    return String(g.descripcion || '').trim().toLowerCase() === String(item.descripcion || '').trim().toLowerCase();
   });
   if (exact) return exact;
   if (sameBasics.length === 1) return sameBasics[0];
   const best = sameBasics
     .map(g => ({ row: g, score: statementTextOverlap(g.descripcion, item.descripcion) }))
     .sort((a, b) => b.score - a.score)[0];
-  return best && best.score >= 0.4 ? best.row : null;
+  return best && best.score >= 0.25 ? best.row : null;
 }
 
 function isDuplicateStatementExpense(item) {
@@ -7946,28 +7917,10 @@ function isDuplicateStatementExpense(item) {
 
 async function importCardStatementExpenses(items, setProgress) {
   const dueForImport = lastStatementDueDateForImport || window.lastStatementDueDateForImport || null;
-
-  // Step 1: filter to consumption rows only
-  const filtered = filterCardStatementConsumptionRows(items || []).filter(Boolean);
-
-  // Step 2: force ALL items to the statement due date — no purchase dates
-  const withDate = dueForImport ? forceRowsStatementDate(filtered, dueForImport) : filtered;
-
-  // Step 3: deduplicate by (normalizedDesc, monto, moneda, cuota_actual)
-  const seenKeys = new Set();
-  const list = withDate.filter(function(row) {
-    if (!row || !row.descripcion || !row.monto) return false;
-    const k = [
-      normalizeStatementMatchText(row.descripcion),
-      Number(row.monto || 0).toFixed(2),
-      String(row.moneda || getDefaultCurrency()).toUpperCase(),
-      Number(row.cuota_actual || 1)
-    ].join('|');
-    if (seenKeys.has(k)) return false;
-    seenKeys.add(k);
-    return true;
-  });
-
+  const list = forceRowsStatementDate(
+    filterCardStatementConsumptionRows(items || []),
+    dueForImport
+  ).filter(Boolean);
   if (!list.length) return { imported: 0, skipped: 0 };
 
   const quienEl = document.getElementById('g_quien');
@@ -7976,35 +7929,13 @@ async function importCardStatementExpenses(items, setProgress) {
   const activePayer = (state.personas && state.personas[0]) || state.persona1 || selectedQuien || 'Persona 1';
   const quien = selectedQuien && selectedQuien !== 'Todos' ? selectedQuien : activePayer;
   const tarjeta_id = tarjetaEl && tarjetaEl.value && !tarjetaEl.disabled ? tarjetaEl.value : null;
-
-  // Determine the target month from the statement's due date.
-  // Statement items are forced to that month by forceRowsStatementDate.
-  const firstWithDate = list.find(function(r) { return r.mes && r.anio; });
-  const targetMes = firstWithDate ? firstWithDate.mes : state.mes;
-  const targetAnio = firstWithDate ? firstWithDate.anio : state.anio;
-
-  // Pre-fetch existing gastos for the TARGET month so duplicate detection
-  // works even when the user is viewing a different month.
-  let existingStatementExpenses;
-  if (targetMes !== state.mes || targetAnio !== state.anio) {
-    try {
-      if (setProgress) setProgress(62, 'Verificando duplicados…', '🔍');
-      const fetched = await dbGet('gastos', `grupo_id=eq.${state.grupoId}&mes=eq.${targetMes}&anio=eq.${targetAnio}`);
-      existingStatementExpenses = applyRecordCardRelations('gastos',
-        applyRecordInstallments('gastos', applyRecordCurrencies('gastos', fetched || [])));
-    } catch(e) {
-      existingStatementExpenses = (state.gastos || []).slice();
-    }
-  } else {
-    existingStatementExpenses = (state.gastos || []).slice();
-  }
-
+  const existingStatementExpenses = (state.gastos || []).slice();
   const targetStatementCounts = countStatementExpenseKeys(list);
   const existingStatementCounts = countStatementExpenseKeys(existingStatementExpenses);
   const consumedExistingStatementCounts = {};
   let imported = 0;
   let skipped = 0;
-
+  const pendingFutureCuotas = [];
 
   setSyncing('syncing');
   for (let i = 0; i < list.length; i++) {
@@ -8066,26 +7997,61 @@ async function importCardStatementExpenses(items, setProgress) {
       const syncedOrigen = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [origen])))[0] || origen;
       state.gastos.push(syncedOrigen);
       imported++;
+
+      // Generar cuotas futuras si hay más de una cuota y aún quedan por vencer.
+      // Cuando el usuario importe el resumen del mes siguiente, la cuota ya existe
+      // y el detector de duplicados la saltea automáticamente.
+      const totalCuotas = cuotasParts.cuotas;
+      const actualCuota = cuotasParts.cuota_actual;
+      if (totalCuotas > 1 && actualCuota < totalCuotas) {
+        const futures = [];
+        for (let c = actualCuota + 1; c <= totalCuotas; c++) {
+          let m = item.mes + (c - actualCuota);
+          let y = item.anio;
+          while (m > 12) { m -= 12; y++; }
+          futures.push({ ...body, mes: m, anio: y, cuota_actual: c, gasto_origen_id: origen.id });
+        }
+        for (const f of futures) {
+          pendingFutureCuotas.push(
+            dbPostMoney('gastos', f).then(function(fr) {
+              if (fr && fr[0]) {
+                const sf = applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', [fr[0]])))[0] || fr[0];
+                state.gastos.push(sf);
+              }
+            }).catch(function(e) { console.error('Error creando cuota futura:', e); })
+          );
+        }
+      }
     }
+  }
+
+  if (pendingFutureCuotas.length) {
+    if (setProgress) setProgress(97, 'Creando cuotas futuras…', '📅');
+    await Promise.all(pendingFutureCuotas);
   }
 
   setSyncing('ok');
 
-  // Always navigate to the statement's month and reload from Supabase.
-  // This ensures both users see the imported data immediately, and the
-  // correct month is shown regardless of what the user was viewing before.
-  if (targetMes !== state.mes || targetAnio !== state.anio) {
-    state.mes = targetMes;
-    state.anio = targetAnio;
-    var ml = document.getElementById('monthLabel');
-    if (ml && typeof MONTHS_SHORT !== 'undefined') {
-      ml.textContent = (MONTHS_SHORT[targetMes - 1] || '') + ' ' + targetAnio;
+  // Navigate to the month of the imported expenses so they're visible immediately.
+  // Statement due dates are often one month ahead of the current view.
+  const firstImported = list.find(function(item) { return item.mes && item.anio; });
+  if (firstImported && imported > 0) {
+    const targetMes = firstImported.mes;
+    const targetAnio = firstImported.anio;
+    if (targetMes !== state.mes || targetAnio !== state.anio) {
+      state.mes = targetMes;
+      state.anio = targetAnio;
+      var ml = document.getElementById('monthLabel');
+      if (ml && typeof MONTHS_SHORT !== 'undefined') {
+        ml.textContent = (MONTHS_SHORT[targetMes - 1] || '') + ' ' + targetAnio;
+      }
+      // Reload data for the new month so all users see it consistently
+      try { await loadAll(); } catch(e) { console.error('loadAll post-import:', e); }
+      return { imported, skipped };
     }
   }
-  try { await loadAll(); } catch(e) {
-    console.error('loadAll post-import:', e);
-    try { renderAll(); } catch(_) {}
-  }
+
+  try { renderAll(); } catch(e) { console.error('renderAll:', e); }
   return { imported, skipped };
 }
 
@@ -8120,32 +8086,8 @@ async function processOCR(input) {
     if (!text || !text.trim()) throw new Error('No se encontró texto en el archivo.');
     lastStatementDueDateForImport = parseStatementDueDate(text);
     window.lastStatementDueDateForImport = lastStatementDueDateForImport;
-    setProgress(60, 'Resumen leído, analizando con IA…', '🤖');
+    setProgress(60, 'Resumen leído, reconstruyendo filas…', '✅');
     const isStatement = looksLikeCardStatement(text);
-
-    // For card statements: always use Groq AI — single clean list, no local parsers.
-    if (!isSinglePaymentReceipt(text) && isStatement) {
-      setProgress(68, 'Analizando resumen con IA...', '🤖');
-      const groqItems = await extractCardStatementRowsWithGroq(text, setProgress);
-      console.log('[NF] Groq items:', groqItems ? groqItems.length : 0, groqItems);
-      console.log('[NF] Due date for import:', lastStatementDueDateForImport);
-      if (groqItems && groqItems.length >= 1) {
-        // Pass directly — no finalizeStatementRowsForImport, no extra filtering.
-        // importCardStatementExpenses will force due date and deduplicate.
-        const result = await importCardStatementExpenses(groqItems, setProgress);
-        setProgress(100, 'Resumen importado con IA', '✅');
-        setTimeout(function() {
-          if (prog) prog.style.display = 'none';
-          const extra = result.skipped ? ' (' + result.skipped + ' duplicados omitidos)' : '';
-          toast('🤖 ' + result.imported + ' consumos cargados con IA' + extra);
-        }, 800);
-        if (btn) btn.disabled = false;
-        input.value = '';
-        return;
-      }
-      // Groq returned nothing — fall through to local parsers as last resort
-    }
-
     const currentVisionData = lastOCRVisionData || window.lastOCRVisionData;
     const visualLineStatementItems = parseCardStatementRowsByVisualLines(text, currentVisionData);
     const visionStatementItems = parseCardStatementRowsFromVision(currentVisionData);
@@ -8220,7 +8162,7 @@ async function processOCR(input) {
     }));
     console.log(window.lastStatementImportDebug);
     console.groupEnd();
-    if (!isSinglePaymentReceipt(text) && statementItems.length >= 3) {
+    if (!isSinglePaymentReceipt(text) && ((isStatement && statementItems.length) || statementItems.length >= 3)) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
       setTimeout(function() {
