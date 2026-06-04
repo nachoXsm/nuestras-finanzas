@@ -7872,12 +7872,12 @@ function parseCardStatementRows(text) {
 function statementExpenseDuplicateKey(item) {
   const taxKey = canonicalStatementTaxKey(item);
   return [
-    Number(item && item.dia || 0),
     Number(item && item.mes || 0),
     Number(item && item.anio || 0),
     taxKey || normalizeStatementMatchText(item && item.descripcion),
     Number(item && item.monto || 0).toFixed(2),
-    String(item && item.moneda || getDefaultCurrency()).toUpperCase()
+    String(item && item.moneda || getDefaultCurrency()).toUpperCase(),
+    Number(item && item.cuota_actual || 1)
   ].join('|');
 }
 
@@ -7892,23 +7892,26 @@ function countStatementExpenseKeys(rows) {
 
 function findDuplicateStatementExpense(item, sourceList) {
   const gastos = Array.isArray(sourceList) ? sourceList : (state.gastos || []);
+  // Do NOT include dia in the match — dia can be null in old records or differ
+  // between parse runs, causing false negatives and infinite duplicates.
   const sameBasics = gastos.filter(function(g) {
-    return Number(g.dia) === Number(item.dia)
-      && Number(g.mes) === Number(item.mes)
+    return Number(g.mes) === Number(item.mes)
       && Number(g.anio) === Number(item.anio)
       && Math.abs(Number(g.monto || 0) - Number(item.monto || 0)) < 0.01
-      && String(g.moneda || getDefaultCurrency()) === String(item.moneda || getDefaultCurrency());
+      && String(g.moneda || getDefaultCurrency()).toUpperCase() === String(item.moneda || getDefaultCurrency()).toUpperCase()
+      && Number(g.cuota_actual || 1) === Number(item.cuota_actual || 1);
   });
   if (!sameBasics.length) return null;
+  const descNorm = normalizeStatementMatchText(item.descripcion);
   const exact = sameBasics.find(function(g) {
-    return String(g.descripcion || '').trim().toLowerCase() === String(item.descripcion || '').trim().toLowerCase();
+    return normalizeStatementMatchText(g.descripcion) === descNorm;
   });
   if (exact) return exact;
   if (sameBasics.length === 1) return sameBasics[0];
   const best = sameBasics
     .map(g => ({ row: g, score: statementTextOverlap(g.descripcion, item.descripcion) }))
     .sort((a, b) => b.score - a.score)[0];
-  return best && best.score >= 0.25 ? best.row : null;
+  return best && best.score >= 0.4 ? best.row : null;
 }
 
 function isDuplicateStatementExpense(item) {
