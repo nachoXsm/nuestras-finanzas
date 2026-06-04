@@ -6155,8 +6155,8 @@ function statementLineHasNegativeAmount(line) {
   const s = String(line || '');
   // Leading minus:  -287,18  or  - 287,18
   if (/(?:^|\s)(?:US\$|U\$S|USD|\$)?\s*-\s*(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2}|\d{4,8})(?:\s|$)/.test(s)) return true;
-  // Trailing minus (Banco Ciudad): 287,18-  or  287.18 -
-  if (/(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2}|\d{4,8})\s*-(?:\s|$)/.test(s)) return true;
+  // Trailing minus (Banco Ciudad): 287,18-  or  287.18 - (must have decimal separator to avoid matching reference codes like "980002-")
+  if (/(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})\s*-(?:\s|$)/.test(s)) return true;
   return false;
 }
 
