@@ -5965,8 +5965,7 @@ function getVisionBox(word) {
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, cy: (minY + maxY) / 2 };
 }
 
-function extractVisionLines(data, options) {
-  const tightRows = options && options.tightRows;
+function extractVisionLines(data) {
   const responses = getVisionResponseList(data);
   const allLines = [];
 
@@ -5989,10 +5988,7 @@ function extractVisionLines(data, options) {
       const medianH = words.length
         ? words.map(w => w.h).sort((a, b) => a - b)[Math.floor(words.length / 2)] || 12
         : 12;
-      // Tight mode for statement tables: keep rows separated; loose mode for receipts
-      const tolerance = tightRows
-        ? Math.max(4, medianH * 0.5)
-        : Math.max(10, medianH * 1.35);
+      const tolerance = Math.max(10, medianH * 1.35);
       const groups = [];
       words.forEach(function(word) {
         let group = groups.find(g => Math.abs(g.cy - word.cy) <= tolerance);
@@ -6638,7 +6634,7 @@ function parseStatementRowLine(line) {
 
 function parseCardStatementRowsByVisualLines(text, visionData) {
   const rawLines = [];
-  if (visionData) rawLines.push.apply(rawLines, extractVisionLines(visionData, { tightRows: true }));
+  if (visionData) rawLines.push.apply(rawLines, extractVisionLines(visionData));
   rawLines.push.apply(rawLines, String(getStatementDetailText(text) || '').replace(/\r/g, '\n').split('\n'));
 
   const rows = [];
