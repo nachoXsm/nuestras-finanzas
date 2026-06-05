@@ -1163,6 +1163,7 @@
               <button onclick="triggerOCRFiles()" title="Subir archivo o resumen" aria-label="Subir archivo o resumen" style="background:rgba(18,199,183,.1);border:1.5px solid rgba(18,199,183,.3);color:var(--primary);padding:0 12px;border-radius:13px;cursor:pointer;font-size:1rem" id="btnFiles">🗂️</button>
             </div>
             <input type="file" id="ocrInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv" style="display:none" onchange="processOCR(this)">
+            <input type="file" id="ocrPdfInput" accept=".pdf,application/pdf" style="display:none" onchange="processOCR(this)">
             <input type="file" id="ocrCameraInput" accept="image/*" capture="environment" style="display:none" onchange="processOCR(this)">
           </div>
           <!-- Monto: moneda + número en fila -->
@@ -1628,7 +1629,7 @@
       </button>
       <button id="ocrPillResumen" class="ocr-type-pill" onclick="ocrSelectType('resumen')">
         <span class="ocr-pill-icon">💳</span>
-        <span>Resumen de tarjeta</span>
+        <span>Resumen tarjeta (PDF)</span>
       </button>
     </div>
     <!-- Sección resumen: selector de tarjeta -->
@@ -5368,7 +5369,7 @@ function ocrConfirmResumen() {
     if (formMedio) { formMedio.value = 'tarjeta'; if (typeof toggleCardFields === 'function') toggleCardFields(); }
   }
   closeOcrActionSheet();
-  document.getElementById('ocrInput').click();
+  document.getElementById('ocrPdfInput').click();
 }
 
 function getNFApiEndpoint(path) {
