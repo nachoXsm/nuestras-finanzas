@@ -6339,7 +6339,7 @@ function isCardStatementConsumptionRow(row) {
   }
 
   if (isStatementTaxDescription(upper)) {
-    return true;
+    return false;
   }
 
   const merchantText = upper
@@ -6676,7 +6676,7 @@ function getStatementDetailText(text) {
   };
   const isFinalStop = function(line) {
     const l = norm(line);
-    return /total\s+a\s+pagar|plan\s+v\b|cuotas\s+a\s+vencer|total\s+de\s+cuotas\s+a\s+vencer|total\s+cuotas\s+a\s+vencer|mensajes?|informacion\s+importante/.test(l);
+    return /total\s+a\s+pagar|plan\s+v\b|cuotas\s+a\s+vencer|total\s+de\s+cuotas\s+a\s+vencer|total\s+cuotas\s+a\s+vencer|mensajes?|informacion\s+importante|debitaremos\b|para\s+consultas\b/.test(l);
   };
   const isSoftStop = function(line) {
     const l = norm(line);
@@ -7849,17 +7849,26 @@ function chooseStatementRowsForImport(sources) {
 
 function parseCardStatementRowsByTableLines(text) {
   const section = getStatementDetailText(text);
-  const lines = String(section || '').replace(/\r/g, '\n').split('\n')
+  const lines = String(section || '')
+    // Re-insert newlines before date+code patterns merged onto the same line
+    // (e.g. Macro VISA: "...4.166,66 30.03.22 283479* SIGUIENTE...")
+    .replace(/([^\n])\s+(\d{1,2}[./]\d{1,2}[./]\d{2,4}\s+\d{5,7}\*\s)/g, '$1\n$2')
+    .replace(/\r/g, '\n').split('\n')
     .map(l => l.replace(/[·•|]+/g, ' ').replace(/\s+/g, ' ').trim())
     .filter(Boolean);
 
   const rows = [];
   const dateRx = /^(\d{1,2}\s*[-\/.]\s*(?:[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}|\d{1,2})\.?\s*[-\/.]\s*\d{2,4})\s+(.+)$/i;
   const amountRx = /(?:(?:US\$|U\$S|USD|\$)\s*)?-?(?:\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+,\d{2}|\d+\.\d{2})-?/gi;
+  const totalStopRx = /\b(TOTAL\s+(?:CONSUMOS|DEL\s+MES|TITULAR|TARJETA|RESUMEN|A\s+PAGAR)|DEBITAREMOS\b)/i;
+  let pastTotal = false;
 
   lines.forEach(function(line) {
     if (isStatementHeaderLine(line)) return;
-    if (/\b(SALDO|SALDO\s+PENDIENTE|SUBTOTAL|TOTAL\s+A\s+PAGAR|TOTAL\s+CONSUMOS|TOTAL\s+DEL\s+MES|TOTAL\s+TITULAR|TOTAL\s+TARJETA|TOTAL\s+RESUMEN|PAGO\s+MINIMO|SU\s+PAGO|L[IÍ]MITES?|CIERRE|VENCIMIENTO|TASAS?|CUOTAS\s+A\s+VENCER|PLAN\s+V)\b/i.test(line)) return;
+    if (totalStopRx.test(line)) { pastTotal = true; return; }
+    if (pastTotal) return;
+    if (/\b(SALDO|SALDO\s+PENDIENTE|SUBTOTAL|PAGO\s+MINIMO|SU\s+PAGO|L[IÍ]MITES?|CIERRE|VENCIMIENTO|TASAS?|CUOTAS\s+A\s+VENCER|PLAN\s+V)\b/i.test(line)) return;
+    if (/\b0?800[\s.-]\d{3}[\s.-]\d{4}|\b0?810[\s.-]\d{3}[\s.-]\d{4}|llam[ae]\s+al\b/i.test(line)) return;
 
     const match = line.match(dateRx);
     if (!match) return;
