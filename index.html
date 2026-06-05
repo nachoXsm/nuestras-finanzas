@@ -8241,52 +8241,21 @@ async function processOCR(input) {
     }
     const regexQualityOk = !statementItemsHaveQualityIssues(statementItems);
 
-    // For non-statement files with good quality regex results, import directly
-    if (!isSinglePaymentReceipt(text) && !isStatement && statementItems.length >= 3 && regexQualityOk) {
-      const result = await importCardStatementExpenses(statementItems, setProgress);
-      setProgress(100, 'Resumen importado', '✅');
-      setTimeout(function() {
-        if (prog) prog.style.display = 'none';
-        const extra = result.skipped ? ' (' + result.skipped + ' duplicados omitidos)' : '';
-        toast('✅ ' + result.imported + ' consumos cargados' + extra);
-      }, 800);
-      if (btn) btn.disabled = false;
-      input.value = '';
-      return;
-    }
-
-    if (isStatement || !regexQualityOk) {
-      setProgress(68, 'Analizando con IA...', '🤖');
-      const groqItems = await extractCardStatementRowsWithGroq(text, setProgress);
-      if (groqItems && groqItems.length >= 1) {
-        const finalItems = finalizeStatementRowsForImport(applyStatementDueDate(
-          filterCardStatementConsumptionRows(groqItems), text
-        ));
-        const result = await importCardStatementExpenses(finalItems.length ? finalItems : groqItems, setProgress);
-        setProgress(100, 'Resumen importado con IA', '✅');
-        setTimeout(function() {
-          if (prog) prog.style.display = 'none';
-          const extra = result.skipped ? ' (' + result.skipped + ' duplicados omitidos)' : '';
-          toast('🤖 ' + result.imported + ' consumos cargados con IA' + extra);
-        }, 800);
-        if (btn) btn.disabled = false;
-        input.value = '';
-        return;
-      }
-      // Groq failed — fall back to regex results rather than showing an error
+    // Import whatever regex found — no Groq, no quality gate
+    if (!isSinglePaymentReceipt(text) && (isStatement || statementItems.length >= 3)) {
       if (statementItems.length >= 1) {
         const result = await importCardStatementExpenses(statementItems, setProgress);
-        setProgress(100, 'Resumen importado (parcial)', '⚠️');
+        setProgress(100, 'Resumen importado', '✅');
         setTimeout(function() {
           if (prog) prog.style.display = 'none';
           const extra = result.skipped ? ' (' + result.skipped + ' duplicados omitidos)' : '';
-          toast('⚠️ ' + result.imported + ' consumos cargados (revisá que estén todos)' + extra);
+          toast('✅ ' + result.imported + ' consumos cargados' + extra);
         }, 800);
         if (btn) btn.disabled = false;
         input.value = '';
         return;
       }
-      throw new Error('No se pudieron identificar los consumos. Probá subir el PDF original o una captura más nítida del detalle.');
+      throw new Error('No se pudieron identificar los consumos. Probá subir el PDF original.');
     }
 
     setProgress(90, 'Archivo leído, extrayendo datos…', '✅');
