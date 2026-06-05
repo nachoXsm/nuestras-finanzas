@@ -8241,7 +8241,8 @@ async function processOCR(input) {
     }
     const regexQualityOk = !statementItemsHaveQualityIssues(statementItems);
 
-    if (!isSinglePaymentReceipt(text) && ((isStatement && statementItems.length) || statementItems.length >= 3) && regexQualityOk) {
+    // For non-statement files with good quality regex results, import directly
+    if (!isSinglePaymentReceipt(text) && !isStatement && statementItems.length >= 3 && regexQualityOk) {
       const result = await importCardStatementExpenses(statementItems, setProgress);
       setProgress(100, 'Resumen importado', '✅');
       setTimeout(function() {
