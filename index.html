@@ -8273,6 +8273,19 @@ async function processOCR(input) {
         input.value = '';
         return;
       }
+      // Groq failed — fall back to regex results rather than showing an error
+      if (statementItems.length >= 1) {
+        const result = await importCardStatementExpenses(statementItems, setProgress);
+        setProgress(100, 'Resumen importado (parcial)', '⚠️');
+        setTimeout(function() {
+          if (prog) prog.style.display = 'none';
+          const extra = result.skipped ? ' (' + result.skipped + ' duplicados omitidos)' : '';
+          toast('⚠️ ' + result.imported + ' consumos cargados (revisá que estén todos)' + extra);
+        }, 800);
+        if (btn) btn.disabled = false;
+        input.value = '';
+        return;
+      }
       throw new Error('No se pudieron identificar los consumos. Probá subir el PDF original o una captura más nítida del detalle.');
     }
 
