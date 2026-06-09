@@ -9885,7 +9885,15 @@ async function processVoiceExpense(transcript){
   closeVoiceModal();
   openGastoForm();
   if(parsed){
-    setTimeout(function(){ fillGastoFormFromVoice(parsed); toast(c.filled); }, 520);
+    setTimeout(function(){
+      fillGastoFormFromVoice(parsed);
+      if(parsed.confirmar && parsed.monto && parseFloat(parsed.monto)>0){
+        // Guardado directo por comando de voz
+        setTimeout(function(){ if(typeof saveGasto==='function') saveGasto(); }, 250);
+      } else {
+        toast(c.filled);
+      }
+    }, 520);
   }
 }
 
@@ -9895,24 +9903,27 @@ async function parseVoiceExpenseWithAI(transcript){
   var tarjetas = (state.tarjetas||[]).map(function(t){return t.nombre;});
   var quienSel=document.getElementById('g_quien');
   var personas = quienSel ? Array.from(quienSel.options).map(function(o){return o.value;}) : ['Todos'];
+  var miNombre = _voiceLoggedUser(personas);
   try{
     var today=new Date().toISOString().slice(0,10);
     var prompt =
       'Sos un asistente que extrae los datos de un gasto dictado por voz (español argentino). '+
       'Del texto que te doy, devolvé ÚNICAMENTE un JSON válido, sin markdown ni texto extra.\n\n'+
       'Formato exacto:\n'+
-      '{"descripcion":"texto","monto":12345.67,"categoria":"...","medio":"efectivo","tarjeta":null,"cuotas":1,"quien":"Todos","tipo":"variable","fecha":null}\n\n'+
+      '{"descripcion":"texto","monto":12345.67,"categoria":"...","medio":"efectivo","tarjeta":null,"cuotas":1,"quien":"...","tipo":"variable","fecha":null,"confirmar":false}\n\n'+
       'Categorías válidas: '+cats.join(', ')+'\n'+
       'Tarjetas del usuario: '+(tarjetas.length?tarjetas.join(', '):'ninguna')+'\n'+
       'Personas para "quien": '+personas.join(', ')+'\n'+
+      'Usuario actual (el que dicta): '+(miNombre||'(desconocido)')+'\n'+
       'Fecha de hoy: '+today+'\n\n'+
       'Reglas:\n'+
+      '- "confirmar": true si al final dice "confirmar", "confirmá", "guardar", "guardalo", "salvar" o similar; sino false.\n'+
       '- monto: número decimal con punto. Interpretá expresiones: "25 mil"=25000, "dos lucas"=2000, "un palo"=1000000, "500 lucas"=500000.\n'+
       '- medio: "tarjeta" si menciona tarjeta/crédito/visa/master/cuotas; sino "efectivo".\n'+
       '- tarjeta: el nombre más parecido de la lista de tarjetas del usuario, o null si no menciona ninguna o no hay coincidencia.\n'+
       '- cuotas: entero de cuotas si lo menciona (ej "en 3 cuotas"=3), sino 1.\n'+
       '- categoria: la más apropiada de la lista de categorías válidas.\n'+
-      '- quien: la persona que pagó si la menciona (coincidencia con la lista), sino "Todos".\n'+
+      '- quien: la persona que pagó si la menciona (coincidencia con la lista). Si NO menciona a nadie, usá el usuario actual ('+(miNombre||'Todos')+').\n'+
       '- tipo: "fijo" si es un gasto recurrente (alquiler, expensas, servicios, suscripción), sino "variable".\n'+
       '- descripcion: breve, máximo 40 caracteres, sin el monto ni la forma de pago.\n'+
       '- fecha: si menciona "ayer"/"hoy"/"anteayer" o una fecha, calculala como YYYY-MM-DD respecto a hoy. Sino null.\n\n'+
@@ -9926,23 +9937,34 @@ async function parseVoiceExpenseWithAI(transcript){
     var data=await res.json();
     var reply=(data.reply||'').trim();
     var m=reply.match(/\{[\s\S]*\}/);
-    if(!m) return _voiceFallback(transcript);
-    return _normalizeVoiceParsed(JSON.parse(m[0]), transcript, cats, tarjetas, personas);
-  }catch(e){ return _voiceFallback(transcript); }
+    if(!m) return _voiceFallback(transcript, personas);
+    return _normalizeVoiceParsed(JSON.parse(m[0]), transcript, cats, tarjetas, personas, miNombre);
+  }catch(e){ return _voiceFallback(transcript, personas); }
 }
 
-function _voiceFallback(transcript){
+function _voiceLoggedUser(personas){
+  var mi = localStorage.getItem('nf_mi_nombre') || '';
+  if(mi && personas && personas.indexOf(mi)>=0) return mi;
+  // fallback al primer integrante real (no "Todos")
+  var first = (personas||[]).find(function(p){ return p && p!=='Todos' && p!=='Ambos' && p!=='Compartido'; });
+  return first || '';
+}
+function _voiceWantsConfirm(transcript){
+  return /(confirm|guarda|guardá|guardal|salv[aá]|salvar|grab[aá]|grabar)/i.test(String(transcript||''));
+}
+
+function _voiceFallback(transcript, personas){
   var num=((String(transcript||'').match(/[\d][\d.,]*/)||[])[0]||'').replace(/\./g,'').replace(',', '.');
   var monto=parseFloat(num);
-  return { descripcion:String(transcript||'').slice(0,40).trim(), monto:(monto>0?String(monto):''), categoria:'Otros', medio:'efectivo', tarjeta:null, cuotas:1, quien:'Todos', tipo:'variable', fecha:'' };
+  return { descripcion:String(transcript||'').slice(0,40).trim(), monto:(monto>0?String(monto):''), categoria:'Otros', medio:'efectivo', tarjeta:null, cuotas:1, quien:_voiceLoggedUser(personas||[])||'Todos', tipo:'variable', fecha:'', confirmar:_voiceWantsConfirm(transcript) };
 }
 
-function _normalizeVoiceParsed(ai, transcript, cats, tarjetas, personas){
+function _normalizeVoiceParsed(ai, transcript, cats, tarjetas, personas, miNombre){
   var monto=parseFloat(ai.monto);
   var medio=(ai.medio==='tarjeta')?'tarjeta':'efectivo';
   var cuotas=parseInt(ai.cuotas,10)||1; if(cuotas<1)cuotas=1; if(cuotas>24)cuotas=24;
   var cat=(cats.indexOf(ai.categoria)>=0)?ai.categoria:'Otros';
-  var quien=(personas.indexOf(ai.quien)>=0)?ai.quien:'Todos';
+  var quien=(personas.indexOf(ai.quien)>=0)?ai.quien:(miNombre||'Todos');
   var tipo=(ai.tipo==='fijo')?'fijo':'variable';
   var tarjeta=null;
   if(ai.tarjeta && tarjetas.length){
@@ -9952,10 +9974,12 @@ function _normalizeVoiceParsed(ai, transcript, cats, tarjetas, personas){
       || null;
   }
   var fecha = (ai.fecha && /^\d{4}-\d{2}-\d{2}$/.test(ai.fecha)) ? ai.fecha : '';
+  var desc=String(ai.descripcion||transcript||'').replace(/\s*\b(y\s+)?(confirm(a|á|ar|alo|ame)?|guard(a|á|ar|alo)|guardalo|salv[aá]r?|grab[aá]r?)\b\.?\s*$/i,'').trim();
   return {
-    descripcion:String(ai.descripcion||transcript||'').slice(0,40).trim(),
+    descripcion:desc.slice(0,40).trim(),
     monto:(monto>0?String(monto):''),
-    categoria:cat, medio:medio, tarjeta:tarjeta, cuotas:cuotas, quien:quien, tipo:tipo, fecha:fecha
+    categoria:cat, medio:medio, tarjeta:tarjeta, cuotas:cuotas, quien:quien, tipo:tipo, fecha:fecha,
+    confirmar:(ai.confirmar===true || _voiceWantsConfirm(transcript))
   };
 }
 
