@@ -11177,9 +11177,9 @@ function selectPwPlan(plan) {
 // Placa de marketing por idioma + posición exacta del botón "Probar Premium"
 // pintado dentro de cada imagen (left/top/width/height en % de la imagen).
 var PW_PROMO = {
-  es: { img: '/paywall-promo-es.webp', btn: [7.71, 91.73, 84.28, 4.63] },
-  pt: { img: '/paywall-promo-pt.webp', btn: [6.35, 89.64, 86.04, 5.15] },
-  en: { img: '/paywall-promo-en.webp', btn: [7.03, 90.94, 84.38, 4.36] },
+  es: { img: '/paywall-promo-es.jpg', btn: [7.71, 91.73, 84.28, 4.63] },
+  pt: { img: '/paywall-promo-pt.jpg', btn: [6.35, 89.64, 86.04, 5.15] },
+  en: { img: '/paywall-promo-en.jpg', btn: [7.03, 90.94, 84.38, 4.36] },
 };
 
 function _renderPaywall() {
@@ -11193,7 +11193,7 @@ function _renderPaywall() {
   // y un "Ahora no" debajo.
   var html = '<button class="pw-close" onclick="closePaywall()" aria-label="Cerrar">✕</button>'
     + '<div class="pw-promo-wrap">'
-    + '<img class="pw-promo-img" src="' + p.img + '" alt="Premium">'
+    + '<img class="pw-promo-img" src="' + p.img + '" alt="Premium" onerror="if(this.src.indexOf(\'-es.jpg\')<0)this.src=\'/paywall-promo-es.jpg\'">'
     + '<button class="pw-promo-btn" id="pwCtaBtn" style="' + btnStyle + '" onclick="startPremiumPurchase()" aria-label="' + c.cta + '"></button>'
     + '</div>'
     + '<div class="pw-below">'
