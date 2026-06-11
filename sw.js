@@ -1,20 +1,24 @@
-const CACHE = 'nf-v80';
+const CACHE = 'nf-v81';
+// Solo lo esencial en el precache. Si un archivo del precache falla (p. ej. durante
+// un deploy en curso) NO debe romper toda la instalación del SW.
 const PRECACHE = [
   '/',
   '/index.html',
   '/icon-192.png',
   '/icon-512.png',
-  '/paywall-promo-es.jpg',
-  '/paywall-promo-pt.jpg',
-  '/paywall-promo-en.jpg',
 ];
+// Las placas premium se cachean on-demand desde el fetch handler.
 // manifest.webmanifest is intentionally excluded from precache so Android
 // always reads the latest version and never shows a "name changed" warning.
 const NEVER_CACHE = ['/manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      // addAll falla si CUALQUIER recurso falla; usamos add individual con catch
+      // para que la instalación nunca quede bloqueada por un solo archivo.
+      .then(c => Promise.all(PRECACHE.map(u => c.add(u).catch(() => null))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -37,16 +41,24 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  const isNavigation = e.request.mode === 'navigate';
+
   e.respondWith(
     caches.match(e.request).then(cached => {
-      const networkFetch = fetch(e.request).then(res => {
-        if (res && res.status === 200) {
+      if (cached) return cached;
+      return fetch(e.request).then(res => {
+        // Solo cacheamos respuestas válidas (200). Un 404/redirección no se cachea.
+        if (res && res.status === 200 && res.type === 'basic') {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
+      }).catch(() => {
+        // Sin red: para navegaciones servimos el index cacheado (SPA shell).
+        // Para imágenes/otros recursos NO devolvemos index.html (rompería el <img>).
+        if (isNavigation) return caches.match('/index.html');
+        return Response.error();
       });
-      return cached || networkFetch.catch(() => caches.match('/index.html'));
     })
   );
 });
