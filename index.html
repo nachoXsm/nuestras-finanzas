@@ -749,7 +749,7 @@
   .pw-promo-wrap{position:relative;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .pw-promo-img{width:100%;display:block}
   /* Botón real superpuesto exactamente sobre el "Probar Premium" de la imagen */
-  .pw-promo-btn{position:absolute;left:8.1%;top:88.86%;width:82.8%;height:4.9%;background:transparent;border:none;cursor:pointer;border-radius:14px}
+  .pw-promo-btn{position:absolute;left:7.71%;top:91.73%;width:84.28%;height:4.63%;background:transparent;border:none;cursor:pointer;border-radius:14px}
   .pw-promo-btn:active{background:rgba(0,0,0,.08)}
   .pw-below{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 20px calc(18px + env(safe-area-inset-bottom));background:#fff;flex-shrink:0;border-top:1px solid #f1f5f9}
   .pw-dismiss{padding:8px;background:transparent;border:none;color:#64748b;font-size:14px;font-weight:600;cursor:pointer}
@@ -11182,7 +11182,7 @@ function _renderPaywall() {
   // y un "Ahora no" debajo.
   var html = '<button class="pw-close" onclick="closePaywall()" aria-label="Cerrar">✕</button>'
     + '<div class="pw-promo-wrap">'
-    + '<img class="pw-promo-img" src="/paywall-promo.jpg" alt="Premium">'
+    + '<img class="pw-promo-img" src="/paywall-promo.png" alt="Premium">'
     + '<button class="pw-promo-btn" id="pwCtaBtn" onclick="startPremiumPurchase()" aria-label="' + c.cta + '"></button>'
     + '</div>'
     + '<div class="pw-below">'
