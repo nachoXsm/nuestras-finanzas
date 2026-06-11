@@ -1,10 +1,12 @@
-const CACHE = 'nf-v78';
+const CACHE = 'nf-v79';
 const PRECACHE = [
   '/',
   '/index.html',
   '/icon-192.png',
   '/icon-512.png',
-  '/paywall-promo.png',
+  '/paywall-promo-es.webp',
+  '/paywall-promo-pt.webp',
+  '/paywall-promo-en.webp',
 ];
 // manifest.webmanifest is intentionally excluded from precache so Android
 // always reads the latest version and never shows a "name changed" warning.

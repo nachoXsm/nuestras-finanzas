@@ -748,8 +748,8 @@
   .pw-close:active{background:rgba(15,23,42,.14)}
   .pw-promo-wrap{position:relative;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .pw-promo-img{width:100%;display:block}
-  /* Botón real superpuesto exactamente sobre el "Probar Premium" de la imagen */
-  .pw-promo-btn{position:absolute;left:7.71%;top:91.73%;width:84.28%;height:4.63%;background:transparent;border:none;cursor:pointer;border-radius:14px}
+  /* Botón real superpuesto sobre el "Probar Premium" de la imagen (posición inline por idioma) */
+  .pw-promo-btn{position:absolute;background:transparent;border:none;cursor:pointer;border-radius:14px}
   .pw-promo-btn:active{background:rgba(0,0,0,.08)}
   .pw-below{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 20px calc(18px + env(safe-area-inset-bottom));background:#fff;flex-shrink:0;border-top:1px solid #f1f5f9}
   .pw-dismiss{padding:8px;background:transparent;border:none;color:#64748b;font-size:14px;font-weight:600;cursor:pointer}
@@ -11174,16 +11174,27 @@ function selectPwPlan(plan) {
   });
 }
 
+// Placa de marketing por idioma + posición exacta del botón "Probar Premium"
+// pintado dentro de cada imagen (left/top/width/height en % de la imagen).
+var PW_PROMO = {
+  es: { img: '/paywall-promo-es.webp', btn: [7.71, 91.73, 84.28, 4.63] },
+  pt: { img: '/paywall-promo-pt.webp', btn: [6.35, 89.64, 86.04, 5.15] },
+  en: { img: '/paywall-promo-en.webp', btn: [7.03, 90.94, 84.38, 4.36] },
+};
+
 function _renderPaywall() {
   var lang = (nfLang || 'es');
   var c = PW_COPY[lang] || PW_COPY['es'];
+  var p = PW_PROMO[lang] || PW_PROMO['es'];
+  var b = p.btn;
+  var btnStyle = 'left:' + b[0] + '%;top:' + b[1] + '%;width:' + b[2] + '%;height:' + b[3] + '%';
   // La placa de marketing es una imagen. Superponemos un botón real e invisible
   // exactamente sobre el "Probar Premium" pintado en la imagen, más una X para cerrar
   // y un "Ahora no" debajo.
   var html = '<button class="pw-close" onclick="closePaywall()" aria-label="Cerrar">✕</button>'
     + '<div class="pw-promo-wrap">'
-    + '<img class="pw-promo-img" src="/paywall-promo.png" alt="Premium">'
-    + '<button class="pw-promo-btn" id="pwCtaBtn" onclick="startPremiumPurchase()" aria-label="' + c.cta + '"></button>'
+    + '<img class="pw-promo-img" src="' + p.img + '" alt="Premium">'
+    + '<button class="pw-promo-btn" id="pwCtaBtn" style="' + btnStyle + '" onclick="startPremiumPurchase()" aria-label="' + c.cta + '"></button>'
     + '</div>'
     + '<div class="pw-below">'
     + '<button class="pw-dismiss" onclick="closePaywall()">' + c.dismiss + '</button>'
