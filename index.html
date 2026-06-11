@@ -768,7 +768,18 @@
   @keyframes vmPulse{0%{box-shadow:0 0 0 0 rgba(18,199,183,.45)}70%{box-shadow:0 0 0 30px rgba(18,199,183,0)}100%{box-shadow:0 0 0 0 rgba(18,199,183,0)}}
   .vm-status{color:#fff;font-size:19px;font-weight:800;margin-top:30px;text-align:center}
   .vm-hint{color:rgba(255,255,255,.45);font-size:13px;margin-top:10px;text-align:center;line-height:1.55;max-width:320px}
-  .vm-transcript{color:#12c7b7;font-size:16px;font-weight:600;margin-top:22px;text-align:center;min-height:24px;max-width:360px;line-height:1.5}
+  .vm-wave{display:flex;align-items:center;justify-content:center;gap:6px;height:64px;margin-top:30px}
+  .vm-wave span{width:7px;border-radius:99px;background:linear-gradient(180deg,#12c7b7,#27bde8 60%,#6c63ff);animation:vmWave 1.05s ease-in-out infinite;height:14px}
+  .vm-wave span:nth-child(1){animation-delay:0s}
+  .vm-wave span:nth-child(2){animation-delay:.12s}
+  .vm-wave span:nth-child(3){animation-delay:.24s}
+  .vm-wave span:nth-child(4){animation-delay:.36s}
+  .vm-wave span:nth-child(5){animation-delay:.48s}
+  .vm-wave span:nth-child(6){animation-delay:.6s}
+  .vm-wave span:nth-child(7){animation-delay:.72s}
+  @keyframes vmWave{0%,100%{height:12px;opacity:.55}50%{height:56px;opacity:1}}
+  .vm-wave.thinking span{animation:vmThink 1s ease-in-out infinite}
+  @keyframes vmThink{0%,100%{height:10px;opacity:.35}50%{height:22px;opacity:.8}}
   .vm-actions{display:flex;gap:12px;margin-top:38px}
   .vm-btn{padding:13px 28px;border-radius:14px;border:none;font-size:15px;font-weight:800;cursor:pointer}
   .vm-btn-cancel{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7)}
@@ -9832,6 +9843,7 @@ function _voiceModalOpen(){ var m=document.getElementById('voiceModal'); return 
 function closeVoiceModal(){
   var m=document.getElementById('voiceModal'); if(m) m.classList.remove('open');
   var mic=document.getElementById('vmMic'); if(mic){ mic.classList.remove('listening'); mic.textContent='🎙️'; }
+  var wv=document.getElementById('vmWave'); if(wv) wv.classList.remove('thinking');
 }
 
 function startVoiceExpense(){
@@ -9842,7 +9854,7 @@ function startVoiceExpense(){
   var c=_vc();
   document.getElementById('vmStatus').textContent=c.listen;
   document.getElementById('vmHint').textContent=c.hint;
-  document.getElementById('vmTranscript').textContent='';
+  var w0=document.getElementById('vmWave'); if(w0){ w0.classList.remove('thinking'); w0.style.display='flex'; }
   document.getElementById('vmCancel').textContent=c.cancel;
   document.getElementById('vmStop').textContent=c.done;
   var mic=document.getElementById('vmMic'); mic.textContent='🎙️'; mic.classList.add('listening');
@@ -9861,7 +9873,7 @@ function startVoiceExpense(){
       }
       _voiceFinal = final;
       _voiceTranscript = (final+' '+interim).trim();
-      var t=document.getElementById('vmTranscript'); if(t) t.textContent=_voiceTranscript;
+      // Transcript se guarda pero no se muestra — la onda animada es el feedback visual
     };
     _voiceRec.onerror = function(ev){
       if(ev.error==='not-allowed' || ev.error==='service-not-allowed'){ toast(_vc().noSupport); _voiceCancelled=true; closeVoiceModal(); }
@@ -9879,8 +9891,10 @@ function cancelVoiceExpense(){ _voiceCancelled=true; if(_voiceRec){ try{ _voiceR
 
 async function processVoiceExpense(transcript){
   var c=_vc();
-  var mic=document.getElementById('vmMic'); if(mic){ mic.textContent='🧠'; }
+  var mic=document.getElementById('vmMic'); if(mic){ mic.textContent='✨'; }
   var st=document.getElementById('vmStatus'); if(st) st.textContent=c.thinking;
+  var hint=document.getElementById('vmHint'); if(hint) hint.textContent='';
+  var wv=document.getElementById('vmWave'); if(wv) wv.classList.add('thinking');
   var parsed = await parseVoiceExpenseWithAI(transcript);
   closeVoiceModal();
   openGastoForm();
@@ -9928,14 +9942,27 @@ async function parseVoiceExpenseWithAI(transcript){
       '- descripcion: breve, máximo 40 caracteres, sin el monto ni la forma de pago.\n'+
       '- fecha: si menciona "ayer"/"hoy"/"anteayer" o una fecha, calculala como YYYY-MM-DD respecto a hoy. Sino null.\n\n'+
       'Texto dictado:\n'+String(transcript||'').slice(0,500);
-    var res = await fetch(IA_ENDPOINT, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY },
-      body: JSON.stringify({ messages:[{ role:'user', content:prompt }], context:{} })
-    });
-    if(!res.ok) return _voiceFallback(transcript);
-    var data=await res.json();
-    var reply=(data.reply||'').trim();
+    var reply = '';
+    // 1° intento: Groq (rápido y preciso para extracción estructurada)
+    try{
+      var resG = await fetch('/api/voice-parse', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ prompt: prompt })
+      });
+      if(resG.ok){ var dataG=await resG.json(); reply=(dataG.reply||'').trim(); }
+    }catch(eG){}
+    // 2° intento: asesor IA de Supabase
+    if(!reply){
+      var res = await fetch(IA_ENDPOINT, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY },
+        body: JSON.stringify({ messages:[{ role:'user', content:prompt }], context:{} })
+      });
+      if(!res.ok) return _voiceFallback(transcript, personas);
+      var data=await res.json();
+      reply=(data.reply||'').trim();
+    }
     var m=reply.match(/\{[\s\S]*\}/);
     if(!m) return _voiceFallback(transcript, personas);
     return _normalizeVoiceParsed(JSON.parse(m[0]), transcript, cats, tarjetas, personas, miNombre);
@@ -11254,7 +11281,7 @@ function requirePremium(featureName) {
   <div class="vm-mic" id="vmMic">🎙️</div>
   <div class="vm-status" id="vmStatus">Escuchando…</div>
   <div class="vm-hint" id="vmHint"></div>
-  <div class="vm-transcript" id="vmTranscript"></div>
+  <div class="vm-wave" id="vmWave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
   <div class="vm-actions">
     <button class="vm-btn vm-btn-cancel" id="vmCancel" onclick="cancelVoiceExpense()">Cancelar</button>
     <button class="vm-btn vm-btn-stop" id="vmStop" onclick="stopVoiceExpense()">Listo</button>
