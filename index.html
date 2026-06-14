@@ -9919,8 +9919,15 @@ function _startVoiceRecognition(SR){
       clearTimeout(_silenceTimer);
       if(_voiceCancelled) return;
       if(isIOS && _voiceModalOpen() && !_voiceStopped){
-        // iOS cortó por silencio pero el usuario todavía no terminó → reiniciar
-        try{ _voiceRec = createRec(); _voiceRec.start(); } catch(e){}
+        if(_voiceTranscript.trim()){
+          // iOS cortó después de que el usuario habló → procesar directamente
+          _voiceStopped = true;
+          var mic2=document.getElementById('vmMic'); if(mic2) mic2.classList.remove('listening');
+          processVoiceExpense(_voiceTranscript.trim());
+        } else {
+          // Todavía no capturó nada → reiniciar para seguir escuchando
+          try{ _voiceRec = createRec(); _voiceRec.start(); } catch(e){}
+        }
         return;
       }
       var mic2=document.getElementById('vmMic'); if(mic2) mic2.classList.remove('listening');
@@ -10099,9 +10106,18 @@ function fillGastoFormFromVoice(p){
       if(cu){ var co=Array.from(cu.options).find(function(x){return parseInt(x.value,10)===parseInt(p.cuotas,10);}); if(co) cu.value=String(p.cuotas); }
     }
   }
-  if(p.quien){
-    var qs=document.getElementById('g_quien');
-    if(qs){ var qo=Array.from(qs.options).find(function(x){return x.value===p.quien;}); if(qo){ qs.value=p.quien; qs.dispatchEvent(new Event('change')); if(typeof syncQuienChips==='function')syncQuienChips(); } }
+  // Setear quien: primero intentamos match exacto, luego case-insensitive.
+  // Si la IA no resolvió a nadie (devolvió 'Todos' o vacío), usamos el usuario logueado.
+  var qs=document.getElementById('g_quien');
+  if(qs){
+    var quienTarget = p.quien || '';
+    var miLocal = (localStorage.getItem('nf_mi_nombre')||'').trim();
+    // Si la IA devolvió 'Todos' o vacío, intentar con el usuario del dispositivo
+    if(!quienTarget || quienTarget==='Todos') quienTarget = miLocal;
+    var opts = Array.from(qs.options);
+    var qo = opts.find(function(x){return x.value===quienTarget;})
+           || opts.find(function(x){return x.value.toLowerCase()===quienTarget.toLowerCase();});
+    if(qo){ qs.value=qo.value; qs.dispatchEvent(new Event('change')); if(typeof syncQuienChips==='function')syncQuienChips(); }
   }
   if(p.fecha){
     if(typeof setFechaPartsFromDate==='function') setFechaPartsFromDate(p.fecha);
