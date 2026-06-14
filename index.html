@@ -9879,14 +9879,25 @@ function _startVoiceRecognition(SR){
   modal.classList.add('open');
   _voiceTranscript=''; _voiceFinal=''; _voiceCancelled=false;
 
-  // iOS Safari no soporta continuous:true — usa restart automático al detectar silencio.
   var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  var _silenceTimer = null;
+
+  function armSilenceTimer(){
+    // Después de 1.8s de silencio sin resultado nuevo → procesar automáticamente
+    clearTimeout(_silenceTimer);
+    _silenceTimer = setTimeout(function(){
+      if(!_voiceCancelled && !_voiceStopped && _voiceTranscript.trim()){
+        _voiceStopped = true;
+        if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} }
+      }
+    }, 1800);
+  }
 
   function createRec(){
     var rec = new SR();
     rec.lang = _voiceLangCode();
     rec.interimResults = true;
-    rec.continuous = !isIOS; // iOS ignora continuous y corta sola — la reiniciamos manualmente
+    rec.continuous = !isIOS;
     rec.maxAlternatives = 1;
     rec.onresult = function(e){
       var interim='', final=_voiceFinal;
@@ -9896,17 +9907,19 @@ function _startVoiceRecognition(SR){
       }
       _voiceFinal = final;
       _voiceTranscript = (final+' '+interim).trim();
+      // Cada vez que llega algo nuevo, reiniciamos el timer de silencio
+      if(_voiceTranscript) armSilenceTimer();
     };
     rec.onerror = function(ev){
       if(ev.error==='not-allowed' || ev.error==='service-not-allowed'){
         toast(_vc().noSupport); _voiceCancelled=true; closeVoiceModal();
       }
-      // En iOS 'no-speech' y 'audio-capture' son comunes — ignoramos y reiniciamos
     };
     rec.onend = function(){
+      clearTimeout(_silenceTimer);
       if(_voiceCancelled) return;
       if(isIOS && _voiceModalOpen() && !_voiceStopped){
-        // iOS cortó sola por silencio → reiniciar para mantener escuchando
+        // iOS cortó por silencio pero el usuario todavía no terminó → reiniciar
         try{ _voiceRec = createRec(); _voiceRec.start(); } catch(e){}
         return;
       }
@@ -10015,11 +10028,17 @@ async function parseVoiceExpenseWithAI(transcript){
 }
 
 function _voiceLoggedUser(personas){
-  var mi = localStorage.getItem('nf_mi_nombre') || '';
-  if(mi && personas && personas.indexOf(mi)>=0) return mi;
-  // fallback al primer integrante real (no "Todos")
-  var first = (personas||[]).find(function(p){ return p && p!=='Todos' && p!=='Ambos' && p!=='Compartido'; });
-  return first || '';
+  var mi = (localStorage.getItem('nf_mi_nombre') || '').trim();
+  if(!mi) return '';
+  // Comparación exacta primero
+  if(personas && personas.indexOf(mi)>=0) return mi;
+  // Comparación case-insensitive (por si hay diferencia de mayúsculas)
+  var miLow = mi.toLowerCase();
+  var match = (personas||[]).find(function(p){ return p && p.toLowerCase()===miLow; });
+  if(match) return match;
+  // Si el nombre no está en la lista (grupo ajeno), NO hacer fallback al primero
+  // — devolvemos el nombre tal cual para que el AI lo use igualmente
+  return mi;
 }
 function _voiceWantsConfirm(transcript){
   return /(confirm|guarda|guardá|guardal|salv[aá]|salvar|grab[aá]|grabar)/i.test(String(transcript||''));
