@@ -1422,6 +1422,14 @@
 
     <div class="perfil-divider"></div>
     <div class="perfil-section">Grupo</div>
+    <div class="perfil-row" onclick="perfilElegirIdentidad()">
+      <div class="perfil-row-icon" style="background:rgba(37,99,235,.12)">🙋</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">¿Quién sos en este dispositivo?</div>
+        <div class="perfil-row-sub" id="perfilMiIdentidadSub">Sin definir</div>
+      </div>
+      <div class="perfil-row-right">›</div>
+    </div>
     <div class="perfil-row" onclick="copyGroupCode()">
       <div class="perfil-row-icon" style="background:rgba(18,199,183,.12)">🔑</div>
       <div class="perfil-row-info">
@@ -3994,9 +4002,67 @@ function openPerfil() {
   });
   // Email recuperación
   updatePerfilEmailRecSub();
+  // Identidad en este dispositivo (quién soy)
+  updatePerfilMiIdentidadSub();
   // Abrir
   document.getElementById('perfilOverlay').classList.add('open');
   document.getElementById('perfilPanel').classList.add('open');
+}
+
+function _miPersonas(){
+  var g = loadGroup();
+  var ps = g ? (g.personasArray || [g.persona1, g.persona2].filter(Boolean)) : (state.personas || []);
+  return (ps || []).filter(function(p){ return p && p!=='Todos' && p!=='Ambos' && p!=='Compartido'; });
+}
+
+function updatePerfilMiIdentidadSub(){
+  var sub = document.getElementById('perfilMiIdentidadSub');
+  if(!sub) return;
+  var mi = (localStorage.getItem('nf_mi_nombre')||'').trim();
+  var personas = _miPersonas();
+  var valido = mi && personas.some(function(p){ return p.toLowerCase()===mi.toLowerCase(); });
+  sub.textContent = valido ? ('Soy: ' + mi) : '⚠️ Tocá para elegir quién sos';
+  sub.style.color = valido ? '' : 'var(--danger, #ff7a59)';
+}
+
+// Selector "¿Quién sos?" — guarda la identidad de ESTE dispositivo en nf_mi_nombre.
+// Es la fuente de verdad para el usuario por defecto en cargas por voz.
+function perfilElegirIdentidad(){
+  var personas = _miPersonas();
+  if(!personas.length){ toast('Primero creá o unite a un grupo'); return; }
+  var mi = (localStorage.getItem('nf_mi_nombre')||'').trim();
+  var ov = document.getElementById('_identOverlay');
+  if(ov) ov.remove();
+  ov = document.createElement('div');
+  ov.id = '_identOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  var rows = personas.map(function(p){
+    var sel = (p.toLowerCase()===mi.toLowerCase());
+    return '<button onclick="_setMiIdentidad(\''+p.replace(/'/g,"\\'")+'\')" '+
+      'style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:'+(sel?'#eff6ff':'#fff')+';'+
+      'border:1.5px solid '+(sel?'#2563eb':'#e2e8f0')+';border-radius:14px;padding:15px 16px;margin-bottom:10px;cursor:pointer;font-size:15px;font-weight:700;color:#0f172a">'+
+      '<span style="width:30px;height:30px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">'+(p[0]||'?').toUpperCase()+'</span>'+
+      '<span style="flex:1">'+p+'</span>'+(sel?'<span style="color:#2563eb">✓</span>':'')+'</button>';
+  }).join('');
+  ov.innerHTML = '<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:440px;padding:22px 20px calc(28px + env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
+    '<div style="width:38px;height:4px;background:rgba(0,0,0,.12);border-radius:2px;margin:0 auto 18px"></div>'+
+    '<div style="font-size:17px;font-weight:900;color:#0f172a;margin-bottom:4px">¿Quién sos?</div>'+
+    '<div style="font-size:12.5px;color:#64748b;margin-bottom:18px">Elegí tu nombre. Los gastos que cargues por voz se asignarán a vos automáticamente.</div>'+
+    rows+'</div>';
+  document.body.appendChild(ov);
+}
+function _setMiIdentidad(nombre){
+  localStorage.setItem('nf_mi_nombre', nombre);
+  var ov = document.getElementById('_identOverlay'); if(ov) ov.remove();
+  updatePerfilMiIdentidadSub();
+  toast('✅ Listo, sos ' + nombre);
+  // Si venía del flujo de voz, arrancamos a dictar ahora que ya sabemos quién es.
+  if(_identThenVoice){
+    _identThenVoice = false;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(SR) setTimeout(function(){ _startVoiceRecognition(SR); }, 250);
+  }
 }
 
 function closePerfil() {
@@ -9830,7 +9896,7 @@ function openGastoForm(){
 // CARGA DE GASTO POR VOZ (swipe-up en el FAB)
 // ============================================
 var fabVoiceTriggered = false;
-var _voiceRec = null, _voiceTranscript = '', _voiceFinal = '', _voiceCancelled = false;
+var _voiceRec = null, _voiceTranscript = '', _voiceFinal = '', _voiceCancelled = false, _voiceStopped = false, _voiceForceStop = null;
 
 var VOICE_COPY = {
   es: { listen:'Escuchando…', hint:'Decí el gasto. Ej: "Pagué 25 mil en el súper con tarjeta Visa en 3 cuotas"', thinking:'Entendiendo…', cancel:'Cancelar', done:'Listo', noSupport:'Tu navegador no soporta dictado por voz', noHeard:'No te escuché, probá de nuevo', filled:'🎙️ Listo — revisá y guardá', swipeHint:'🎙️ Soltá para hablar' },
@@ -9852,20 +9918,24 @@ function startVoiceExpense(){
   if(!SR){ toast(_vc().noSupport); openGastoForm(); return; }
   var modal=document.getElementById('voiceModal'); if(!modal) return;
 
-  // iOS Safari no persiste el permiso de micrófono en PWA entre sesiones.
-  // Solicitamos acceso via getUserMedia primero — así el usuario solo aprueba UNA vez
-  // y Safari no vuelve a preguntar mientras la sesión esté activa.
-  navigator.mediaDevices && navigator.mediaDevices.getUserMedia({audio:true})
-    .then(function(stream){
-      // Apagamos el stream de inmediato; solo lo pedimos para "desbloquear" el permiso.
-      stream.getTracks().forEach(function(t){ t.stop(); });
-      _startVoiceRecognition(SR);
-    })
-    .catch(function(){
-      // Sin getUserMedia (desktop viejo, etc.) intentamos igual.
-      _startVoiceRecognition(SR);
-    });
+  // Si hay varias personas en el grupo y este dispositivo todavía no sabe "quién soy",
+  // pedimos elegir UNA vez antes de dictar — así el gasto se asigna al usuario correcto
+  // (p. ej. Celi en su teléfono) y nunca queda como "Todos" o el primer integrante.
+  var personas = _miPersonas();
+  var mi = (localStorage.getItem('nf_mi_nombre')||'').trim();
+  var identidadOk = mi && personas.some(function(p){ return p.toLowerCase()===mi.toLowerCase(); });
+  if(personas.length > 1 && !identidadOk){
+    _identThenVoice = true; // tras elegir, arranca la voz automáticamente
+    perfilElegirIdentidad();
+    return;
+  }
+
+  // IMPORTANTE: no usamos getUserMedia. En iOS pide permiso CADA vez (no lo persiste para
+  // contenido web) y además compite por el micrófono con webkitSpeechRecognition, lo que
+  // rompía la captura. Dejamos que el reconocimiento maneje su propio permiso.
+  _startVoiceRecognition(SR);
 }
+var _identThenVoice = false;
 
 function _startVoiceRecognition(SR){
   var modal=document.getElementById('voiceModal'); if(!modal) return;
@@ -9877,79 +9947,92 @@ function _startVoiceRecognition(SR){
   document.getElementById('vmStop').textContent=c.done;
   var mic=document.getElementById('vmMic'); mic.textContent='🎙️'; mic.classList.add('listening');
   modal.classList.add('open');
-  _voiceTranscript=''; _voiceFinal=''; _voiceCancelled=false;
+  _voiceTranscript=''; _voiceFinal=''; _voiceCancelled=false; _voiceStopped=false;
 
+  // En iOS dejamos continuous=false (es lo que SÍ captura audio de forma confiable);
+  // el auto-corte lo dan los timers de abajo, no el modo continuo.
   var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
-  var _silenceTimer = null;
 
-  function armSilenceTimer(){
-    // Después de 1.8s de silencio sin resultado nuevo → procesar automáticamente
+  var _lastLen = 0;           // longitud del transcript en el último cambio real
+  var _silenceTimer = null;   // corta tras ~2s sin que el texto crezca
+  var _maxTimer = null;       // tope duro: corta a los 13s pase lo que pase
+  var _processed = false;     // evita procesar dos veces
+
+  function clearTimers(){ clearTimeout(_silenceTimer); clearTimeout(_maxTimer); }
+
+  // Corte definitivo: detiene el reconocimiento; onend hace el resto.
+  function forceStop(){
+    if(_voiceStopped) return;
+    _voiceStopped = true;
+    clearTimers();
+    if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} }
+    // Red de seguridad: si onend no dispara (bug iOS), procesamos igual.
+    setTimeout(function(){ finish(); }, 900);
+  }
+  _voiceForceStop = forceStop;
+
+  function armSilence(){
     clearTimeout(_silenceTimer);
-    _silenceTimer = setTimeout(function(){
-      if(!_voiceCancelled && !_voiceStopped && _voiceTranscript.trim()){
-        _voiceStopped = true;
-        if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} }
-      }
-    }, 1800);
+    // 2s de silencio (sin que el texto crezca) → cortar y procesar
+    _silenceTimer = setTimeout(function(){ forceStop(); }, 2000);
   }
 
-  function createRec(){
-    var rec = new SR();
-    rec.lang = _voiceLangCode();
-    rec.interimResults = true;
-    rec.continuous = !isIOS;
-    rec.maxAlternatives = 1;
-    rec.onresult = function(e){
-      var interim='', final=_voiceFinal;
-      for(var i=e.resultIndex;i<e.results.length;i++){
-        var tr=e.results[i][0].transcript;
-        if(e.results[i].isFinal) final += tr+' '; else interim += tr;
-      }
-      _voiceFinal = final;
-      _voiceTranscript = (final+' '+interim).trim();
-      // Cada vez que llega algo nuevo, reiniciamos el timer de silencio
-      if(_voiceTranscript) armSilenceTimer();
-    };
-    rec.onerror = function(ev){
-      if(ev.error==='not-allowed' || ev.error==='service-not-allowed'){
-        toast(_vc().noSupport); _voiceCancelled=true; closeVoiceModal();
-      }
-    };
-    rec.onend = function(){
-      clearTimeout(_silenceTimer);
-      if(_voiceCancelled) return;
-      if(isIOS && _voiceModalOpen() && !_voiceStopped){
-        if(_voiceTranscript.trim()){
-          // iOS cortó después de que el usuario habló → procesar directamente
-          _voiceStopped = true;
-          var mic2=document.getElementById('vmMic'); if(mic2) mic2.classList.remove('listening');
-          processVoiceExpense(_voiceTranscript.trim());
-        } else {
-          // Todavía no capturó nada → reiniciar para seguir escuchando
-          try{ _voiceRec = createRec(); _voiceRec.start(); } catch(e){}
-        }
-        return;
-      }
-      var mic2=document.getElementById('vmMic'); if(mic2) mic2.classList.remove('listening');
-      if(_voiceTranscript.trim()){ processVoiceExpense(_voiceTranscript.trim()); }
-      else { toast(_vc().noHeard); closeVoiceModal(); }
-    };
-    return rec;
+  function finish(){
+    if(_processed || _voiceCancelled) return;
+    _processed = true;
+    clearTimers();
+    var mic2=document.getElementById('vmMic'); if(mic2) mic2.classList.remove('listening');
+    if(_voiceTranscript.trim()){ processVoiceExpense(_voiceTranscript.trim()); }
+    else { toast(_vc().noHeard); closeVoiceModal(); }
   }
 
-  _voiceStopped = false;
+  var rec = new SR();
+  rec.lang = _voiceLangCode();
+  rec.interimResults = true;
+  rec.continuous = !isIOS; // iOS: false (captura confiable). Otros: true. El corte lo dan los timers.
+  rec.maxAlternatives = 1;
+  rec.onresult = function(e){
+    var interim='', final=_voiceFinal;
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      var tr=e.results[i][0].transcript;
+      if(e.results[i].isFinal) final += tr+' '; else interim += tr;
+    }
+    _voiceFinal = final;
+    _voiceTranscript = (final+' '+interim).trim();
+    // Solo re-armamos el timer si el texto realmente CRECIÓ. Así, resultados interinos
+    // repetidos durante el silencio no impiden que el timer dispare (clave en iOS).
+    if(_voiceTranscript.length > _lastLen){
+      _lastLen = _voiceTranscript.length;
+      armSilence();
+    }
+  };
+  rec.onerror = function(ev){
+    if(ev && (ev.error==='not-allowed' || ev.error==='service-not-allowed')){
+      _voiceCancelled=true; clearTimers(); toast(_vc().noSupport); closeVoiceModal();
+    }
+    // 'no-speech' / 'aborted' / 'audio-capture' → lo maneja onend/forceStop
+  };
+  rec.onend = function(){
+    // Cualquier final (manual, por silencio, o porque iOS terminó solo) → procesar una vez.
+    finish();
+  };
+
+  _voiceRec = rec;
   try{
-    _voiceRec = createRec();
-    _voiceRec.start();
-  }catch(err){ toast(_vc().noSupport); closeVoiceModal(); }
+    rec.start();
+    // Tope duro de 13s para que NUNCA quede escuchando para siempre.
+    _maxTimer = setTimeout(function(){ forceStop(); }, 13000);
+  }catch(err){ clearTimers(); toast(_vc().noSupport); closeVoiceModal(); }
 }
 
 function stopVoiceExpense(){
+  // Botón "Listo": corte manual inmediato.
+  if(typeof _voiceForceStop==='function'){ _voiceForceStop(); return; }
   _voiceStopped = true;
   if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} }
 }
 function cancelVoiceExpense(){
-  _voiceStopped = true; _voiceCancelled=true;
+  _voiceCancelled=true; _voiceStopped=true;
   if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} }
   closeVoiceModal();
 }
