@@ -9851,6 +9851,24 @@ function startVoiceExpense(){
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ toast(_vc().noSupport); openGastoForm(); return; }
   var modal=document.getElementById('voiceModal'); if(!modal) return;
+
+  // iOS Safari no persiste el permiso de micrófono en PWA entre sesiones.
+  // Solicitamos acceso via getUserMedia primero — así el usuario solo aprueba UNA vez
+  // y Safari no vuelve a preguntar mientras la sesión esté activa.
+  navigator.mediaDevices && navigator.mediaDevices.getUserMedia({audio:true})
+    .then(function(stream){
+      // Apagamos el stream de inmediato; solo lo pedimos para "desbloquear" el permiso.
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      _startVoiceRecognition(SR);
+    })
+    .catch(function(){
+      // Sin getUserMedia (desktop viejo, etc.) intentamos igual.
+      _startVoiceRecognition(SR);
+    });
+}
+
+function _startVoiceRecognition(SR){
+  var modal=document.getElementById('voiceModal'); if(!modal) return;
   var c=_vc();
   document.getElementById('vmStatus').textContent=c.listen;
   document.getElementById('vmHint').textContent=c.hint;
@@ -9860,12 +9878,17 @@ function startVoiceExpense(){
   var mic=document.getElementById('vmMic'); mic.textContent='🎙️'; mic.classList.add('listening');
   modal.classList.add('open');
   _voiceTranscript=''; _voiceFinal=''; _voiceCancelled=false;
-  try{
-    _voiceRec = new SR();
-    _voiceRec.lang = _voiceLangCode();
-    _voiceRec.interimResults = true;
-    _voiceRec.continuous = true;
-    _voiceRec.onresult = function(e){
+
+  // iOS Safari no soporta continuous:true — usa restart automático al detectar silencio.
+  var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+
+  function createRec(){
+    var rec = new SR();
+    rec.lang = _voiceLangCode();
+    rec.interimResults = true;
+    rec.continuous = !isIOS; // iOS ignora continuous y corta sola — la reiniciamos manualmente
+    rec.maxAlternatives = 1;
+    rec.onresult = function(e){
       var interim='', final=_voiceFinal;
       for(var i=e.resultIndex;i<e.results.length;i++){
         var tr=e.results[i][0].transcript;
@@ -9873,21 +9896,43 @@ function startVoiceExpense(){
       }
       _voiceFinal = final;
       _voiceTranscript = (final+' '+interim).trim();
-      // Transcript se guarda pero no se muestra — la onda animada es el feedback visual
     };
-    _voiceRec.onerror = function(ev){
-      if(ev.error==='not-allowed' || ev.error==='service-not-allowed'){ toast(_vc().noSupport); _voiceCancelled=true; closeVoiceModal(); }
+    rec.onerror = function(ev){
+      if(ev.error==='not-allowed' || ev.error==='service-not-allowed'){
+        toast(_vc().noSupport); _voiceCancelled=true; closeVoiceModal();
+      }
+      // En iOS 'no-speech' y 'audio-capture' son comunes — ignoramos y reiniciamos
     };
-    _voiceRec.onend = function(){
+    rec.onend = function(){
+      if(_voiceCancelled) return;
+      if(isIOS && _voiceModalOpen() && !_voiceStopped){
+        // iOS cortó sola por silencio → reiniciar para mantener escuchando
+        try{ _voiceRec = createRec(); _voiceRec.start(); } catch(e){}
+        return;
+      }
       var mic2=document.getElementById('vmMic'); if(mic2) mic2.classList.remove('listening');
-      if(!_voiceCancelled && _voiceTranscript.trim()){ processVoiceExpense(_voiceTranscript.trim()); }
-      else if(!_voiceCancelled){ toast(_vc().noHeard); closeVoiceModal(); }
+      if(_voiceTranscript.trim()){ processVoiceExpense(_voiceTranscript.trim()); }
+      else { toast(_vc().noHeard); closeVoiceModal(); }
     };
+    return rec;
+  }
+
+  _voiceStopped = false;
+  try{
+    _voiceRec = createRec();
     _voiceRec.start();
   }catch(err){ toast(_vc().noSupport); closeVoiceModal(); }
 }
-function stopVoiceExpense(){ if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} } }
-function cancelVoiceExpense(){ _voiceCancelled=true; if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} } closeVoiceModal(); }
+
+function stopVoiceExpense(){
+  _voiceStopped = true;
+  if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} }
+}
+function cancelVoiceExpense(){
+  _voiceStopped = true; _voiceCancelled=true;
+  if(_voiceRec){ try{ _voiceRec.stop(); }catch(e){} }
+  closeVoiceModal();
+}
 
 async function processVoiceExpense(transcript){
   var c=_vc();
