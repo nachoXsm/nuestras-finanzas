@@ -1872,6 +1872,26 @@ function getCustomCats() {
 function saveCustomCats(cats) {
   localStorage.setItem('nf_custom_cats', JSON.stringify(cats));
 }
+function mergeGroupCats(remoteCats) {
+  if (!Array.isArray(remoteCats) || !remoteCats.length) return;
+  var local = getCustomCats();
+  var changed = false;
+  remoteCats.forEach(function(rc) {
+    if (rc && rc.name && !local.find(function(lc){ return lc.name === rc.name; })) {
+      local.push(rc);
+      changed = true;
+    }
+  });
+  if (changed) {
+    localStorage.setItem('nf_custom_cats', JSON.stringify(local));
+    loadCustomCatsIntoSelect();
+  }
+}
+async function syncGroupCats() {
+  var g = loadGroup(); if (!g) return;
+  var cats = getCustomCats();
+  try { await dbPatch('grupos', g.id, { categorias: JSON.stringify(cats) }); } catch(e) {}
+}
 function getCustomCat(name) {
   return getCustomCats().find(function(c){ return c.name === name; });
 }
@@ -1925,6 +1945,7 @@ function saveCustomCat() {
   if (!cats.find(function(c){ return c.name === name; })) {
     cats.push({name: name, emoji: emoji});
     saveCustomCats(cats);
+    syncGroupCats();
   }
   loadCustomCatsIntoSelect();
   var sel = document.getElementById('g_cat');
@@ -2899,13 +2920,21 @@ async function loadAll() {
     const mes = state.mes;
     const anio = state.anio;
     const modoGrupo = typeof esModoGrupo === 'function' && esModoGrupo();
-    const [tarjetas, ingresos, gastos] = await Promise.all([
+    const [tarjetas, ingresos, gastos, grupoRow] = await Promise.all([
       dbGet('tarjetas', `grupo_id=eq.${gid}`),
       modoGrupo ? Promise.resolve([]) : dbGet('ingresos', `grupo_id=eq.${gid}&mes=eq.${mes}&anio=eq.${anio}`),
-      modoGrupo ? dbGet('gastos', `grupo_id=eq.${gid}`) : dbGet('gastos', `grupo_id=eq.${gid}&mes=eq.${mes}&anio=eq.${anio}`)
+      modoGrupo ? dbGet('gastos', `grupo_id=eq.${gid}`) : dbGet('gastos', `grupo_id=eq.${gid}&mes=eq.${mes}&anio=eq.${anio}`),
+      dbGet('grupos', `id=eq.${gid}`).catch(function(){ return []; })
     ]);
     if (state.grupoId !== gid || (!modoGrupo && (state.mes !== mes || state.anio !== anio))) return;
     state.tarjetas=tarjetas; state.ingresos=applyRecordCurrencies('ingresos', ingresos); state.gastos=applyRecordCardRelations('gastos', applyRecordInstallments('gastos', applyRecordCurrencies('gastos', gastos)));
+    // Fusionar categorías custom del grupo
+    try {
+      if (grupoRow && grupoRow[0] && grupoRow[0].categorias) {
+        var remoteCats = typeof grupoRow[0].categorias === 'string' ? JSON.parse(grupoRow[0].categorias) : grupoRow[0].categorias;
+        mergeGroupCats(remoteCats);
+      }
+    } catch(e) {}
     setSyncing('ok');
     setTimeout(function(){ migrateLocalCardRelationsToPersistentMedium(); }, 250);
     setTimeout(checkTarjetasVencimiento, 1500); // Verificar vencimientos
