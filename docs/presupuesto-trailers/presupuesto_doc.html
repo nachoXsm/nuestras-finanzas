@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Presupuesto — Puesta a punto de trailers</title>
+<style>
+  @page { size: 595.92pt 842.88pt; margin: 37.5pt 36.96pt 42.85pt; }
+
+  :root{
+    --green:#5F7A4E; --dark:#37432C; --muted:#8A947F; --sub:#6B7563;
+    --border:#E6E4DA; --head-bg:#EEF1E9; --head-rule:#9DB98B; --zebra:#FAF9F4;
+    --usd-bg:#F2F6FC; --usd-head-bg:#E5EDF9; --usd-rule:#4472C4; --usd-text:#20438A;
+    --card-bg:#F7F8F3; --card-border:#DFE3D6; --card-green:#2F6B2F;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    width:696px;
+    font-family:"Liberation Sans",Arial,Helvetica,sans-serif;
+    font-size:10px; color:var(--dark);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* ---------------------------------------------------------- encabezado */
+  .doc-head{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .eyebrow{ font-size:11px; font-weight:bold; color:var(--green); line-height:15px; letter-spacing:.55px; }
+  h1{ font-size:20px; font-weight:bold; line-height:25px; margin:0; letter-spacing:-.1px; }
+  .sub{ font-size:10px; color:var(--sub); line-height:14px; }
+  .meta{ margin-top:14px; text-align:right; font-size:8.5px; color:var(--muted); line-height:12.5px; white-space:nowrap; }
+  .rule{ height:3px; background:var(--green); margin-top:6px; }
+
+  /* ------------------------------------------------------ tarjetas opción */
+  .opts{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14.5px; }
+  .opt{ border:1px solid var(--card-border); background:var(--card-bg); border-radius:8px; padding:10px 12px; height:93px; }
+  .opt-label{ font-size:8.5px; color:var(--sub); line-height:12px; letter-spacing:.35px; }
+  .opt-amount{ font-size:15px; font-weight:bold; line-height:19px; margin-top:2px; }
+  .opt-usd{ font-size:9.5px; font-weight:bold; color:var(--muted); line-height:13px; margin-top:2px; }
+  .opt-sep{ border-top:1px solid rgba(0,0,0,.10); margin-top:12px; }
+  .opt-plazo{ font-size:9.5px; color:var(--sub); line-height:13px; margin-top:6px; }
+  .opt-plazo b{ font-size:11px; color:var(--dark); }
+  .opt.best{ background:var(--card-green); border-color:var(--card-green); }
+  .opt.best .opt-label{ color:#CFE8CF; }
+  .opt.best .opt-amount{ color:#fff; }
+  .opt.best .opt-usd{ color:#BFE0BF; }
+  .opt.best .opt-sep{ border-top-color:rgba(255,255,255,.35); }
+  .opt.best .opt-plazo{ color:#CFE8CF; }
+  .opt.best .opt-plazo b{ color:#fff; }
+
+  .tc{ font-size:8.5px; font-style:italic; color:var(--muted); line-height:12px; margin-top:8.5px; }
+
+  /* ---------------------------------------------------------- secciones */
+  .block{ break-inside:avoid; page-break-inside:avoid; margin-top:16px; }
+  .bar{ background:var(--green); color:#fff; font-size:12px; font-weight:bold;
+        line-height:24px; height:24px; padding:0 10px; border-radius:8px 8px 0 0; }
+
+  table{ width:100%; border-collapse:collapse; border:1px solid var(--border); border-top:0;
+         border-radius:0 0 8px 8px; table-layout:fixed; }
+  th,td{ padding:0 8px; height:20px; text-align:right; font-weight:normal; vertical-align:middle; }
+  thead th{ height:21px; font-size:9px; font-weight:bold; background:var(--head-bg);
+            border-bottom:2px solid var(--head-rule); }
+  tbody td{ border-top:1px solid var(--border); }
+  tbody tr:first-child td{ border-top:0; }
+  tbody tr:nth-child(even) td{ background:var(--zebra); }
+  .l{ text-align:left; } .c{ text-align:center; }
+  .small{ font-size:8.5px; color:var(--muted); }
+  tbody tr.sub td{ background:var(--head-bg); font-weight:bold; }
+  tbody tr.tot td{ background:var(--dark); color:#fff; font-weight:bold; font-size:11px;
+                   height:21px; border-top:0; white-space:nowrap; }
+  tbody tr.tot td:first-child{ border-radius:0 0 0 7px; }
+  tbody tr.tot td:last-child{ border-radius:0 0 7px 0; }
+
+  /* columnas USD de la tabla de materiales */
+  .usd{ color:var(--usd-text); font-weight:bold; background:var(--usd-bg); }
+  thead th.usd{ background:var(--usd-head-bg); border-bottom-color:var(--usd-rule); }
+  tbody tr:nth-child(even) td.usd{ background:var(--usd-bg); }
+  tbody tr.tot td.usd{ background:var(--dark); color:#fff; }
+
+  .gap{ margin-top:10px; }
+
+  /* -------------------------------------------- tarjetas viáticos/persona */
+  .per{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:12.5px; break-inside:avoid; }
+  .per-card{ border:1px solid var(--card-border); background:var(--card-bg); border-radius:8px;
+             padding:7px 12px 10px; height:116px; }
+  .per-title{ font-size:9.5px; font-weight:bold; line-height:14px; margin-bottom:7px; }
+  .per-title span{ font-weight:normal; color:var(--muted); }
+  .per-row{ display:flex; justify-content:space-between; align-items:baseline;
+            font-size:10px; color:var(--sub); line-height:18px; border-bottom:1px dotted #D8DCCF; }
+  .per-row:last-of-type{ border-bottom:2px solid var(--green); }
+  .per-row b{ color:var(--dark); }
+  .per-row i{ font-style:normal; font-size:8px; color:#A7AE9C; }
+  .per-tot{ display:flex; justify-content:space-between; align-items:baseline; margin-top:6px; }
+  .per-tot span{ font-size:10px; font-weight:bold; }
+  .per-tot b{ font-size:13px; color:#2F6B2F; }
+
+  /* ------------------------------------------------------------ destaque */
+  .hl{ background:var(--green); color:#fff; border-radius:10px; padding:13px 16px 15px;
+       margin-top:16px; break-inside:avoid; }
+  .hl h2{ font-size:17px; line-height:22px; margin:0; }
+  .hl p{ font-size:10px; line-height:11.5px; color:#E4ECDC; margin:5.5px 0 0; }
+
+  .notes{ font-size:8.5px; font-style:italic; color:var(--muted); line-height:13px; margin-top:18px; text-align:justify; }
+</style>
+</head>
+<body>
+
+<header class="doc-head">
+  <div>
+    <div class="eyebrow">4HOUSING · 4COMMERCE SRL</div>
+    <h1>Presupuesto — Puesta a punto de trailers</h1>
+    <div class="sub">Tipología Vivienda · Proyecto OF. ALQUILER NQ (Neuquén)</div>
+  </div>
+  <div class="meta">Construcción modular<br>ISO · TÜV NORD<br>Buenos Aires, AR</div>
+</header>
+<div class="rule"></div>
+
+<div class="opts">
+  <div class="opt">
+    <div class="opt-label">OPCIÓN A · CONTRATISTAS BS AS</div>
+    <div class="opt-amount">$ 152.537.091</div>
+    <div class="opt-usd">USD 100.353,35</div>
+    <div class="opt-sep"></div>
+    <div class="opt-plazo">⏱ Plazo: <b>30 días</b></div>
+  </div>
+  <div class="opt">
+    <div class="opt-label">OPCIÓN B · CONTRATISTA LOCAL POYSEGÚ</div>
+    <div class="opt-amount">$ 112.994.201</div>
+    <div class="opt-usd">USD 74.338,29</div>
+    <div class="opt-sep"></div>
+    <div class="opt-plazo">⏱ Plazo: <b>45 días</b></div>
+  </div>
+  <div class="opt best">
+    <div class="opt-label">OPCIÓN C · EQUIPO 4H LOCAL ★</div>
+    <div class="opt-amount">$ 78.299.013</div>
+    <div class="opt-usd">USD 51.512,51 · más económica</div>
+    <div class="opt-sep"></div>
+    <div class="opt-plazo">⏱ Plazo: <b>4 meses y medio</b></div>
+  </div>
+</div>
+
+<div class="tc">TC aplicado: USD 1 = $ 1.520. Todas las opciones incluyen los mismos materiales ($ 44.609.331). Detalle de cada opción en las secciones siguientes.</div>
+
+<!-- ================================================== 1 · Materiales -->
+<div class="block">
+  <div class="bar">1 · Materiales (equipamiento)</div>
+  <table>
+    <colgroup><col style="width:25px"><col style="width:342px"><col style="width:64px"><col style="width:74px"><col style="width:89px"><col style="width:100px"></colgroup>
+    <thead><tr>
+      <th class="c">#</th><th class="l">ARTÍCULO</th><th>CANT.</th>
+      <th class="usd">USD / U</th><th class="usd">USD TOTAL</th><th>ARS TOTAL</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="c">1</td><td class="l">Piso de goma indelval modelo sustenta. Color caliza.</td><td>387 UN.</td><td class="usd">USD 25,20</td><td class="usd">USD 9.752,40</td><td>$ 14.823.648</td></tr>
+      <tr><td class="c">2</td><td class="l">Masilla plástica multiuso Sinteplast refinish x 4 kg</td><td>20 UN.</td><td class="usd">USD 13,08</td><td class="usd">USD 261,50</td><td>$ 397.488</td></tr>
+      <tr><td class="c">3</td><td class="l">Adhesivo de contacto x 18 lts</td><td>20 UN.</td><td class="usd">USD 205,94</td><td class="usd">USD 4.118,80</td><td>$ 6.260.576</td></tr>
+      <tr><td class="c">4</td><td class="l">Pintura interthane 3230 x 20 lts + componente B</td><td>27 UN.</td><td class="usd">USD 15,52</td><td class="usd">USD 419,04</td><td>$ 636.941</td></tr>
+      <tr><td class="c">5</td><td class="l">Cortina sunscreen 0,70 mts x 1,20 mts</td><td>18 UN.</td><td class="usd">USD 35,76</td><td class="usd">USD 643,76</td><td>$ 978.512</td></tr>
+      <tr><td class="c">6</td><td class="l">Espejo 1,60 x 0,40 mts</td><td>9 UN.</td><td class="usd">USD 40,35</td><td class="usd">USD 363,16</td><td>$ 552.000</td></tr>
+      <tr><td class="c">7</td><td class="l">Dispenser AF/AC</td><td>9 UN.</td><td class="usd">USD 165,83</td><td class="usd">USD 1.492,50</td><td>$ 2.268.595</td></tr>
+      <tr><td class="c">8</td><td class="l">Cortina baño</td><td>9 UN.</td><td class="usd">USD 12,51</td><td class="usd">USD 112,55</td><td>$ 171.074</td></tr>
+      <tr><td class="c">9</td><td class="l">Ganchos cortina</td><td>9 UN.</td><td class="usd">USD 3,26</td><td class="usd">USD 29,36</td><td>$ 44.628</td></tr>
+      <tr><td class="c">10</td><td class="l">Barral baño</td><td>9 UN.</td><td class="usd">USD 7,99</td><td class="usd">USD 71,93</td><td>$ 109.339</td></tr>
+      <tr><td class="c">11</td><td class="l">Termotanque eléctrico 50/55Lts</td><td>4 UN.</td><td class="usd">USD 240,63</td><td class="usd">USD 962,53</td><td>$ 1.463.049</td></tr>
+      <tr><td class="c">12</td><td class="l">Colchon 1 plaza</td><td>52 UN.</td><td class="usd">USD 146,80</td><td class="usd">USD 7.633,75</td><td>$ 11.603.306</td></tr>
+      <tr><td class="c">13</td><td class="l">Aire acondicionado 3000F on/off</td><td>4 UN.</td><td class="usd">USD 344,48</td><td class="usd">USD 1.377,91</td><td>$ 2.094.423</td></tr>
+      <tr><td class="c">14</td><td class="l">Aire acondicionado 4500F on/off</td><td>4 UN.</td><td class="usd">USD 527,26</td><td class="usd">USD 2.109,05</td><td>$ 3.205.752</td></tr>
+      <tr class="tot"><td></td><td class="l">TOTAL MATERIALES</td><td></td><td></td><td>USD 29.348,24</td><td>$ 44.609.331</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============================ 2 · Mano de obra y viáticos — Opción A -->
+<div class="block">
+  <div class="bar">2 · Mano de obra y viáticos — Opción A (Contratistas BS AS)</div>
+  <table>
+    <colgroup><col style="width:313px"><col style="width:231px"><col style="width:150px"></colgroup>
+    <thead><tr><th class="l">MANO DE OBRA</th><th class="l">DETALLE</th><th>TOTAL ARS</th></tr></thead>
+    <tbody>
+      <tr><td class="l">Jornales — cuadrilla general</td><td class="l">10 pers × 27 días × $ 120.000</td><td>$ 32.400.000</td></tr>
+      <tr><td class="l">Contratistas aire acondicionado</td><td class="l">$ 240.000 por equipo · 3 equipos × 9 trailers</td><td>$ 6.480.000</td></tr>
+      <tr><td class="l">Contratista de piso <span class="small">— cotización final, más caro de lo estimado</span></td><td class="l">2 pers · USD 7,663 total por los 9 trailers</td><td>$ 11.647.760</td></tr>
+      <tr class="sub"><td class="l">Subtotal mano de obra</td><td></td><td>$ 50.527.760</td></tr>
+    </tbody>
+  </table>
+
+  <table class="gap">
+    <colgroup><col style="width:304px"><col style="width:240px"><col style="width:150px"></colgroup>
+    <thead><tr><th class="l">VIÁTICOS — 14 PERSONAS TRASLADADAS DESDE BS AS</th><th class="l">DETALLE</th><th>TOTAL ARS</th></tr></thead>
+    <tbody>
+      <tr><td class="l">Vuelos ida y vuelta</td><td class="l">14 × $ 200.000</td><td>$ 2.800.000</td></tr>
+      <tr><td class="l">Hospedaje</td><td class="l">12 pers × 31 noches + 2 × 9 · $ 100.000/noche</td><td>$ 39.000.000</td></tr>
+      <tr><td class="l">Viandas</td><td class="l">2/día × $ 20.000</td><td>$ 15.600.000</td></tr>
+      <tr class="sub"><td class="l">Subtotal viáticos</td><td></td><td>$ 57.400.000</td></tr>
+      <tr class="tot"><td class="l">TOTAL MANO DE OBRA + VIÁTICOS</td><td></td><td>$ 107.927.760</td></tr>
+    </tbody>
+  </table>
+
+  <div class="per">
+    <div class="per-card">
+      <div class="per-title">VIÁTICOS POR PERSONA · GENERAL Y PISO <span>(31 noches)</span></div>
+      <div class="per-row"><span>Vuelo i/v</span><b>$ 200.000</b></div>
+      <div class="per-row"><span>Hospedaje <i>(31 noches)</i></span><b>$ 3.100.000</b></div>
+      <div class="per-row"><span>Viandas <i>(62)</i></span><b>$ 1.240.000</b></div>
+      <div class="per-tot"><span>Viáticos por persona</span><b>$ 4.540.000</b></div>
+    </div>
+    <div class="per-card">
+      <div class="per-title">VIÁTICOS POR PERSONA · AIRES AC <span>(9 noches)</span></div>
+      <div class="per-row"><span>Vuelo i/v</span><b>$ 200.000</b></div>
+      <div class="per-row"><span>Hospedaje <i>(9 noches)</i></span><b>$ 900.000</b></div>
+      <div class="per-row"><span>Viandas <i>(18)</i></span><b>$ 360.000</b></div>
+      <div class="per-tot"><span>Viáticos por persona</span><b>$ 1.460.000</b></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================= 3 · Total — Opción A -->
+<div class="block">
+  <div class="bar">3 · Total — Opción A: Contratistas BS AS</div>
+  <table>
+    <colgroup><col style="width:414px"><col style="width:130px"><col style="width:150px"></colgroup>
+    <tbody>
+      <tr><td class="l">Materiales (equipamiento)</td><td>USD 29.348,24</td><td>$ 44.609.331</td></tr>
+      <tr><td class="l">Jornales (cuadrilla general)</td><td>USD 21.315,79</td><td>$ 32.400.000</td></tr>
+      <tr><td class="l">Contratistas aire acondicionado <span class="small">(3 equipos × 9 trailers, $ 240.000 c/u)</span></td><td>USD 4.263,16</td><td>$ 6.480.000</td></tr>
+      <tr><td class="l">Contratista de piso <span class="small">(2 pers, USD 7,663 total)</span></td><td>USD 7.663,00</td><td>$ 11.647.760</td></tr>
+      <tr><td class="l">Viáticos (vuelo+hospedaje+viandas)</td><td>USD 37.763,16</td><td>$ 57.400.000</td></tr>
+      <tr class="tot"><td class="l">TOTAL OPCIÓN A</td><td>USD 100.353,35</td><td>$ 152.537.091</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ========================================= 4 · Comparativa de opciones -->
+<div class="block">
+  <div class="bar">4 · Comparativa de opciones</div>
+  <table>
+    <colgroup><col style="width:215px"><col style="width:142px"><col style="width:185px"><col style="width:152px"></colgroup>
+    <thead><tr>
+      <th class="l" style="vertical-align:bottom">RUBRO</th>
+      <th>OPCIÓN A<br><span class="small" style="font-weight:normal">Contratistas BS AS</span></th>
+      <th>OPCIÓN B<br><span class="small" style="font-weight:normal">Contratista local · Poysegú</span></th>
+      <th>OPCIÓN C<br><span class="small" style="font-weight:normal">Equipo 4H local</span></th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="l" style="height:31px">Materiales (equipamiento) <span class="small">— los compra 4housing en todos los casos</span></td><td>$ 44.609.331</td><td>$ 44.609.331</td><td>$ 44.609.331</td></tr>
+      <tr><td class="l" style="height:37px">Mano de obra <span class="small">— A: jornales + A/A (3 equipos × 9) + piso (USD 7,663) + viáticos · B: 9×$ 7.598.319 s/imp · C: 3 pers × 13 días × 9</span></td><td>$ 107.927.760</td><td>$ 68.384.870</td><td>$ 33.689.682</td></tr>
+      <tr class="tot"><td class="l">TOTAL</td><td>$ 152.537.091</td><td>$ 112.994.201</td><td style="background:#E7F5E7;color:#1F6B1F">$ 78.299.013</td></tr>
+      <tr class="sub"><td class="l" style="font-size:9.5px">Plazo de ejecución</td><td style="font-size:9.5px">30 días</td><td style="font-size:9.5px">45 días</td><td style="font-size:9.5px">4 meses y medio</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="hl">
+  <h2>La Opción C (equipo 4H local) es la más económica — $ 78.299.013</h2>
+  <p>Ahorra $ 34.695.188 vs Opción B (−31%) y $ 74.238.078 vs Opción A (−49%). &nbsp;Contrapartida — el plazo: <b>4 meses y medio</b> vs 30 días (A) y 45 días (B). Decisión costo vs. tiempo.</p>
+</div>
+
+<div class="notes">
+  <b>Bases de la comparación.</b> Las tres opciones incluyen los mismos materiales ($ 44.609.331), que 4housing compra en todos los casos (el contratista local no los cotiza: excluye pinturas, pisos, cielorrasos, etc.).
+  <b>Opción A · Contratistas BS AS</b> = 14 personas viajadas desde Buenos Aires: jornales de la cuadrilla general (10 pers × 27 días = $ 32.400.000) + contratistas de aire acondicionado ($ 240.000 por equipo × 3 equipos por trailer × 9 trailers = $ 6.480.000) + contratista de piso (2 pers, cotización final USD 7,663 total por los 9 trailers = $ 11.647.760) + viáticos ($ 57.400.000: vuelos, hospedaje y viandas, 10/08/2026 al 09/09/2026).
+  <b>Opción B · Contratista local</b> = Guillermo Poysegú (Plottier, NQN), presupuesto 3693: $ 7.598.319 por trailer sin impuestos × 9 trailers, mano de obra en sitio.
+  <b>Opción C · Equipo 4H local</b> = 3 personas propias en Neuquén, 13 días por trailer × 9 trailers: jornales (351 × $ 80.982) + viandas (351 × $ 15.000), sin vuelos ni hospedaje por ser local. Valores editables en el Excel adjunto.
+</div>
+
+</body>
+</html>
