@@ -8362,9 +8362,26 @@ async function processOCR(input) {
       parseTicketWithAI(text),
     ]);
     const usedAI = !!(aiParsed && (aiParsed.monto || aiParsed.descripcion));
+
+    // ---- CHEQUEO DOBLE DEL MONTO (IA vs regex) ----
+    // Por defecto se mantiene el comportamiento previo (IA primero, regex de respaldo),
+    // pero cuando la IA y el regex leyeron montos que difieren mucho, uno de los dos
+    // se equivocó: en ese caso priorizamos el regex, que extrae el número directamente
+    // del texto real del comprobante (la IA a veces alucina o redondea el importe).
+    let montoFinal = usedAI ? (aiParsed.monto || regexParsed.monto) : regexParsed.monto;
+    let montoDudoso = false;
+    if (usedAI && regexParsed.monto) {
+      const aiM = parseFloat(aiParsed.monto) || 0;
+      const rxM = parseFloat(regexParsed.monto) || 0;
+      if (aiM > 0 && rxM > 0 && Math.max(aiM, rxM) / Math.min(aiM, rxM) > 1.5) {
+        montoFinal = regexParsed.monto; // difieren mucho -> confiar en el regex
+        montoDudoso = true;
+      }
+    }
+
     const parsed = usedAI ? {
       ...regexParsed,
-      monto:      aiParsed.monto      || regexParsed.monto,
+      monto:      montoFinal,
       descripcion:aiParsed.descripcion|| regexParsed.descripcion,
       categoria:  (regexParsed.categoria && regexParsed.categoria !== 'Otros') ? regexParsed.categoria : aiParsed.categoria,
       fecha:      aiParsed.fecha      || regexParsed.fecha,
@@ -8374,7 +8391,11 @@ async function processOCR(input) {
 
     setTimeout(function() {
       if (prog) prog.style.display = 'none';
-      toast(usedAI ? '🤖 Leído con IA — revisá y confirmá' : '✅ Leído con regex — revisá y confirmá');
+      if (montoDudoso) {
+        toast('⚠️ Revisá bien el monto — verificá que sea correcto');
+      } else {
+        toast(usedAI ? '🤖 Leído con IA — revisá y confirmá' : '✅ Leído con regex — revisá y confirmá');
+      }
     }, 800);
 
   } catch(e) {
@@ -8417,7 +8438,10 @@ async function parseTicketWithAI(text) {
     if (!jsonMatch) return null;
 
     var ai = JSON.parse(jsonMatch[0]);
-    var monto = parseFloat(ai.monto);
+    // La IA suele devolver el monto en formato argentino ("46.044,77") pese a que se le
+    // pide con punto decimal. parseFloat lo cortaría en la coma (46.044 -> valor erróneo),
+    // así que normalizamos con la misma función del OCR que ya maneja ambos formatos.
+    var monto = (typeof ai.monto === 'number') ? ai.monto : parseOCRMoney(ai.monto);
     if (!ai.descripcion && !(monto > 0)) return null;
 
     var out = {
