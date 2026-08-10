@@ -11455,8 +11455,23 @@ async function restorePremiumPurchase() {
 
 // Guard helper: call before any premium feature.
 // Returns true if allowed, false if paywall was shown.
+// Los usuarios sin Premium tienen NF_FREE_LIMIT usos gratis por función antes de
+// ver el paywall: así prueban el valor de cada función y no se los interrumpe de entrada.
+var NF_FREE_LIMIT = 3;
+function _getFreeUses() {
+  try { return JSON.parse(localStorage.getItem('nf_free_uses') || '{}'); } catch(e) { return {}; }
+}
 function requirePremium(featureName) {
   if (isPremium()) return true;
+  var uses = _getFreeUses();
+  var used = uses[featureName] || 0;
+  if (used < NF_FREE_LIMIT) {
+    uses[featureName] = used + 1;
+    try { localStorage.setItem('nf_free_uses', JSON.stringify(uses)); } catch(e) {}
+    var restantes = NF_FREE_LIMIT - uses[featureName];
+    if (restantes > 0) { try { toast('🎁 Prueba gratis — te quedan ' + restantes); } catch(e) {} }
+    return true; // uso gratis permitido, sin paywall
+  }
   openPaywall(featureName);
   return false;
 }
