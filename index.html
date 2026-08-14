@@ -11007,7 +11007,10 @@ function renderAIAdvicePanel(kind) {
 }
 
 function renderFlujo() {
-  if (!requirePremium('flujo')) return;
+  // Chequeo silencioso: renderFlujo se llama en cada redibujo, así que NO debe
+  // consumir usos gratis ni abrir el paywall (eso lo hace requirePremium en el
+  // clic del usuario). Antes esto disparaba el paywall una y otra vez.
+  if (!hasFeatureAccess('flujo')) return;
   var el = document.getElementById('flujoContent');
   if (!el || !state) return;
   var personas = state.personas || [state.persona1||'Nacho', state.persona2||'Celi'];
@@ -11460,6 +11463,15 @@ async function restorePremiumPurchase() {
 var NF_FREE_LIMIT = 3;
 function _getFreeUses() {
   try { return JSON.parse(localStorage.getItem('nf_free_uses') || '{}'); } catch(e) { return {}; }
+}
+// Chequeo SILENCIOSO de acceso: no consume usos gratis ni abre el paywall.
+// Se usa dentro de funciones de render (que corren muchas veces) para no
+// disparar el paywall repetidamente. El cobro del uso ocurre solo en la
+// acción explícita del usuario, vía requirePremium().
+function hasFeatureAccess(featureName) {
+  if (isPremium()) return true;
+  var uses = _getFreeUses();
+  return (uses[featureName] || 0) <= NF_FREE_LIMIT;
 }
 function requirePremium(featureName) {
   if (isPremium()) return true;
