@@ -3996,29 +3996,25 @@ function getModeTabs(isGroup) {
 // 'ingresos' comparte el panel #tab-gastos
 function nfPaneIdForTab(name) { return (name === 'ingresos') ? 'tab-gastos' : 'tab-' + name; }
 // Muestra solo la seccion pedida dentro del panel de gastos/ingresos
+// NUNCA oculta secciones. Ambas quedan siempre visibles y la pestaña elegida
+// solo desplaza la vista hasta la que corresponde. Se probo ocultar la que no
+// estaba activa y el riesgo es inaceptable: ante cualquier imprevisto el
+// usuario se queda sin ver sus ingresos. Mejor navegar que esconder.
 function nfShowMoneySection(which) {
   var si = document.getElementById('secIngresos');
   var sg = document.getElementById('secGastos');
-  if (!si || !sg) return;
+  // Garantia: si algo las habia ocultado antes, se restauran.
+  if (si) si.style.display = '';
+  if (sg) sg.style.display = '';
   var gh = document.getElementById('gastosHead');
-  // RED DE SEGURIDAD: solo separamos las secciones si la pestana "Ingresos"
-  // esta realmente visible. Si no lo esta (modo grupo, DOM viejo en cache,
-  // cualquier imprevisto), mostramos LAS DOS: es preferible mostrar de mas
-  // antes que dejar al usuario sin acceso a sus ingresos.
-  var tabIng = document.querySelector('#tabsWrap .tab[data-tab-name="ingresos"]');
-  var puedeSeparar = !!(tabIng && tabIng.style.display !== 'none' && tabIng.offsetParent !== null);
-  if (!puedeSeparar) {
-    si.style.display = '';
-    sg.style.display = '';
-    if (gh) gh.style.marginTop = '';
-    return;
-  }
-  var soloIngresos = (which === 'ingresos');
-  si.style.display = soloIngresos ? '' : 'none';
-  sg.style.display = soloIngresos ? 'none' : '';
-  // El encabezado de Gastos llevaba margen superior porque iba debajo de
-  // Ingresos; ahora que puede quedar primero, ese margen sobra.
-  if (gh) gh.style.marginTop = soloIngresos ? '' : '0';
+  if (gh) gh.style.marginTop = '';
+  var destino = (which === 'ingresos')
+    ? document.getElementById('incTitle')
+    : gh;
+  if (!destino) return;
+  setTimeout(function(){
+    try { destino.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+  }, 60);
 }
 
 function getTabNameFromButton(btn) {
