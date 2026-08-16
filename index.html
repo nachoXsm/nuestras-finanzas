@@ -3602,16 +3602,33 @@ function applyFXInput(cardId, currency){
 }
 function clearCardFXRate(cardId, currency){ setCardFXRate(cardId, currency, null); }
 
+// Simbolo de la moneda base. fmt/fmtInt se llaman ~100 veces por render, asi que
+// se cachea 1s para no releer localStorage en cada llamada (si el usuario cambia
+// de moneda, se refresca solo en el siguiente segundo).
+var _nfSymCache = { sym: null, t: 0 };
+function nfBaseSymbol() {
+  try {
+    var now = Date.now();
+    if (_nfSymCache.sym !== null && (now - _nfSymCache.t) < 1000) return _nfSymCache.sym;
+    var code = getActiveBaseCurrency();
+    var meta = (typeof txCurrencyMeta === 'function') ? txCurrencyMeta(code) : null;
+    var s = (meta && meta.symbol) ? meta.symbol : '$';
+    _nfSymCache = { sym: s, t: now };
+    return s;
+  } catch(e) { return '$'; }
+}
 function fmt(n) {
-  if (isNaN(n) || n === null || n === undefined) return '$0';
+  var S = nfBaseSymbol();
+  if (isNaN(n) || n === null || n === undefined) return S + '0';
   var num = Math.round((n||0) * 100) / 100;
-  if (num % 1 === 0) return '$' + num.toLocaleString('es-AR');
-  return '$' + num.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (num % 1 === 0) return S + num.toLocaleString('es-AR');
+  return S + num.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 function fmtInt(n) {
   // Sin decimales — para totales en cards grandes
-  if (isNaN(n) || n === null || n === undefined) return '$0';
-  return '$' + Math.round(n||0).toLocaleString('es-AR');
+  var S = nfBaseSymbol();
+  if (isNaN(n) || n === null || n === undefined) return S + '0';
+  return S + Math.round(n||0).toLocaleString('es-AR');
 }
 
 function renderAll() {
