@@ -1,4 +1,4 @@
-const CACHE = 'nf-v92';
+const CACHE = 'nf-v93';
 // Solo lo esencial en el precache. Si un archivo del precache falla (p. ej. durante
 // un deploy en curso) NO debe romper toda la instalación del SW.
 const PRECACHE = [
