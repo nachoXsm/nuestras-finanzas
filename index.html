@@ -2261,6 +2261,41 @@ function nfForeignCurrencies(records, baseCode){
   var totals = nfCurrencyTotals(records, base);
   return Object.keys(totals).filter(function(c){ return c !== base && Math.abs(totals[c]) > 0.005; });
 }
+// Bloque HTML para el informe con el detalle de cada moneda por separado
+// (ingresos / gastos / saldo sin convertir). Devuelve '' si el usuario opera
+// en una sola moneda, para no agregar ruido.
+function nfCurrencySectionHtml(ingresos, gastos, baseCode){
+  try {
+    var base = String(baseCode || getActiveBaseCurrency() || 'ARS').toUpperCase();
+    var incT = nfCurrencyTotals(ingresos, base);
+    var gasT = nfCurrencyTotals(gastos, base);
+    var curs = Object.keys(incT).concat(Object.keys(gasT)).filter(function(c,i,a){ return a.indexOf(c)===i; });
+    if (curs.length <= 1) return '';
+    curs.sort(function(a,b){ return a === base ? -1 : b === base ? 1 : a.localeCompare(b); });
+    var f = function(v, c){ return (typeof fmtCurrency === 'function') ? fmtCurrency(v, c) : (c+' '+v.toFixed(2)); };
+    var rows = curs.map(function(c){
+      var inc = incT[c] || 0, gas = gasT[c] || 0, sal = inc - gas;
+      return '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:8px;align-items:center;'
+        + 'padding:9px 0;border-top:1px solid rgba(255,255,255,.06)">'
+        + '<span style="font-size:11px;font-weight:800;color:var(--primary);min-width:38px">' + c
+        + (c === base ? '<span style="opacity:.5;font-weight:600"> ·base</span>' : '') + '</span>'
+        + '<span style="font-size:12px;font-weight:700;color:#1ec98f;text-align:right">' + f(inc, c) + '</span>'
+        + '<span style="font-size:12px;font-weight:700;color:#ff7a59;text-align:right">' + f(gas, c) + '</span>'
+        + '<span style="font-size:12px;font-weight:800;color:' + (sal>=0?'#1ec98f':'#ff7a59') + ';text-align:right">' + f(sal, c) + '</span>'
+        + '</div>';
+    }).join('');
+    return '<div class="inf-section-title">Detalle por moneda</div>'
+      + '<div class="inf-chart-card" style="padding:14px 16px">'
+      + '<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:8px;font-size:9px;'
+      + 'text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700">'
+      + '<span style="min-width:38px">Moneda</span><span style="text-align:right">Ingresos</span>'
+      + '<span style="text-align:right">Gastos</span><span style="text-align:right">Saldo</span></div>'
+      + rows
+      + '<div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.5">'
+      + 'Cada moneda se muestra sin convertir. Los totales de arriba están expresados en ' + base + '.</div>'
+      + '</div>';
+  } catch(e) { return ''; }
+}
 // Inserta/actualiza en la balance-card una fila con el saldo de cada moneda
 // extranjera SIN convertir (contabilidades en paralelo). Si no hay movimientos
 // en otra moneda, no muestra nada (usuarios de una sola moneda no ven cambios).
@@ -5210,10 +5245,13 @@ function renderAllGrupo() {
 // Override renderInforme
 renderInforme = function() {
   const {gastos,ingresos}=state;
-  const totalInc=ingresos.reduce((a,i)=>a+parseFloat(i.monto),0);
-  const totalGas=gastos.reduce((a,g)=>a+parseFloat(g.monto),0);
-  const fijos=gastos.filter(g=>g.tipo==='fijo').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const variables=gastos.filter(g=>g.tipo==='variable').reduce((a,g)=>a+parseFloat(g.monto),0);
+  // Multi-moneda: totales expresados en la moneda base (antes se sumaba crudo,
+  // mezclando monedas). Las categorias ya usaban moneyValue.
+  const _infBase = getActiveBaseCurrency();
+  const totalInc=nfSumBase(ingresos, _infBase);
+  const totalGas=nfSumBase(gastos, _infBase);
+  const fijos=nfSumBase(gastos.filter(g=>g.tipo==='fijo'), _infBase);
+  const variables=nfSumBase(gastos.filter(g=>g.tipo==='variable'), _infBase);
   const saldo=totalInc-totalGas;
   const pctGas=totalInc>0?Math.round(totalGas/totalInc*100):0;
   const pctFij=totalGas>0?Math.round(fijos/totalGas*100):0;
@@ -5354,6 +5392,9 @@ renderInforme = function() {
       </div>
     </div>
     ${renderAIAdvicePanel('informe')}
+
+    <!-- DETALLE POR MONEDA (solo si hay mas de una) -->
+    ${nfCurrencySectionHtml(ingresos, gastos, _infBase)}
 
     <!-- FIJOS VS VARIABLES -->
     <div class="inf-section-title">${L('informeComposicion')}</div>
