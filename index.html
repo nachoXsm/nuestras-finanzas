@@ -1721,7 +1721,7 @@ var NF_LANGS={
     greeting:'Hola', greetingSub:'Todo en orden para', thisMonth:'este mes',
     available:'disponible', deficit:'déficit',
     // Tabs
-    tabGastos:'Gastos', tabTarjetas:'Tarjetas', tabCat:'Categ.', tabFlujo:'Flujo', tabInforme:'Informe', tabConversor:'💱 Conversor',
+    tabGastos:'Gastos', tabIngresos:'Ingresos', tabTarjetas:'Tarjetas', tabCat:'Categ.', tabFlujo:'Flujo', tabInforme:'Informe', tabConversor:'💱 Conversor',
     // Nav
     navGastos:'Gastos', navTarjetas:'Tarjetas', navAmigos:'Amigos', navAnalisis:'Análisis', navCuenta:'Cuenta',
     // Secciones
@@ -1794,7 +1794,7 @@ var NF_LANGS={
     mesesLong:['January','February','March','April','May','June','July','August','September','October','November','December'],
     greeting:'Hello', greetingSub:'All good for', thisMonth:'this month',
     available:'available', deficit:'deficit',
-    tabGastos:'Expenses', tabTarjetas:'Cards', tabCat:'Cat.', tabFlujo:'Cash flow', tabInforme:'Report', tabConversor:'💱 Converter',
+    tabGastos:'Expenses', tabIngresos:'Income', tabTarjetas:'Cards', tabCat:'Cat.', tabFlujo:'Cash flow', tabInforme:'Report', tabConversor:'💱 Converter',
     navGastos:'Expenses', navTarjetas:'Cards', navAmigos:'Friends', navAnalisis:'Analysis', navCuenta:'Account',
     secIngresos:'💰 Income', secGastos:'💸 Expenses', secTarjetas:'💳 Cards', secCat:'📊 By category',
     btnAgregar:'+ Add', btnGuardar:'Save', btnActualizar:'Update', btnCancelar:'Cancel',
@@ -1849,7 +1849,7 @@ var NF_LANGS={
     mesesLong:['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
     greeting:'Olá', greetingSub:'Tudo certo para', thisMonth:'este mês',
     available:'disponível', deficit:'déficit',
-    tabGastos:'Despesas', tabTarjetas:'Cartões', tabCat:'Cat.', tabFlujo:'Fluxo', tabInforme:'Relatório', tabConversor:'💱 Conversor',
+    tabGastos:'Despesas', tabIngresos:'Receitas', tabTarjetas:'Cartões', tabCat:'Cat.', tabFlujo:'Fluxo', tabInforme:'Relatório', tabConversor:'💱 Conversor',
     navGastos:'Despesas', navTarjetas:'Cartões', navAmigos:'Amigos', navAnalisis:'Análise', navCuenta:'Conta',
     secIngresos:'💰 Receitas', secGastos:'💸 Despesas', secTarjetas:'💳 Cartões', secCat:'📊 Por categoria',
     btnAgregar:'+ Adicionar', btnGuardar:'Salvar', btnActualizar:'Atualizar', btnCancelar:'Cancelar',
@@ -2693,11 +2693,18 @@ function nfSetLang(c){
     else if(i===2) el.textContent=LD.balFijos;
   });
 
-  // Tabs — incluye el activo y conversor
+  // Tabs — las etiquetas se resuelven POR NOMBRE de pestaña, no por posicion.
+  // Antes era un array posicional y bastaba agregar o reordenar una pestaña para
+  // que todas las etiquetas quedaran corridas (aparecian dos "Conversor" y los
+  // botones mostraban contenido que no correspondia).
   var tabs = document.querySelectorAll('.tabs-wrap .tab');
-  var tabKeys = ['tabGastos','tabTarjetas','tabCat','tabFlujo','tabInforme','tabConversor'];
-  tabs.forEach(function(tab, i){ 
-    var key = tabKeys[i];
+  var tabKeyByName = {
+    gastos:'tabGastos', ingresos:'tabIngresos', tarjetas:'tabTarjetas',
+    categorias:'tabCat', flujo:'tabFlujo', informe:'tabInforme', conversor:'tabConversor'
+  };
+  tabs.forEach(function(tab){
+    var name = (typeof getTabNameFromButton === 'function') ? getTabNameFromButton(tab) : '';
+    var key = tabKeyByName[name];
     if(key && L(key)) tab.textContent = L(key);
   });
 
