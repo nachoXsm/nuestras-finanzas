@@ -2852,16 +2852,32 @@ function nfSetLang(c){
 const MASTER_GROUP_IDS = [
   'be5bf4c3-515f-496f-a770-a60815dd853e', // Nacho & Celi
 ];
-// Recovery emails as secondary check (case-insensitive)
+// Codigos de hogar con acceso completo (testers). Es la via mas confiable:
+// el codigo se lee en la pantalla de perfil del propio grupo. Se normaliza,
+// asi que da igual mayusculas, guiones o espacios.
+const MASTER_CODES = [
+  'VPHVAC', // Hernán & Gaby (tester)
+];
+// Recovery emails as secondary check (case-insensitive).
+// OJO: esto solo matchea si la persona configuro ese email como "email de
+// recuperacion" dentro de la app; no alcanza con que sea su cuenta de Google.
 const MASTER_EMAILS = [
   'isanchezmoser@gmail.com',
+  'sonia.bulgheroni@gmail.com',   // tester
+  'mazzottafacundo@gmail.com',    // tester
 ];
 
+function nfNormalizeCode(c) {
+  return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
 function isMasterUser() {
-  var gid = (loadGroup() || {}).id || '';
-  if (gid && MASTER_GROUP_IDS.includes(gid)) return true;
+  var g = loadGroup() || {};
+  if (g.id && MASTER_GROUP_IDS.includes(g.id)) return true;
+  var code = nfNormalizeCode(g.codigo);
+  if (code && MASTER_CODES.map(nfNormalizeCode).includes(code)) return true;
   var email = (localStorage.getItem('nf_recovery_email') || '').toLowerCase().trim();
-  return email && MASTER_EMAILS.map(function(e){ return e.toLowerCase(); }).includes(email);
+  return !!email && MASTER_EMAILS.map(function(e){ return e.toLowerCase(); }).includes(email);
 }
 
 // isPremium: master OR purchased subscription
