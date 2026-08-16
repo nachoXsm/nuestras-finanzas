@@ -1,4 +1,4 @@
-const CACHE = 'nf-v85';
+const CACHE = 'nf-v86';
 // Solo lo esencial en el precache. Si un archivo del precache falla (p. ej. durante
 // un deploy en curso) NO debe romper toda la instalación del SW.
 const PRECACHE = [
@@ -42,7 +42,30 @@ self.addEventListener('fetch', e => {
   }
 
   const isNavigation = e.request.mode === 'navigate';
+  // El HTML es la app entera (un solo index.html), asi que va NETWORK-FIRST:
+  // con cache-first una version vieja quedaba servida para siempre y los deploys
+  // no llegaban al usuario hasta bumpear CACHE a mano. Igual se guarda copia para
+  // seguir funcionando sin internet.
+  const isHtml = isNavigation || url.pathname === '/' || url.pathname === '/index.html';
 
+  if (isHtml) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put('/index.html', clone));
+        }
+        return res;
+      }).catch(() =>
+        // Sin red: servimos la ultima copia guardada (modo offline intacto).
+        caches.match(e.request).then(c => c || caches.match('/index.html'))
+      )
+    );
+    return;
+  }
+
+  // Resto de recursos (iconos, imagenes): cache-first, que es lo correcto porque
+  // son estaticos y no cambian entre deploys.
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
@@ -53,12 +76,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
-      }).catch(() => {
-        // Sin red: para navegaciones servimos el index cacheado (SPA shell).
-        // Para imágenes/otros recursos NO devolvemos index.html (rompería el <img>).
-        if (isNavigation) return caches.match('/index.html');
-        return Response.error();
-      });
+      }).catch(() => Response.error());
     })
   );
 });
