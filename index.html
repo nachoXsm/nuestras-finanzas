@@ -4000,12 +4000,24 @@ function nfShowMoneySection(which) {
   var si = document.getElementById('secIngresos');
   var sg = document.getElementById('secGastos');
   if (!si || !sg) return;
+  var gh = document.getElementById('gastosHead');
+  // RED DE SEGURIDAD: solo separamos las secciones si la pestana "Ingresos"
+  // esta realmente visible. Si no lo esta (modo grupo, DOM viejo en cache,
+  // cualquier imprevisto), mostramos LAS DOS: es preferible mostrar de mas
+  // antes que dejar al usuario sin acceso a sus ingresos.
+  var tabIng = document.querySelector('#tabsWrap .tab[data-tab-name="ingresos"]');
+  var puedeSeparar = !!(tabIng && tabIng.style.display !== 'none' && tabIng.offsetParent !== null);
+  if (!puedeSeparar) {
+    si.style.display = '';
+    sg.style.display = '';
+    if (gh) gh.style.marginTop = '';
+    return;
+  }
   var soloIngresos = (which === 'ingresos');
   si.style.display = soloIngresos ? '' : 'none';
   sg.style.display = soloIngresos ? 'none' : '';
   // El encabezado de Gastos llevaba margen superior porque iba debajo de
   // Ingresos; ahora que puede quedar primero, ese margen sobra.
-  var gh = document.getElementById('gastosHead');
   if (gh) gh.style.marginTop = soloIngresos ? '' : '0';
 }
 
