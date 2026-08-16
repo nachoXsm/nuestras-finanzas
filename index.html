@@ -259,6 +259,7 @@
     .form-panel.open{display:block}
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .gf-monto-row{display:flex;gap:8px}.gf-monto-row .currency-select-mini{width:auto;min-width:90px;flex-shrink:0}.gf-monto-row input{flex:1;min-width:0}
+    .nf-tc-hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
     .gf-quien-chips{display:flex;gap:8px;flex-wrap:wrap}
     .gf-quien-chip{padding:9px 16px;border-radius:999px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.09);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--text);white-space:nowrap}
     .gf-quien-chip.active{background:rgba(18,199,183,.15);border-color:rgba(18,199,183,.5);color:var(--primary)}
@@ -1107,9 +1108,15 @@
           <div class="field" style="grid-column:1/-1">
             <label id="i_monto_label">Monto</label>
             <div class="gf-monto-row">
-              <select id="i_moneda" class="currency-select-mini"></select>
+              <select id="i_moneda" class="currency-select-mini" onchange="nfToggleTcField('i')"></select>
               <input type="number" id="i_monto" placeholder="0" step="any">
             </div>
+          </div>
+          <!-- Tipo de cambio manual: solo visible si la moneda != moneda base -->
+          <div class="field nf-tc-field" id="i_tc_field" style="grid-column:1/-1;display:none">
+            <label id="i_tc_label">Tipo de cambio <span style="opacity:.6;font-weight:400">(opcional)</span></label>
+            <input type="number" id="i_tc" placeholder="Ej: 1500" step="any">
+            <div class="nf-tc-hint" id="i_tc_hint"></div>
           </div>
           <!-- ¿Quién? y Tipo en la misma fila -->
           <div class="field"><label id="i_quien_label">¿Quién?</label><select id="i_quien"></select></div>
@@ -1191,9 +1198,15 @@
           <div class="field" style="grid-column:1/-1">
             <label id="g_monto_label">Monto</label>
             <div class="gf-monto-row">
-              <select id="g_moneda" class="currency-select-mini"></select>
+              <select id="g_moneda" class="currency-select-mini" onchange="nfToggleTcField('g')"></select>
               <input type="number" id="g_monto" placeholder="0" step="any">
             </div>
+          </div>
+          <!-- Tipo de cambio manual: solo visible si la moneda != moneda base -->
+          <div class="field nf-tc-field" id="g_tc_field" style="grid-column:1/-1;display:none">
+            <label id="g_tc_label">Tipo de cambio <span style="opacity:.6;font-weight:400">(opcional)</span></label>
+            <input type="number" id="g_tc" placeholder="Ej: 1500" step="any">
+            <div class="nf-tc-hint" id="g_tc_hint"></div>
           </div>
           <!-- Categoría full width + nueva categoría integrada en el select -->
           <div class="field" style="grid-column:1/-1">
@@ -2114,8 +2127,41 @@ function populateCurrencySelects(){
     el.innerHTML = currencyOptionsHtml(cur);
     el.value = cur;
   });
+  // Sincroniza la visibilidad del campo de TC con la moneda seleccionada
+  try { nfToggleTcField('i'); nfToggleTcField('g'); } catch(e) {}
 }
 function selectedCurrency(id){ var el=document.getElementById(id); return (el && el.value) || getDefaultCurrency(); }
+// ── TC manual en el formulario ───────────────────────────────────────────────
+// Muestra el campo "Tipo de cambio" solo cuando la moneda elegida difiere de la
+// moneda base, y sugiere la cotizacion automatica como referencia. Si el usuario
+// lo deja vacio se usa esa cotizacion; si lo completa, manda el TC real.
+function nfToggleTcField(prefix){
+  try {
+    var field = document.getElementById(prefix + '_tc_field');
+    if (!field) return;
+    var base = String(getActiveBaseCurrency() || 'ARS').toUpperCase();
+    var cur  = String(selectedCurrency(prefix + '_moneda') || base).toUpperCase();
+    if (cur === base) { field.style.display = 'none'; return; }
+    field.style.display = '';
+    var hint = document.getElementById(prefix + '_tc_hint');
+    if (hint) {
+      var auto = moneyConvertAmount(1, cur, base);
+      hint.textContent = (auto && auto !== 1)
+        ? '1 ' + cur + ' ≈ ' + (Math.round(auto * 100) / 100).toLocaleString('es-AR') + ' ' + base + ' (cotización actual). Dejalo vacío para usarla.'
+        : 'Ingresá cuántos ' + base + ' equivalen a 1 ' + cur + '.';
+    }
+  } catch(e) {}
+}
+// Lee el TC del formulario. Acepta "1.500" (miles) y "1500,50" (decimal ARG).
+function nfReadTcInput(prefix){
+  var el = document.getElementById(prefix + '_tc');
+  if (!el) return null;
+  var raw = String(el.value || '').trim();
+  if (!raw) return null;
+  raw = raw.replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.');
+  var v = parseFloat(raw);
+  return (v && !isNaN(v) && v > 0) ? v : null;
+}
 function fmtCurrency(n, code){
   if (isNaN(n) || n === null || n === undefined) n = 0;
   var c = txCurrencyMeta(code || getDefaultCurrency());
@@ -2253,13 +2299,27 @@ function nfRenderCurrencyBreakdown(ingresos, gastos, baseCode){
 function currencyStoreKey(table){ return 'nf_currency_' + table; }
 function getCurrencyStore(table){ try { return JSON.parse(localStorage.getItem(currencyStoreKey(table)) || '{}'); } catch(e) { return {}; } }
 function rememberRecordCurrency(table, id, code){ if(!id || !code) return; var m=getCurrencyStore(table); m[id]=code; localStorage.setItem(currencyStoreKey(table), JSON.stringify(m)); }
+// ── TC manual por registro ───────────────────────────────────────────────────
+// Se guarda en localStorage igual que la moneda, para funcionar aunque la tabla
+// de Supabase no tenga la columna `tc`.
+function tcStoreKey(table){ return 'nf_tc_' + table; }
+function getTcStore(table){ try { return JSON.parse(localStorage.getItem(tcStoreKey(table)) || '{}'); } catch(e) { return {}; } }
+function rememberRecordTc(table, id, tc){
+  if(!id) return;
+  var m = getTcStore(table);
+  var v = parseFloat(tc || 0) || 0;
+  if (v > 0) m[id] = v; else delete m[id];
+  try { localStorage.setItem(tcStoreKey(table), JSON.stringify(m)); } catch(e) {}
+}
 function applyRecordCurrencies(table, rows){
   var m=getCurrencyStore(table);
+  var tcs=getTcStore(table);
   (rows||[]).forEach(function(r){
     if(!r) return;
     var fromMedio = currencyFromPaymentMedium(r.medio);
     if(fromMedio) r.moneda = fromMedio;
     else if(!r.moneda && m[r.id]) r.moneda = m[r.id];
+    if(!r.tc && tcs[r.id]) r.tc = tcs[r.id];
   });
   return rows;
 }
@@ -2422,6 +2482,7 @@ async function dbPostMoney(table, body){
     var direct = await dbPost(table, body);
     if(direct && direct[0]) {
       rememberRecordCurrency(table, direct[0].id, body.moneda);
+      rememberRecordTc(table, direct[0].id, body.tc);
       rememberRecordInstallments(table, direct[0].id, body);
       rememberRecordCardRelation(table, direct[0].id, body);
     }
@@ -2432,8 +2493,9 @@ async function dbPostMoney(table, body){
     if(!isUnknownColumnError(e)) throw e;
 
     var moneda = body.moneda;
+    var _tc = body.tc;
     var clean = Object.assign({}, body);
-    ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
+    ['moneda','tc','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
     if (table === 'ingresos') delete clean.dia;
     if (body.tarjeta_id && table === 'gastos') {
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
@@ -2449,7 +2511,9 @@ async function dbPostMoney(table, body){
       res[0].cuotas = body.cuotas || 1;
       res[0].cuota_actual = body.cuota_actual || 1;
       if (body.dia != null) res[0].dia = body.dia;
+      if (_tc) res[0].tc = _tc;
       rememberRecordCurrency(table, res[0].id, moneda);
+      rememberRecordTc(table, res[0].id, _tc);
       rememberRecordInstallments(table, res[0].id, body);
       rememberRecordCardRelation(table, res[0].id, body);
     }
@@ -2461,6 +2525,7 @@ async function dbPatchMoney(table, id, body){
     var direct = await dbPatch(table, id, body);
     if(direct && direct[0]) {
       rememberRecordCurrency(table, direct[0].id, body.moneda);
+      rememberRecordTc(table, direct[0].id, body.tc);
       rememberRecordInstallments(table, direct[0].id, body);
       rememberRecordCardRelation(table, direct[0].id, body);
     }
@@ -2471,8 +2536,9 @@ async function dbPatchMoney(table, id, body){
     if(!isUnknownColumnError(e)) throw e;
 
     var moneda = body.moneda;
+    var _tc = body.tc;
     var clean = Object.assign({}, body);
-    ['moneda','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
+    ['moneda','tc','tarjeta_id','cuotas','cuota_actual','gasto_origen_id','division'].forEach(function(k){ delete clean[k]; });
     if (table === 'ingresos') delete clean.dia;
     if (body.tarjeta_id && table === 'gastos') {
       clean.medio = encodeCardPaymentMedium(body.tarjeta_id, moneda);
@@ -2488,7 +2554,9 @@ async function dbPatchMoney(table, id, body){
       res[0].cuotas = body.cuotas || 1;
       res[0].cuota_actual = body.cuota_actual || 1;
       if (body.dia != null) res[0].dia = body.dia;
+      if (_tc) res[0].tc = _tc;
       rememberRecordCurrency(table, res[0].id, moneda);
+      rememberRecordTc(table, res[0].id, _tc);
       rememberRecordInstallments(table, res[0].id, body);
       rememberRecordCardRelation(table, res[0].id, body);
     }
@@ -3175,6 +3243,9 @@ async function saveIngreso() {
   const iDia = parseInt(document.getElementById('i_dia_f').value)||1;
   const body = { grupo_id:state.grupoId, mes:iMes, anio:iAnio, dia:iDia, descripcion:desc, monto, moneda:selectedCurrency('i_moneda'),
     quien:document.getElementById('i_quien').value, tipo:document.getElementById('i_tipo').value };
+  // TC manual: solo se adjunta si el usuario lo cargó y la moneda no es la base
+  const _iTc = nfReadTcInput('i');
+  if (_iTc && String(body.moneda).toUpperCase() !== String(getActiveBaseCurrency()).toUpperCase()) body.tc = _iTc;
   setSyncing('syncing');
   try {
     if (editingIngresoId) {
@@ -3186,6 +3257,8 @@ async function saveIngreso() {
       state.ingresos.push(res[0]); toast('✅ Ingreso guardado');
     }
     document.getElementById('i_desc').value=''; document.getElementById('i_monto').value=''; document.getElementById('i_moneda').value=getDefaultCurrency();
+    var _iTcEl = document.getElementById('i_tc'); if (_iTcEl) _iTcEl.value = '';
+    try { nfToggleTcField('i'); } catch(e) {}
     document.getElementById('fIngreso').classList.remove('open');
     setSyncing('ok'); renderAll();
   } catch(e) { setSyncing('error'); console.error('saveIngreso error:', e); toast('❌ ' + (e&&e.message?e.message.slice(0,80):'Error al guardar')); }
@@ -3198,6 +3271,8 @@ function editIngreso(id) {
   document.getElementById('i_desc').value = i.descripcion||'';
   document.getElementById('i_monto').value = i.monto;
   document.getElementById('i_moneda').value = i.moneda || getDefaultCurrency();
+  var _eiTc = document.getElementById('i_tc'); if (_eiTc) _eiTc.value = i.tc ? i.tc : '';
+  try { nfToggleTcField('i'); } catch(e) {}
   document.getElementById('i_quien').value = i.quien;
   document.getElementById('i_tipo').value = i.tipo;
   populateIMesFSelect();
@@ -3223,6 +3298,10 @@ async function saveGasto() {
   const desc = document.getElementById('g_desc').value.trim();
   const monto = parseFloat(document.getElementById('g_monto').value);
   const moneda = selectedCurrency('g_moneda');
+  // TC manual del usuario (undefined si no cargó nada o si es la moneda base:
+  // JSON.stringify descarta las claves undefined, así no ensucia el body)
+  const _gTcVal = nfReadTcInput('g');
+  const _gTc = (_gTcVal && String(moneda).toUpperCase() !== String(getActiveBaseCurrency()).toUpperCase()) ? _gTcVal : undefined;
   if (!desc || !monto) return toast('Completá descripción y monto');
 
   const medio = document.getElementById('g_medio').value;
@@ -3246,7 +3325,7 @@ async function saveGasto() {
       const editBody = {
         descripcion: desc,
         monto: monto, // use full monto when editing, not divided
-        moneda: moneda,
+        moneda: moneda, tc: _gTc,
         cat: document.getElementById('g_cat').value,
         tipo: document.getElementById('g_tipo').value,
         medio: medioPersist,
@@ -3298,7 +3377,7 @@ async function saveGasto() {
           mes: gMes, anio: gAnio,
           descripcion: desc,
           monto: cuotaMonto,
-          moneda: moneda,
+          moneda: moneda, tc: _gTc,
           cat: cat, tipo: tipo, medio: medioPersist, tarjeta_id: tarjeta_id,
           quien: 'Todos',
           dia: diaVal,
@@ -3318,7 +3397,7 @@ async function saveGasto() {
         mes: gMes, anio: gAnio,
         descripcion: desc,
         monto: cuotaMonto,
-        moneda: moneda,
+        moneda: moneda, tc: _gTc,
         cat, tipo, medio, tarjeta_id,
         quien: quienVal,
         dia: diaVal,
@@ -3342,6 +3421,8 @@ async function saveGasto() {
       } // cierre else (sin división)
     }
     document.getElementById('g_desc').value=''; document.getElementById('g_monto').value=''; document.getElementById('g_moneda').value=getDefaultCurrency();
+    var _gTcEl = document.getElementById('g_tc'); if (_gTcEl) _gTcEl.value = '';
+    try { nfToggleTcField('g'); } catch(e) {}
     document.getElementById('fGasto').classList.remove('open');
     document.getElementById('btnSaveGasto').textContent='Guardar';
     setSyncing('ok');
@@ -3357,6 +3438,8 @@ function editGasto(id) {
   document.getElementById('g_desc').value=gastoDisplayDescription(g);
   document.getElementById('g_monto').value=g.monto;
   document.getElementById('g_moneda').value=g.moneda || getDefaultCurrency();
+  var _egTc = document.getElementById('g_tc'); if (_egTc) _egTc.value = g.tc ? g.tc : '';
+  try { nfToggleTcField('g'); } catch(e) {}
   const _em=String(g.mes||state.mes).padStart(2,'0'); const _ed=String(g.dia||1).padStart(2,'0');
   const _efv=(g.anio||state.anio)+'-'+_em+'-'+_ed;
   const _ef = document.getElementById('g_fecha'); if(_ef) _ef.value=_efv;
