@@ -10555,8 +10555,23 @@ toggleTheme = function(){
 
 // Registrar service worker para PWA / Play Store
 if ('serviceWorker' in navigator) {
+  // Cuando el SW nuevo toma el control, la pestaña sigue mostrando la version
+  // vieja hasta el proximo arranque. Recargamos una sola vez para que la
+  // actualizacion se vea al instante (antes habia que abrir la app dos veces).
+  var _nfReloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (_nfReloading) return;
+    _nfReloading = true;
+    try { window.location.reload(); } catch(e) {}
+  });
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js').catch(function(e) {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      // Buscar actualizaciones al abrir y al volver a primer plano
+      try { reg.update(); } catch(e) {}
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) { try { reg.update(); } catch(e) {} }
+      });
+    }).catch(function(e) {
       console.warn('SW register failed:', e);
     });
   });
