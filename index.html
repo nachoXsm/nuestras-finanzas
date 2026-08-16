@@ -213,7 +213,11 @@
     /* TABS */
     .tabs-wrap{display:flex;gap:8px;overflow-x:auto;padding:0 18px 20px;scrollbar-width:none;position:relative}
     .tabs-wrap::-webkit-scrollbar{display:none}
-    .tabs-scroll-hint{position:absolute;right:0;top:0;bottom:16px;width:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(to right,transparent,rgba(8,17,31,.92));border-radius:0 999px 999px 0;z-index:2}
+    /* pointer-events:none es CLAVE: esta banda de 40px se monta sobre la tira de
+       pestanas y, sin esto, se "come" el tap de cualquier pestana que quede debajo
+       (sintoma: tocar Flujo/Informe y que no pase nada). La tira ya scrollea por
+       swipe gracias a overflow-x:auto, asi que las flechas quedan como pista visual. */
+    .tabs-scroll-hint{position:absolute;right:0;top:0;bottom:16px;width:40px;display:flex;align-items:center;justify-content:center;pointer-events:none;background:linear-gradient(to right,transparent,rgba(8,17,31,.92));border-radius:0 999px 999px 0;z-index:2}
     .tabs-scroll-hint span{font-size:18px;color:var(--primary);font-weight:700;line-height:1;animation:fadeInOut 1.8s ease-in-out infinite;display:flex;align-items:center}
     .tabs-scroll-hint.left{left:0;right:auto;background:linear-gradient(to left,transparent,rgba(8,17,31,.92));border-radius:999px 0 0 999px}
     @keyframes fadeInOut{0%,100%{opacity:.2}50%{opacity:1}}
