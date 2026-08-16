@@ -1082,6 +1082,7 @@
   <div style="position:relative">
     <div class="tabs-wrap" id="tabsWrap">
       <button class="tab active" onclick="switchTab('gastos')">Gastos</button>
+      <button class="tab" onclick="switchTab('ingresos')">Ingresos</button>
       <button class="tab" onclick="switchTab('tarjetas')">Tarjetas</button>
       <button class="tab" onclick="switchTab('categorias')">Categ.</button>
       <button class="tab" onclick="if(requirePremium('flujo'))switchTab('flujo')">Flujo</button>
@@ -1096,6 +1097,8 @@
   <!-- GASTOS TAB -->
   <div class="tab-content active" id="tab-gastos">
     <div class="sec-wrap">
+      <!-- Bloque INGRESOS: se muestra/oculta segun la pestaña elegida -->
+      <div id="secIngresos">
       <div class="sec-head">
         <div class="sec-title" id="incTitle" onclick="toggleIngresos()" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:7px">💰 Ingresos <svg id="incToggleIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .25s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg></div>
         <button class="sec-action" onclick="toggleForm('fIngreso')">+ Agregar</button>
@@ -1146,7 +1149,10 @@
         <div class="form-actions"><button class="btn-cancel" onclick="toggleForm('fIngreso')">Cancelar</button><button class="btn-save" onclick="saveIngreso()">Guardar</button></div>
       </div>
       <div id="ingresoList"></div>
+      </div><!-- /secIngresos -->
 
+      <!-- Bloque GASTOS -->
+      <div id="secGastos">
       <div class="sec-head" id="gastosHead" style="margin-top:24px">
         <div class="sec-title">💸 Gastos</div>
         <div class="sec-actions-row">
@@ -1284,6 +1290,7 @@
         <div class="form-actions"><button class="btn-cancel" onclick="cancelGasto()">Cancelar</button><button class="btn-save" onclick="saveGasto()" id="btnSaveGasto">Guardar</button></div>
       </div>
       <div id="gastoList"></div>
+      </div><!-- /secGastos -->
     </div>
   </div>
 
@@ -3981,12 +3988,30 @@ function exportExcel() {
 // TABS
 // ============================================
 function getModeTabs(isGroup) {
-  return isGroup ? ['gastos','categorias','informe','conversor','ia'] : ['gastos','tarjetas','categorias','flujo','informe','conversor','ia'];
+  // 'ingresos' solo en modo hogar: comparte el panel con 'gastos' pero muestra
+  // unicamente la seccion de ingresos (antes tocar "Gastos" abria una vista que
+  // arrancaba con Ingresos y confundia).
+  return isGroup ? ['gastos','categorias','informe','conversor','ia'] : ['gastos','ingresos','tarjetas','categorias','flujo','informe','conversor','ia'];
+}
+// 'ingresos' comparte el panel #tab-gastos
+function nfPaneIdForTab(name) { return (name === 'ingresos') ? 'tab-gastos' : 'tab-' + name; }
+// Muestra solo la seccion pedida dentro del panel de gastos/ingresos
+function nfShowMoneySection(which) {
+  var si = document.getElementById('secIngresos');
+  var sg = document.getElementById('secGastos');
+  if (!si || !sg) return;
+  var soloIngresos = (which === 'ingresos');
+  si.style.display = soloIngresos ? '' : 'none';
+  sg.style.display = soloIngresos ? 'none' : '';
+  // El encabezado de Gastos llevaba margen superior porque iba debajo de
+  // Ingresos; ahora que puede quedar primero, ese margen sobra.
+  var gh = document.getElementById('gastosHead');
+  if (gh) gh.style.marginTop = soloIngresos ? '' : '0';
 }
 
 function getTabNameFromButton(btn) {
   var oc = (btn && btn.getAttribute('onclick')) || '';
-  var all = ['gastos','tarjetas','categorias','flujo','informe','conversor'];
+  var all = ['ingresos','gastos','tarjetas','categorias','flujo','informe','conversor'];
   return all.find(function(name){
     return oc.indexOf("'" + name + "'") !== -1 || oc.indexOf('"' + name + '"') !== -1 || oc.indexOf(name) !== -1;
   }) || '';
@@ -4019,8 +4044,10 @@ function syncModeChrome(mode, preferredTab) {
     return tab.dataset.tabName === target;
   }) : null;
   if (btn) btn.classList.add('active');
-  var pane = document.getElementById('tab-' + target);
+  var pane = document.getElementById(nfPaneIdForTab(target));
   if (pane) pane.classList.add('active');
+  // Gastos e Ingresos comparten panel: mostramos solo la seccion elegida
+  if (target === 'gastos' || target === 'ingresos') nfShowMoneySection(target);
 
   if (typeof setNavActive === 'function') {
     if (target === 'tarjetas') setNavActive('nav-tarjetas');
