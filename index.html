@@ -2169,6 +2169,87 @@ function moneyValue(record, baseCode){
   return moneyConvertAmount(record.monto, record.moneda || baseCode || getActiveBaseCurrency(), baseCode || getActiveBaseCurrency());
 }
 
+// ── MULTI-MONEDA: helpers unificados ─────────────────────────────────────────
+// Monto de un registro expresado en la moneda base.
+// Prioridad: (1) TC manual del registro, (2) TC manual de la tarjeta,
+// (3) cotizacion automatica. Si no hay forma de convertir devuelve el monto
+// tal cual (degradacion segura: nunca rompe ni pone 0).
+function nfBaseAmount(record, baseCode){
+  if (!record) return 0;
+  var base = String(baseCode || getActiveBaseCurrency() || 'ARS').toUpperCase();
+  var cur  = String(record.moneda || base).toUpperCase();
+  var monto = parseFloat(record.monto || 0) || 0;
+  if (cur === base) return monto;
+  // (1) TC cargado a mano en el propio registro (el real de esa operacion)
+  var propio = parseFloat(record.tc || 0) || 0;
+  if (propio > 0) return monto * propio;
+  // (2) TC manual de la tarjeta asociada
+  try {
+    var cardId = (typeof getExpenseCardId === 'function') ? getExpenseCardId(record) : null;
+    var manual = cardId && typeof getCardFXRate === 'function' ? getCardFXRate(cardId, cur) : null;
+    if (manual) return monto * manual;
+  } catch(e) {}
+  // (3) cotizacion automatica
+  return moneyConvertAmount(monto, cur, base);
+}
+// Suma registros ya convertidos a la moneda base.
+function nfSumBase(records, baseCode){
+  var base = String(baseCode || getActiveBaseCurrency() || 'ARS').toUpperCase();
+  return (records || []).reduce(function(a, r){ return a + nfBaseAmount(r, base); }, 0);
+}
+// Agrupa los montos por moneda SIN convertir: { ARS: 12345.5, USD: 320 }
+// Sirve para mostrar las contabilidades en paralelo.
+function nfCurrencyTotals(records, baseCode){
+  var base = String(baseCode || getActiveBaseCurrency() || 'ARS').toUpperCase();
+  var out = {};
+  (records || []).forEach(function(r){
+    if (!r) return;
+    var cur = String(r.moneda || base).toUpperCase();
+    out[cur] = (out[cur] || 0) + (parseFloat(r.monto || 0) || 0);
+  });
+  return out;
+}
+// Lista de monedas distintas a la base presentes en los registros.
+function nfForeignCurrencies(records, baseCode){
+  var base = String(baseCode || getActiveBaseCurrency() || 'ARS').toUpperCase();
+  var totals = nfCurrencyTotals(records, base);
+  return Object.keys(totals).filter(function(c){ return c !== base && Math.abs(totals[c]) > 0.005; });
+}
+// Inserta/actualiza en la balance-card una fila con el saldo de cada moneda
+// extranjera SIN convertir (contabilidades en paralelo). Si no hay movimientos
+// en otra moneda, no muestra nada (usuarios de una sola moneda no ven cambios).
+function nfRenderCurrencyBreakdown(ingresos, gastos, baseCode){
+  try {
+    var anchor = document.getElementById('balanceSub');
+    if (!anchor) return;
+    var row = document.getElementById('nfCurrencyRow');
+    var base = String(baseCode || getActiveBaseCurrency() || 'ARS').toUpperCase();
+    var incT = nfCurrencyTotals(ingresos, base);
+    var gasT = nfCurrencyTotals(gastos, base);
+    var curs = Object.keys(incT).concat(Object.keys(gasT)).filter(function(c, i, arr){
+      return c !== base && arr.indexOf(c) === i;
+    }).filter(function(c){
+      return Math.abs((incT[c]||0) - (gasT[c]||0)) > 0.005 || (incT[c]||0) > 0 || (gasT[c]||0) > 0;
+    });
+    if (!curs.length) { if (row) row.remove(); return; }
+    if (!row) {
+      row = document.createElement('div');
+      row.id = 'nfCurrencyRow';
+      row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px';
+      anchor.parentNode.insertBefore(row, anchor.nextSibling);
+    }
+    row.innerHTML = curs.map(function(c){
+      var saldoC = (incT[c] || 0) - (gasT[c] || 0);
+      var col = saldoC >= 0 ? '#7ef7d8' : '#ffb3a0';
+      var txt = (typeof fmtCurrency === 'function') ? fmtCurrency(saldoC, c) : (c + ' ' + saldoC.toFixed(2));
+      return '<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.10);'
+        + 'border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;color:' + col + '">'
+        + '<span style="opacity:.65;font-weight:600">' + c + '</span>'
+        + '<span data-private-balance data-real-value="' + txt + '">' + txt + '</span></span>';
+    }).join('');
+  } catch(e) {}
+}
+
 function currencyStoreKey(table){ return 'nf_currency_' + table; }
 function getCurrencyStore(table){ try { return JSON.parse(localStorage.getItem(currencyStoreKey(table)) || '{}'); } catch(e) { return {}; } }
 function rememberRecordCurrency(table, id, code){ if(!id || !code) return; var m=getCurrencyStore(table); m[id]=code; localStorage.setItem(currencyStoreKey(table), JSON.stringify(m)); }
@@ -4465,11 +4546,14 @@ renderAll = function() {
     return;
   }
   const {gastos,ingresos,tarjetas} = state;
-  const totalInc = ingresos.reduce((a,i)=>a+parseFloat(i.monto),0);
-  const totalGas = gastos.reduce((a,g)=>a+parseFloat(g.monto),0);
-  const fijos = gastos.filter(g=>g.tipo==='fijo').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const variables = gastos.filter(g=>g.tipo==='variable').reduce((a,g)=>a+parseFloat(g.monto),0);
-  const enTarjeta = gastos.filter(g=>isCardPayment(g)).reduce((a,g)=>a+parseFloat(g.monto),0);
+  // Multi-moneda: los totales se expresan en la moneda base convirtiendo cada
+  // registro (antes se sumaba el monto crudo: 100 USD contaban como 100 ARS).
+  const _base = getActiveBaseCurrency();
+  const totalInc = nfSumBase(ingresos, _base);
+  const totalGas = nfSumBase(gastos, _base);
+  const fijos = nfSumBase(gastos.filter(g=>g.tipo==='fijo'), _base);
+  const variables = nfSumBase(gastos.filter(g=>g.tipo==='variable'), _base);
+  const enTarjeta = nfSumBase(gastos.filter(g=>isCardPayment(g)), _base);
   const saldo = totalInc-totalGas;
   const pct = totalInc>0?Math.min(100,Math.round(totalGas/totalInc*100)):0;
 
@@ -4493,6 +4577,8 @@ renderAll = function() {
   if(bsP)    bsP.textContent   = pct+L('sumDelIngreso');
   if(bsF)    bsF.textContent   = fmtInt(fijos);
   if(bsFP)   bsFP.textContent  = (totalGas>0?Math.round(fijos/totalGas*100):0)+L('balDeGastos');
+  // Saldos por moneda en paralelo (solo aparece si hay movimientos en otra moneda)
+  nfRenderCurrencyBreakdown(ingresos, gastos, _base);
   setBalancePrivacyUI();
   const cleanHomeBalance = document.querySelector('.balance-card');
   if (cleanHomeBalance && cleanHomeBalance.querySelector('#balanceTotal')) nfHomeBalanceHTML = cleanHomeBalance.innerHTML;
