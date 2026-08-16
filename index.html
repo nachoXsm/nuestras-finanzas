@@ -11431,7 +11431,103 @@ function renderFlujo() {
     html+=gc2(L('flujoReal'),Math.max(0,sl),sl>=0?'#1ec98f':'#ff7a59');
     html+='</div>';
   }
+  html += '<div id="nfProyeccionBox" style="margin-top:18px"></div>';
   el.innerHTML = html;
+  nfRenderProyeccionCuotas();
+}
+
+// ─── PROYECCION DE CUOTAS ────────────────────────────────────────────────────
+// Muestra las cuotas que caen en los meses siguientes. IMPORTANTE: solo LEE los
+// registros que la app ya crea en meses futuros al guardar un gasto en cuotas
+// (ver saveGasto -> "Create remaining cuotas in future months"). No deriva ni
+// genera nada, asi que es imposible que duplique gastos ni que afecte la carga.
+var _nfProyCache = { key: '', data: null, t: 0 };
+async function nfGetProyeccionCuotas(meses) {
+  meses = meses || 6;
+  var gid = state && state.grupoId;
+  if (!gid) return [];
+  var mes0 = state.mes, anio0 = state.anio;
+  var key = gid + '|' + anio0 + '-' + mes0 + '|' + meses;
+  if (_nfProyCache.key === key && (Date.now() - _nfProyCache.t) < 60000) return _nfProyCache.data;
+
+  // Meses a proyectar (el actual NO se incluye: ya se ve en la vista del mes)
+  var objetivo = [];
+  for (var i = 1; i <= meses; i++) {
+    var m = mes0 + i, a = anio0;
+    while (m > 12) { m -= 12; a++; }
+    objetivo.push({ mes: m, anio: a });
+  }
+  var anios = objetivo.map(function(o){ return o.anio; }).filter(function(v,i,arr){ return arr.indexOf(v)===i; });
+
+  var rows = [];
+  try {
+    rows = await dbGet('gastos', 'grupo_id=eq.' + gid + '&anio=in.(' + anios.join(',') + ')');
+    if (typeof applyRecordCurrencies === 'function') applyRecordCurrencies('gastos', rows);
+    if (typeof applyRecordInstallments === 'function') applyRecordInstallments('gastos', rows);
+  } catch(e) { return []; }
+
+  var base = getActiveBaseCurrency();
+  var out = objetivo.map(function(o){
+    var delMes = (rows || []).filter(function(r){
+      return Number(r.mes) === o.mes && Number(r.anio) === o.anio;
+    });
+    // Solo lo que es cuota (parte de un plan de mas de una cuota)
+    var cuotas = delMes.filter(function(r){
+      var p = normalizeInstallmentParts(r);
+      return p.cuotas > 1;
+    });
+    return {
+      mes: o.mes, anio: o.anio,
+      items: cuotas,
+      total: nfSumBase(cuotas, base)
+    };
+  }).filter(function(x){ return x.items.length > 0; });
+
+  _nfProyCache = { key: key, data: out, t: Date.now() };
+  return out;
+}
+async function nfRenderProyeccionCuotas() {
+  var box = document.getElementById('nfProyeccionBox');
+  if (!box) return;
+  var data;
+  try { data = await nfGetProyeccionCuotas(6); } catch(e) { return; }
+  box = document.getElementById('nfProyeccionBox');   // puede haber re-render
+  if (!box) return;
+  if (!data || !data.length) { box.innerHTML = ''; return; }
+
+  var MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var totalGeneral = data.reduce(function(a,d){ return a + d.total; }, 0);
+  var filas = data.map(function(d){
+    var det = d.items.slice(0, 4).map(function(r){
+      var p = normalizeInstallmentParts(r);
+      var desc = String(r.descripcion || '')
+        .replace(/\bC\.?\s*\d{1,2}\s*\/\s*\d{1,2}\b/gi, '').replace(/\s{2,}/g,' ').trim() || 'Gasto';
+      return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);padding:2px 0">'
+        + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + desc
+        + ' <span style="opacity:.6">' + p.cuota_actual + '/' + p.cuotas + '</span></span>'
+        + '<span style="flex-shrink:0">' + fmtInt(nfBaseAmount(r)) + '</span></div>';
+    }).join('');
+    var resto = d.items.length > 4
+      ? '<div style="font-size:10px;color:var(--muted);opacity:.7;padding-top:2px">+ ' + (d.items.length - 4) + ' más</div>'
+      : '';
+    return '<div style="padding:11px 0;border-top:1px solid rgba(255,255,255,.06)">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      + '<span style="font-size:12px;font-weight:800;color:#e8ecf5">' + MESES[d.mes-1] + ' ' + d.anio + '</span>'
+      + '<span style="font-size:13px;font-weight:800;color:#ff7a59">' + fmtInt(d.total) + '</span></div>'
+      + det + resto + '</div>';
+  }).join('');
+
+  box.innerHTML = '<div class="inf-section-title">📅 Cuotas de los próximos meses</div>'
+    + '<div class="inf-chart-card" style="padding:14px 16px">'
+    + filas
+    + '<div style="border-top:1px solid rgba(255,255,255,.12);margin-top:8px;padding-top:9px;'
+    + 'display:flex;justify-content:space-between;align-items:center">'
+    + '<span style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700">Total comprometido</span>'
+    + '<span style="font-size:14px;font-weight:800;color:#ff7a59">' + fmtInt(totalGeneral) + '</span></div>'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5">'
+    + 'Cuotas ya registradas que vencen en los próximos meses. Es solo una vista de proyección: '
+    + 'no modifica ni duplica tus gastos.</div>'
+    + '</div>';
 }
 
 // ─── IA ADVISOR ──────────────────────────────────────────────────────────────
