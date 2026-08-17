@@ -11549,7 +11549,10 @@ async function nfRenderProyeccionCuotas() {
 }
 
 // ─── IA ADVISOR ──────────────────────────────────────────────────────────────
-var IA_ENDPOINT = 'https://gzjhohwuyquumkgiehan.supabase.co/functions/v1/ai-advisor';
+// El asesor corre en Vercel (api/ai-advisor.js), no en Supabase: asi se
+// actualiza con un simple `git push`, sin depender del CLI de Supabase.
+// La Edge Function sigue existiendo como respaldo pero ya no se usa.
+var IA_ENDPOINT = '/api/ai-advisor';
 var iaMessages = [];
 var iaInitDone = false;
 
