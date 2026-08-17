@@ -1,10 +1,40 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+// Groq da de baja modelos cada tanto (paso con llama-3.3-70b-versatile, que
+// empezo a devolver "model_not_found"). Probamos en orden y usamos el primero
+// disponible, asi una baja futura no rompe la app.
+// La lista vigente esta en console.groq.com -> Models.
+const GROQ_MODELS = [
+  'llama-3.1-8b-instant',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'openai/gpt-oss-120b',
+  'llama-3.3-70b-versatile',
+];
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Llama a Groq probando los modelos de la lista hasta que uno responda.
+// Solo pasa al siguiente si el modelo no existe / no hay acceso; ante otros
+// errores (rate limit, etc.) corta y devuelve el error real.
+async function groqChat(key: string, payload: Record<string, unknown>) {
+  let ultimoError = '';
+  for (const model of GROQ_MODELS) {
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, model }),
+    });
+    if (res.ok) return { ok: true, data: await res.json(), model };
+    const err = await res.text();
+    ultimoError = err;
+    const esModeloInvalido = /model_not_found|does not exist|decommissioned|not supported/i.test(err);
+    if (!esModeloInvalido) return { ok: false, error: err };
+  }
+  return { ok: false, error: ultimoError };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -16,23 +46,17 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(context);
 
-    const groqRes = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        max_tokens: 800,
-        temperature: 0.7,
-      }),
+    const groqRes = await groqChat(GROQ_KEY, {
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      max_tokens: 800,
+      temperature: 0.7,
     });
 
     if (!groqRes.ok) {
-      const err = await groqRes.text();
-      return new Response(JSON.stringify({ error: err }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: groqRes.error }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const data = await groqRes.json();
+    const data = groqRes.data;
     const reply = data.choices?.[0]?.message?.content ?? '';
     return new Response(JSON.stringify({ reply }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
 

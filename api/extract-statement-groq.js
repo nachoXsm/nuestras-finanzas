@@ -1,5 +1,13 @@
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+// Groq da de baja modelos cada tanto (paso con llama-3.3-70b-versatile, que
+// empezo a devolver "model_not_found"). Se prueban en orden y se usa el primero
+// disponible. Lista vigente: console.groq.com -> Models.
+const GROQ_MODELS = [
+  'llama-3.1-8b-instant',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'openai/gpt-oss-120b',
+  'llama-3.3-70b-versatile',
+];
 const MAX_TEXT_CHARS = 28000;
 
 const config = {
@@ -93,26 +101,33 @@ async function callGroq(payload) {
   const apiKey = process.env.GROQ_KEY || '';
   if (!apiKey) throw new Error('Falta configurar GROQ_KEY en Vercel.');
 
-  const response = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages: [{ role: 'user', content: buildPrompt(payload) }],
-      max_tokens: 8000,
-      temperature: 0,
-      response_format: { type: 'json_object' }
-    })
-  });
-
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    const message = data && (data.error && data.error.message || data.message);
-    throw new Error(message || 'Groq API error.');
+  // Prueba los modelos en orden; solo pasa al siguiente si el modelo no existe.
+  let data = null;
+  let ultimoError = null;
+  for (const model of GROQ_MODELS) {
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: buildPrompt(payload) }],
+        max_tokens: 8000,
+        temperature: 0,
+        response_format: { type: 'json_object' }
+      })
+    });
+    const parsed = await response.json().catch(() => null);
+    if (response.ok) { data = parsed; break; }
+    const message = (parsed && (parsed.error && parsed.error.message || parsed.message)) || 'Groq API error.';
+    ultimoError = message;
+    if (!/model_not_found|does not exist|decommissioned|not supported/i.test(message)) {
+      throw new Error(message);
+    }
   }
+  if (!data) throw new Error(ultimoError || 'Groq API error.');
 
   const text = data
     && data.choices

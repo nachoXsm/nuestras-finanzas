@@ -1,5 +1,33 @@
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+// Groq da de baja modelos cada tanto (paso con llama-3.3-70b-versatile, que
+// empezo a devolver "model_not_found"). Se prueban en orden y se usa el primero
+// disponible. Lista vigente: console.groq.com -> Models.
+const GROQ_MODELS = [
+  'llama-3.1-8b-instant',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'openai/gpt-oss-120b',
+  'llama-3.3-70b-versatile',
+];
+
+// Prueba los modelos en orden; solo pasa al siguiente si el modelo no existe.
+async function groqChat(apiKey, payload) {
+  let ultimoError = null;
+  for (const model of GROQ_MODELS) {
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify(Object.assign({}, payload, { model }))
+    });
+    const data = await response.json().catch(() => null);
+    if (response.ok) return { ok: true, data: data };
+    const message = (data && (data.error && data.error.message || data.message)) || 'Groq API error.';
+    ultimoError = message;
+    if (!/model_not_found|does not exist|decommissioned|not supported/i.test(message)) {
+      return { ok: false, error: message };
+    }
+  }
+  return { ok: false, error: ultimoError || 'Groq API error.' };
+}
 
 function sendJson(res, status, data) {
   res.statusCode = status;
@@ -25,26 +53,15 @@ async function handler(req, res) {
     const prompt = String(body.prompt || '').slice(0, 6000);
     if (!prompt) return sendJson(res, 400, { error: 'Falta el prompt.' });
 
-    const response = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 500,
-        temperature: 0,
-        response_format: { type: 'json_object' }
-      })
+    const result = await groqChat(apiKey, {
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 500,
+      temperature: 0,
+      response_format: { type: 'json_object' }
     });
 
-    const data = await response.json().catch(() => null);
-    if (!response.ok) {
-      const message = data && (data.error && data.error.message || data.message);
-      return sendJson(res, 500, { error: message || 'Groq API error.' });
-    }
+    if (!result.ok) return sendJson(res, 500, { error: result.error });
+    const data = result.data;
 
     const reply = data
       && data.choices
