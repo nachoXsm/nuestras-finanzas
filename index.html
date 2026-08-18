@@ -1572,60 +1572,10 @@
 <!-- AYUDA MODAL -->
 <div class="modal-overlay" id="ayudaModal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="max-height:85vh;overflow-y:auto">
-    <div class="modal-head"><span>📖 Ayuda</span><button class="modal-close" onclick="document.getElementById('ayudaModal').classList.remove('open')">✕</button></div>
-    <div style="display:flex;flex-direction:column;gap:16px;padding-bottom:8px">
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">💸 Cargar un gasto</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">Tocá el botón <b style="color:var(--text)">+ Agregar gasto</b> en la sección de gastos. Completá descripción, monto, categoría y medio de pago. Si pagaste con tarjeta en cuotas, ingresá el <b style="color:var(--text)">monto total</b> y la app lo divide automáticamente.</div>
-      </div>
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">🎙️ Cargar gasto por voz</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">Deslizá el botón <b style="color:var(--text)">+</b> de la barra inferior <b style="color:var(--text)">hacia arriba</b> para activar el asistente de voz. Dictá el gasto en voz alta — podés mencionar el monto, la descripción, la categoría, el medio de pago, las cuotas y quién pagó. Por ejemplo: <b style="color:var(--text)">"gasté 500 pesos en el super con débito"</b> o <b style="color:var(--text)">"3000 en nafta en tres cuotas con visa"</b>. Si decís <b style="color:var(--text)">"confirmar"</b> al final, el gasto se guarda directamente. De lo contrario se abre el formulario con los datos ya cargados para que puedas revisarlos.</div>
-      </div>
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">📄 Subir comprobante</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">Usá el botón de cámara para subir una foto o PDF de un ticket o comprobante de pago. La IA lee el monto, descripción y fecha automáticamente. Siempre revisá los datos antes de guardar.</div>
-      </div>
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">💳 Importar resumen de tarjeta</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">Subí el PDF del resumen de tu tarjeta (Visa, Mastercard, Amex). La app detecta todos los consumos y los carga automáticamente con fecha y monto. No modifica datos si detecta duplicados.</div>
-      </div>
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">👥 Modo Grupo</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">En el menú superior tocá tu avatar → <b style="color:var(--text)">Cambiar de grupo</b>. Podés crear un grupo nuevo o unirte con un código. Los gastos del grupo se dividen entre los participantes y la app calcula quién le debe a quién.</div>
-      </div>
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">⚖️ Liquidar deudas del grupo</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">En el panel de deudas del grupo, tocá <b style="color:var(--text)">Saldar</b> junto a cada deuda para marcarla como pagada individualmente, o <b style="color:var(--text)">Saldar todo</b> para resetear todo el balance del grupo desde hoy.</div>
-      </div>
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">🤖 Asesor IA</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">Accedé desde el ícono IA en la barra inferior. Podés preguntarle cómo vas con el ahorro, en qué categoría gastás más o pedir consejos personalizados. Tiene acceso a tus datos reales del mes.</div>
-      </div>
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">🔒 Olvidé mi acceso</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">Primero configurá tu <b style="color:var(--text)">email de recuperación</b> desde tu perfil (antes de necesitarlo). Si olvidás el PIN, tocá <b style="color:var(--text)">¿Olvidaste tu acceso?</b> en la pantalla de bloqueo e ingresá ese email para restablecer el acceso.</div>
-      </div>
-
-      <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px">❓ Preguntas frecuentes</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.6">
-          <b style="color:var(--text)">¿Mis datos son privados?</b><br>Sí. Tus datos se guardan en una base de datos segura y nunca se comparten con terceros.<br><br>
-          <b style="color:var(--text)">¿Funciona sin internet?</b><br>Podés ver los datos ya cargados, pero para guardar nuevos gastos necesitás conexión.<br><br>
-          <b style="color:var(--text)">¿Puedo cambiar el idioma?</b><br>Sí, desde tu perfil (ícono superior derecho) podés elegir Español, English o Português.<br><br>
-          <b style="color:var(--text)">¿Cómo invito a alguien al grupo?</b><br>Copiá el código del grupo desde tu perfil y enviáselo. Ellos lo ingresan en "Unirse con código".
-        </div>
-      </div>
-
-    </div>
+    <div class="modal-head"><span id="ayudaTitulo">📖 Ayuda</span><button class="modal-close" onclick="document.getElementById('ayudaModal').classList.remove('open')">✕</button></div>
+    <!-- El contenido se arma en renderAyuda() desde el diccionario de idiomas,
+         para que la ayuda tambien este traducida (antes estaba fija en español). -->
+    <div id="ayudaContenido" style="display:flex;flex-direction:column;gap:16px;padding-bottom:8px"></div>
   </div>
 </div>
 
@@ -1786,7 +1736,31 @@ var NF_LANGS={
     iaAdvisorGreeting:'¡Hola! Soy tu asesor financiero. Tengo acceso a tus datos reales de la app. ¿En qué te puedo ayudar?',
     iaPlaceholder:'Preguntame sobre tus finanzas…',
     iaChip1:'¿Estoy ahorrando bien este mes?', iaChip2:'¿En qué categoría gasto de más?',
-    iaChip3:'Dame 3 consejos para mejorar mis finanzas', iaChip4:'¿Cómo está el balance del grupo?'
+    iaChip3:'Dame 3 consejos para mejorar mis finanzas', iaChip4:'¿Cómo está el balance del grupo?',
+    // Ayuda (se renderiza dinamicamente para poder traducirla)
+    ayudaTitulo:'📖 Ayuda',
+    ayudaSecciones:[
+      {i:'💸', t:'Cargar un gasto', d:'Tocá <b>+ Agregar</b> en la pestaña Gastos. Completá descripción, monto, categoría y medio de pago. Si pagaste con tarjeta en cuotas, ingresá el <b>monto total</b> y la app lo divide automáticamente.'},
+      {i:'💰', t:'Cargar un ingreso', d:'Los ingresos tienen su propia pestaña, al lado de Gastos. Tocá <b>+ Agregar</b> y cargá sueldo, freelance o lo que entre. Podés marcarlo como fijo o variable.'},
+      {i:'💱', t:'Varias monedas', d:'Al cargar un gasto o ingreso podés elegir la moneda (dólares, euros y más). La app convierte todo a tu moneda principal para los totales, y además te muestra el <b>saldo de cada moneda por separado</b> abajo del saldo general y en el Informe.'},
+      {i:'🔁', t:'Tipo de cambio propio', d:'Cuando elegís una moneda distinta a la tuya aparece el campo <b>Tipo de cambio</b>. Si lo dejás vacío, la app usa la cotización del día. Si comprás a otro valor, escribí <b>el tuyo</b> y ese gasto queda guardado con ese cambio para siempre, aunque después la cotización se mueva.'},
+      {i:'📅', t:'Cuotas de los próximos meses', d:'En la pestaña <b>Flujo</b> vas a ver las cuotas que te van a caer en los meses siguientes, con el detalle de cada una y el total comprometido. Sirve para proyectar cuánto ya tenés gastado a futuro.'},
+      {i:'🎙️', t:'Cargar gasto por voz', d:'Deslizá el botón <b>+</b> de la barra inferior <b>hacia arriba</b> y dictá el gasto. Podés decir monto, descripción, categoría, medio de pago, cuotas y quién pagó. Ejemplo: <b>"gasté 500 pesos en el super con débito"</b>. Si terminás diciendo <b>"confirmar"</b>, se guarda solo.'},
+      {i:'📄', t:'Subir comprobante', d:'Usá el botón de cámara para subir una foto o PDF de un ticket. La IA lee el monto, la descripción y la fecha. Si el monto detectado no coincide entre los dos métodos de lectura, la app te avisa para que lo revises. Siempre confirmá antes de guardar.'},
+      {i:'💳', t:'Importar resumen de tarjeta', d:'Subí el PDF del resumen (Visa, Mastercard, Amex). La app detecta todos los consumos y los carga con fecha, monto y cuotas. Si detecta duplicados, no los repite.'},
+      {i:'👥', t:'Modo Grupo', d:'Tocá tu avatar arriba → <b>Cambiar de grupo</b>. Podés crear uno nuevo o unirte con un código. Los gastos se dividen entre los participantes y la app calcula quién le debe a quién.'},
+      {i:'⚖️', t:'Liquidar deudas del grupo', d:'En el panel de deudas tocá <b>Saldar</b> en cada deuda para marcarla como pagada, o <b>Saldar todo</b> para resetear el balance del grupo desde hoy.'},
+      {i:'🤖', t:'Asesor IA', d:'Entrá desde el ícono <b>IA</b> de la barra inferior. Preguntale cómo venís con el ahorro, en qué categoría gastás de más o pedile consejos. Trabaja con tus datos reales del mes.'},
+      {i:'🔒', t:'Olvidé mi acceso', d:'Configurá tu <b>email de recuperación</b> desde el perfil <b>antes</b> de necesitarlo. Si olvidás el PIN, tocá <b>¿Olvidaste tu acceso?</b> en la pantalla de bloqueo e ingresá ese email.'}
+    ],
+    ayudaFaqTitulo:'❓ Preguntas frecuentes',
+    ayudaFaq:[
+      {q:'¿Mis datos son privados?', a:'Sí. Se guardan en una base de datos segura y nunca se comparten con terceros.'},
+      {q:'¿Funciona sin internet?', a:'Podés ver lo que ya tenés cargado. Para guardar movimientos nuevos necesitás conexión.'},
+      {q:'¿Puedo cambiar el idioma?', a:'Sí, desde tu perfil (ícono de arriba a la derecha) podés elegir Español, English o Português.'},
+      {q:'¿Cómo invito a alguien al grupo?', a:'Copiá el código del grupo desde tu perfil y mandáselo. Lo ingresan en "Unirse con código".'},
+      {q:'¿Qué pasa si cambio mi moneda principal?', a:'Los totales se recalculan en la moneda nueva. Cada movimiento conserva la moneda con la que lo cargaste.'}
+    ]
   },
   en:{
     name:'English', flag:'🇺🇸',
@@ -1841,7 +1815,31 @@ var NF_LANGS={
     iaAdvisorGreeting:'Hi! I\'m your financial advisor. I have access to your real app data. How can I help you?',
     iaPlaceholder:'Ask me about your finances…',
     iaChip1:'Am I saving well this month?', iaChip2:'In which category do I overspend?',
-    iaChip3:'Give me 3 tips to improve my finances', iaChip4:'How is the group balance?'
+    iaChip3:'Give me 3 tips to improve my finances', iaChip4:'How is the group balance?',
+    // Help (rendered dynamically so it can be translated)
+    ayudaTitulo:'📖 Help',
+    ayudaSecciones:[
+      {i:'💸', t:'Add an expense', d:'Tap <b>+ Add</b> in the Expenses tab. Fill in description, amount, category and payment method. If you paid by card in installments, enter the <b>total amount</b> and the app splits it automatically.'},
+      {i:'💰', t:'Add income', d:'Income has its own tab, next to Expenses. Tap <b>+ Add</b> and enter your salary, freelance work or anything coming in. You can mark it as fixed or variable.'},
+      {i:'💱', t:'Multiple currencies', d:'When adding an expense or income you can pick the currency (dollars, euros and more). The app converts everything to your main currency for the totals, and also shows the <b>balance of each currency separately</b> below the main balance and in the Report.'},
+      {i:'🔁', t:'Your own exchange rate', d:'When you pick a currency other than yours, an <b>Exchange rate</b> field appears. Leave it empty to use the current market rate. If you bought at a different rate, enter <b>yours</b> and that expense keeps it forever, even if the rate changes later.'},
+      {i:'📅', t:'Upcoming installments', d:'In the <b>Cash flow</b> tab you can see the installments due in the coming months, with the detail of each one and the total committed. Useful to project how much you have already spent ahead.'},
+      {i:'🎙️', t:'Add an expense by voice', d:'Swipe the <b>+</b> button on the bottom bar <b>upwards</b> and say the expense out loud. You can mention amount, description, category, payment method, installments and who paid. Example: <b>"spent 500 at the supermarket with debit"</b>. If you finish saying <b>"confirm"</b>, it saves right away.'},
+      {i:'📄', t:'Upload a receipt', d:'Use the camera button to upload a photo or PDF of a receipt. The AI reads the amount, description and date. If the detected amount does not match between both reading methods, the app warns you so you can check it. Always confirm before saving.'},
+      {i:'💳', t:'Import a card statement', d:'Upload the PDF of your statement (Visa, Mastercard, Amex). The app detects every purchase and adds it with date, amount and installments. Duplicates are not added twice.'},
+      {i:'👥', t:'Group mode', d:'Tap your avatar at the top → <b>Switch group</b>. You can create a new one or join with a code. Group expenses are split among participants and the app works out who owes whom.'},
+      {i:'⚖️', t:'Settle group debts', d:'In the debts panel tap <b>Settle</b> on each debt to mark it as paid, or <b>Settle all</b> to reset the whole group balance from today.'},
+      {i:'🤖', t:'AI advisor', d:'Open it from the <b>AI</b> icon on the bottom bar. Ask how your savings are going, which category you overspend on, or for personalised tips. It works with your real data for the month.'},
+      {i:'🔒', t:'I forgot my access', d:'Set your <b>recovery email</b> in your profile <b>before</b> you need it. If you forget the PIN, tap <b>Forgot your access?</b> on the lock screen and enter that email.'}
+    ],
+    ayudaFaqTitulo:'❓ Frequently asked questions',
+    ayudaFaq:[
+      {q:'Is my data private?', a:'Yes. It is stored in a secure database and never shared with third parties.'},
+      {q:'Does it work offline?', a:'You can view what you already have. To save new entries you need a connection.'},
+      {q:'Can I change the language?', a:'Yes, from your profile (top right icon) you can choose Español, English or Português.'},
+      {q:'How do I invite someone to the group?', a:'Copy the group code from your profile and send it. They enter it in "Join with code".'},
+      {q:'What happens if I change my main currency?', a:'Totals are recalculated in the new currency. Each entry keeps the currency you saved it with.'}
+    ]
   },
   pt:{
     name:'Português', flag:'🇧🇷',
@@ -1896,7 +1894,31 @@ var NF_LANGS={
     iaAdvisorGreeting:'Olá! Sou seu assessor financeiro. Tenho acesso aos seus dados reais do app. Como posso ajudar?',
     iaPlaceholder:'Me pergunte sobre suas finanças…',
     iaChip1:'Estou poupando bem este mês?', iaChip2:'Em qual categoria gasto mais?',
-    iaChip3:'Me dê 3 dicas para melhorar minhas finanças', iaChip4:'Como está o saldo do grupo?'
+    iaChip3:'Me dê 3 dicas para melhorar minhas finanças', iaChip4:'Como está o saldo do grupo?',
+    // Ajuda (renderizada dinamicamente para poder ser traduzida)
+    ayudaTitulo:'📖 Ajuda',
+    ayudaSecciones:[
+      {i:'💸', t:'Adicionar uma despesa', d:'Toque em <b>+ Adicionar</b> na aba Despesas. Preencha descrição, valor, categoria e forma de pagamento. Se pagou com cartão parcelado, informe o <b>valor total</b> e o app divide automaticamente.'},
+      {i:'💰', t:'Adicionar uma receita', d:'As receitas têm sua própria aba, ao lado de Despesas. Toque em <b>+ Adicionar</b> e lance salário, freelance ou o que entrar. Você pode marcar como fixa ou variável.'},
+      {i:'💱', t:'Várias moedas', d:'Ao lançar uma despesa ou receita você pode escolher a moeda (dólares, euros e mais). O app converte tudo para a sua moeda principal nos totais e ainda mostra o <b>saldo de cada moeda separadamente</b> abaixo do saldo geral e no Relatório.'},
+      {i:'🔁', t:'Sua própria taxa de câmbio', d:'Quando você escolhe uma moeda diferente da sua, aparece o campo <b>Taxa de câmbio</b>. Deixe vazio para usar a cotação do dia. Se comprou por outro valor, informe <b>o seu</b> e essa despesa fica guardada com essa taxa para sempre, mesmo que a cotação mude depois.'},
+      {i:'📅', t:'Parcelas dos próximos meses', d:'Na aba <b>Fluxo</b> você vê as parcelas que vão cair nos próximos meses, com o detalhe de cada uma e o total comprometido. Serve para projetar quanto você já gastou lá na frente.'},
+      {i:'🎙️', t:'Lançar despesa por voz', d:'Deslize o botão <b>+</b> da barra inferior <b>para cima</b> e dite a despesa. Você pode falar valor, descrição, categoria, forma de pagamento, parcelas e quem pagou. Exemplo: <b>"gastei 500 no mercado no débito"</b>. Se terminar dizendo <b>"confirmar"</b>, ela é salva na hora.'},
+      {i:'📄', t:'Enviar comprovante', d:'Use o botão da câmera para enviar uma foto ou PDF de um comprovante. A IA lê o valor, a descrição e a data. Se o valor detectado não bater entre os dois métodos de leitura, o app avisa para você conferir. Sempre confirme antes de salvar.'},
+      {i:'💳', t:'Importar fatura do cartão', d:'Envie o PDF da fatura (Visa, Mastercard, Amex). O app detecta todas as compras e lança com data, valor e parcelas. Se detectar duplicados, não repete.'},
+      {i:'👥', t:'Modo Grupo', d:'Toque no seu avatar no topo → <b>Trocar de grupo</b>. Você pode criar um novo ou entrar com um código. As despesas são divididas entre os participantes e o app calcula quem deve a quem.'},
+      {i:'⚖️', t:'Acertar dívidas do grupo', d:'No painel de dívidas toque em <b>Quitar</b> em cada dívida para marcá-la como paga, ou <b>Quitar tudo</b> para zerar o saldo do grupo a partir de hoje.'},
+      {i:'🤖', t:'Consultor IA', d:'Acesse pelo ícone <b>IA</b> na barra inferior. Pergunte como está sua economia, em qual categoria você gasta demais ou peça dicas. Ele trabalha com seus dados reais do mês.'},
+      {i:'🔒', t:'Esqueci meu acesso', d:'Configure seu <b>e-mail de recuperação</b> no perfil <b>antes</b> de precisar. Se esquecer o PIN, toque em <b>Esqueceu seu acesso?</b> na tela de bloqueio e informe esse e-mail.'}
+    ],
+    ayudaFaqTitulo:'❓ Perguntas frequentes',
+    ayudaFaq:[
+      {q:'Meus dados são privados?', a:'Sim. Ficam em um banco de dados seguro e nunca são compartilhados com terceiros.'},
+      {q:'Funciona sem internet?', a:'Você consegue ver o que já está lançado. Para salvar novos lançamentos precisa de conexão.'},
+      {q:'Posso mudar o idioma?', a:'Sim, no seu perfil (ícone no canto superior direito) você escolhe Español, English ou Português.'},
+      {q:'Como convido alguém para o grupo?', a:'Copie o código do grupo no seu perfil e envie. A pessoa informa em "Entrar com código".'},
+      {q:'O que acontece se eu mudar minha moeda principal?', a:'Os totais são recalculados na nova moeda. Cada lançamento mantém a moeda com que foi salvo.'}
+    ]
   }
 };
 var nfLang=localStorage.getItem('nf_lang')||'es';
@@ -4481,7 +4503,44 @@ function cerrarSesion() {
   }, 300);
 }
 
+// Arma el contenido de la ayuda desde el diccionario del idioma activo, para
+// que se muestre traducida. Antes el HTML estaba fijo en español.
+function renderAyuda() {
+  var cont = document.getElementById('ayudaContenido');
+  if (!cont) return;
+  var dic = (typeof NF_LANGS !== 'undefined' && NF_LANGS[nfLang]) || (typeof NF_LANGS !== 'undefined' && NF_LANGS['es']) || {};
+  var base = (typeof NF_LANGS !== 'undefined' && NF_LANGS['es']) || {};
+  var secciones = dic.ayudaSecciones || base.ayudaSecciones || [];
+  var faq = dic.ayudaFaq || base.ayudaFaq || [];
+
+  var tit = document.getElementById('ayudaTitulo');
+  if (tit) tit.textContent = dic.ayudaTitulo || base.ayudaTitulo || '📖 Ayuda';
+
+  var card = function(inner){
+    return '<div style="background:rgba(255,255,255,.04);border-radius:14px;padding:14px">' + inner + '</div>';
+  };
+  var html = secciones.map(function(s){
+    return card(
+      '<div style="font-size:13px;font-weight:800;margin-bottom:8px">' + s.i + ' ' + s.t + '</div>' +
+      '<div style="font-size:12px;color:var(--muted);line-height:1.6">' + s.d + '</div>'
+    );
+  }).join('');
+
+  if (faq.length) {
+    html += card(
+      '<div style="font-size:13px;font-weight:800;margin-bottom:8px">' + (dic.ayudaFaqTitulo || base.ayudaFaqTitulo || '❓') + '</div>' +
+      '<div style="font-size:12px;color:var(--muted);line-height:1.6">' +
+      faq.map(function(f){
+        return '<b style="color:var(--text)">' + f.q + '</b><br>' + f.a;
+      }).join('<br><br>') +
+      '</div>'
+    );
+  }
+  cont.innerHTML = html;
+}
+
 function abrirAyuda() {
+  try { renderAyuda(); } catch(e) {}
   document.getElementById('ayudaModal').classList.add('open');
 }
 
