@@ -6,10 +6,9 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 // disponible, asi una baja futura no rompe la app.
 // La lista vigente esta en console.groq.com -> Models.
 const GROQ_MODELS = [
-  'llama-3.1-8b-instant',
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'openai/gpt-oss-120b',
-  'llama-3.3-70b-versatile',
+  'openai/gpt-oss-120b',   // 120B — el mas potente de produccion
+  'openai/gpt-oss-20b',    // respaldo mas rapido
+  'llama-3.1-8b-instant',  // ultimo recurso
 ];
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -30,8 +29,11 @@ async function groqChat(key: string, payload: Record<string, unknown>) {
     if (res.ok) return { ok: true, data: await res.json(), model };
     const err = await res.text();
     ultimoError = err;
-    const esModeloInvalido = /model_not_found|does not exist|decommissioned|not supported/i.test(err);
-    if (!esModeloInvalido) return { ok: false, error: err };
+    // Se pasa al siguiente modelo si no existe O si se agoto su cuota (en Groq
+    // los limites son por modelo, asi que el siguiente todavia tiene cupo).
+    const recuperable = res.status === 429 ||
+      /model_not_found|does not exist|decommissioned|not supported|rate limit|too many requests|quota|capacity|over capacity|service unavailable/i.test(err);
+    if (!recuperable) return { ok: false, error: err };
   }
   return { ok: false, error: ultimoError };
 }

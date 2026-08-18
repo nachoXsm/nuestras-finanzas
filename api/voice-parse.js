@@ -1,28 +1,40 @@
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-// Groq da de baja modelos cada tanto (paso con llama-3.3-70b-versatile, que
-// empezo a devolver "model_not_found"). Se prueban en orden y se usa el primero
-// disponible. Lista vigente: console.groq.com -> Models.
+// Extraccion estructurada (JSON) de un dictado corto: prioriza VELOCIDAD y
+// costo, que para esta tarea rinde igual que un modelo grande.
+// Solo modelos de PRODUCCION (los "preview" pueden discontinuarse sin aviso).
 const GROQ_MODELS = [
-  'llama-3.1-8b-instant',
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'openai/gpt-oss-120b',
-  'llama-3.3-70b-versatile',
+  'openai/gpt-oss-20b',    // el mas rapido de produccion (1000 t/s)
+  'openai/gpt-oss-120b',   // respaldo
+  'llama-3.1-8b-instant',  // ultimo recurso
 ];
 
-// Prueba los modelos en orden; solo pasa al siguiente si el modelo no existe.
+// Prueba los modelos en orden y usa el primero que responda.
+// Pasa al siguiente si el modelo no existe O si se agoto su cuota: en Groq los
+// limites son POR MODELO, asi que si uno se queda sin cupo el otro sigue
+// disponible y la carga por voz no se corta.
+function esErrorRecuperable(status, message) {
+  if (status === 429) return true;
+  return /model_not_found|does not exist|decommissioned|not supported|rate limit|too many requests|quota|capacity|over capacity|service unavailable/i.test(message);
+}
 async function groqChat(apiKey, payload) {
   let ultimoError = null;
   for (const model of GROQ_MODELS) {
-    const response = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify(Object.assign({}, payload, { model }))
-    });
-    const data = await response.json().catch(() => null);
+    let response, data;
+    try {
+      response = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify(Object.assign({}, payload, { model }))
+      });
+      data = await response.json().catch(() => null);
+    } catch (e) {
+      ultimoError = (e && e.message) || 'Network error';
+      continue;
+    }
     if (response.ok) return { ok: true, data: data };
     const message = (data && (data.error && data.error.message || data.message)) || 'Groq API error.';
     ultimoError = message;
-    if (!/model_not_found|does not exist|decommissioned|not supported/i.test(message)) {
+    if (!esErrorRecuperable(response.status, message)) {
       return { ok: false, error: message };
     }
   }

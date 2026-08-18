@@ -5,14 +5,14 @@
 // devuelve { reply }.
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-// Groq da de baja modelos cada tanto (paso con llama-3.3-70b-versatile, que
-// empezo a devolver "model_not_found"). Se prueban en orden y se usa el primero
-// disponible. Lista vigente: console.groq.com -> Models.
+// El asesor da consejos financieros, asi que prioriza CALIDAD: arranca por el
+// modelo de produccion mas grande (120B) y baja si no esta disponible.
+// Solo modelos de PRODUCCION: Groq avisa que los "preview" pueden discontinuarse
+// sin aviso y no deben usarse en produccion. Lista: console.groq.com -> Models.
 const GROQ_MODELS = [
-  'llama-3.1-8b-instant',
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'openai/gpt-oss-120b',
-  'llama-3.3-70b-versatile',
+  'openai/gpt-oss-120b',   // 120B — el mas potente de produccion
+  'openai/gpt-oss-20b',    // respaldo mas rapido
+  'llama-3.1-8b-instant',  // ultimo recurso
 ];
 
 function sendJson(res, status, data) {
@@ -29,21 +29,35 @@ function getBody(req) {
   return req.body;
 }
 
-// Prueba los modelos en orden; solo pasa al siguiente si el modelo no existe.
-// Ante otros errores (rate limit, auth) devuelve el error real.
+// Prueba los modelos en orden y usa el primero que responda.
+// Pasa al siguiente si el modelo no existe O si se agoto su cuota: en Groq los
+// limites son POR MODELO, asi que cuando el grande se queda sin cupo el chico
+// todavia tiene el suyo y el usuario no se queda sin asesor.
+// Ante errores que no se arreglan cambiando de modelo (API key, config) corta.
+function esErrorRecuperable(status, message) {
+  if (status === 429) return true;
+  return /model_not_found|does not exist|decommissioned|not supported|rate limit|too many requests|quota|capacity|over capacity|service unavailable/i.test(message);
+}
 async function groqChat(apiKey, payload) {
   let ultimoError = null;
   for (const model of GROQ_MODELS) {
-    const response = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify(Object.assign({}, payload, { model }))
-    });
-    const data = await response.json().catch(() => null);
-    if (response.ok) return { ok: true, data: data };
+    let response, data;
+    try {
+      response = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify(Object.assign({}, payload, { model }))
+      });
+      data = await response.json().catch(() => null);
+    } catch (e) {
+      // Falla de red con este modelo: probamos el siguiente
+      ultimoError = (e && e.message) || 'Network error';
+      continue;
+    }
+    if (response.ok) return { ok: true, data: data, model: model };
     const message = (data && (data.error && data.error.message || data.message)) || 'Groq API error.';
     ultimoError = message;
-    if (!/model_not_found|does not exist|decommissioned|not supported/i.test(message)) {
+    if (!esErrorRecuperable(response.status, message)) {
       return { ok: false, error: message };
     }
   }

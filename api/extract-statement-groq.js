@@ -1,12 +1,11 @@
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-// Groq da de baja modelos cada tanto (paso con llama-3.3-70b-versatile, que
-// empezo a devolver "model_not_found"). Se prueban en orden y se usa el primero
-// disponible. Lista vigente: console.groq.com -> Models.
+// Resumen de tarjeta: puede tener decenas de consumos, asi que arranca por el
+// modelo grande para no perder filas, y baja si no esta disponible.
+// Solo modelos de PRODUCCION (los "preview" pueden discontinuarse sin aviso).
 const GROQ_MODELS = [
-  'llama-3.1-8b-instant',
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'openai/gpt-oss-120b',
-  'llama-3.3-70b-versatile',
+  'openai/gpt-oss-120b',   // mejor precision con muchas filas
+  'openai/gpt-oss-20b',    // respaldo
+  'llama-3.1-8b-instant',  // ultimo recurso
 ];
 const MAX_TEXT_CHARS = 28000;
 
@@ -123,9 +122,11 @@ async function callGroq(payload) {
     if (response.ok) { data = parsed; break; }
     const message = (parsed && (parsed.error && parsed.error.message || parsed.message)) || 'Groq API error.';
     ultimoError = message;
-    if (!/model_not_found|does not exist|decommissioned|not supported/i.test(message)) {
-      throw new Error(message);
-    }
+    // Se pasa al siguiente modelo si no existe O si se agoto su cuota (en Groq
+    // los limites son por modelo). Ante otros errores se corta.
+    const recuperable = response.status === 429 ||
+      /model_not_found|does not exist|decommissioned|not supported|rate limit|too many requests|quota|capacity|over capacity|service unavailable/i.test(message);
+    if (!recuperable) throw new Error(message);
   }
   if (!data) throw new Error(ultimoError || 'Groq API error.');
 

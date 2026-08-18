@@ -11553,6 +11553,28 @@ async function nfRenderProyeccionCuotas() {
 // actualiza con un simple `git push`, sin depender del CLI de Supabase.
 // La Edge Function sigue existiendo como respaldo pero ya no se usa.
 var IA_ENDPOINT = '/api/ai-advisor';
+
+// Traduce cualquier error del proveedor de IA a un mensaje entendible.
+// Nunca se muestra el error crudo al usuario (antes se veia el JSON de la API);
+// el detalle tecnico queda en consola para poder diagnosticar.
+function nfMensajeErrorIA(err) {
+  var t = String((err && err.message) || err || '').toLowerCase();
+  if (err) { try { console.warn('[IA]', err); } catch(e) {} }
+  if (!t) return 'No pude responder en este momento. Probá de nuevo en un ratito.';
+  if (/rate limit|too many requests|429|quota|limit reached/.test(t)) {
+    return 'El asesor está recibiendo muchas consultas ahora mismo 😅 Esperá unos minutos y volvé a preguntarme.';
+  }
+  if (/model_not_found|does not exist|decommissioned|not supported/.test(t)) {
+    return 'Estoy actualizándome para darte mejores respuestas. Probá de nuevo en un rato.';
+  }
+  if (/timeout|timed out|network|fetch failed/.test(t)) {
+    return 'Se cortó la conexión. Revisá tu internet y volvé a intentar.';
+  }
+  if (/api key|unauthorized|401|403|config/.test(t)) {
+    return 'El asesor no está disponible por un problema de configuración. Ya lo estamos viendo.';
+  }
+  return 'No pude responder en este momento. Probá de nuevo en un ratito.';
+}
 var iaMessages = [];
 var iaInitDone = false;
 
@@ -11663,7 +11685,10 @@ async function iaSend() {
       body: JSON.stringify({ messages: iaMessages, context: iaBuildContext() }),
     });
     var data = await res.json();
-    var reply = data.reply || data.error || 'Sin respuesta';
+    // Nunca mostrar el error tecnico crudo: el usuario veia cosas como
+    // {"error":{"message":"The model ... does not exist"}}. Se traduce a un
+    // mensaje entendible y el detalle queda en consola para diagnostico.
+    var reply = data.reply || nfMensajeErrorIA(data.error);
     if (typing) typing.remove();
     iaAppendMsg('bot', reply);
     iaMessages.push({ role: 'assistant', content: reply });
