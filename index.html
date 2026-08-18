@@ -11600,7 +11600,16 @@ function iaBuildContext() {
     moneda: getDefaultCurrency ? getDefaultCurrency() : 'ARS',
     ingresos: Math.round(totalI),
     gastos: Math.round(totalG),
-    categorias: cats,
+    // Solo las 6 categorias mas grandes: es lo unico que usa el prompt del
+    // servidor, y mandar todas infla los tokens sin aportar nada.
+    categorias: (function(){
+      var top = {};
+      Object.keys(cats)
+        .sort(function(a,b){ return cats[b] - cats[a]; })
+        .slice(0, 6)
+        .forEach(function(k){ top[k] = Math.round(cats[k]); });
+      return top;
+    })(),
   };
   if (typeof esModoGrupo === 'function' && esModoGrupo()) {
     var liq = calcularLiquidacionGrupo();
@@ -11662,6 +11671,25 @@ function iaAppendMsg(role, text, extra) {
   return div;
 }
 
+// ── Limite de consultas por usuario ──────────────────────────────────────────
+// La cuota de la API es por CUENTA, no por usuario: sin tope, un solo usuario
+// haciendo consultas sin parar puede dejar sin servicio a todos los demas.
+// El limite es alto a proposito: un uso normal nunca lo alcanza.
+var NF_IA_LIMITE_DIARIO = 40;
+function nfIaUsoHoy() {
+  try {
+    var hoy = new Date().toISOString().slice(0, 10);
+    var raw = JSON.parse(localStorage.getItem('nf_ia_uso') || '{}');
+    return (raw.fecha === hoy) ? (raw.n || 0) : 0;
+  } catch(e) { return 0; }
+}
+function nfIaRegistrarUso() {
+  try {
+    var hoy = new Date().toISOString().slice(0, 10);
+    localStorage.setItem('nf_ia_uso', JSON.stringify({ fecha: hoy, n: nfIaUsoHoy() + 1 }));
+  } catch(e) {}
+}
+
 async function iaSend() {
   var input = document.getElementById('iaInput');
   var btn = document.getElementById('iaSendBtn');
@@ -11669,12 +11697,18 @@ async function iaSend() {
   var text = input.value.trim();
   if (!text) return;
 
+  if (nfIaUsoHoy() >= NF_IA_LIMITE_DIARIO) {
+    iaAppendMsg('bot', 'Llegaste al máximo de consultas por hoy 🙌 Mañana volvés a tener todas disponibles.');
+    return;
+  }
+
   input.value = '';
   iaAutoResize(input);
   if (btn) btn.disabled = true;
 
   iaAppendMsg('user', text);
   iaMessages.push({ role: 'user', content: text });
+  nfIaRegistrarUso();
 
   var typing = iaAppendMsg('bot', '…', 'typing');
 
@@ -11692,7 +11726,10 @@ async function iaSend() {
     if (typing) typing.remove();
     iaAppendMsg('bot', reply);
     iaMessages.push({ role: 'assistant', content: reply });
-    if (iaMessages.length > 20) iaMessages = iaMessages.slice(-20);
+    // El historial se reenvia COMPLETO en cada consulta, asi que su largo
+    // multiplica el costo. 8 mensajes (4 idas y vueltas) alcanzan para mantener
+    // el hilo y usan ~60% menos tokens que los 20 anteriores.
+    if (iaMessages.length > 8) iaMessages = iaMessages.slice(-8);
   } catch (e) {
     if (typing) typing.remove();
     iaAppendMsg('bot', 'Error de conexión. Intentá de nuevo.');
