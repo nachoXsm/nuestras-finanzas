@@ -232,6 +232,8 @@
     .sec-actions-row{display:flex;align-items:center;gap:8px;flex-shrink:0}
     .expense-tools{display:flex;align-items:center;gap:7px}
     .expense-tool-btn{width:40px;height:40px;border-radius:14px;border:1px solid rgba(18,199,183,.24);background:rgba(18,199,183,.08);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16);transition:transform .18s,border-color .18s,background .18s,color .18s}
+    /* Orden invertido (mas recientes primero): se resalta para que se note de un vistazo */
+    #btnExpenseSort.sort-desc{background:rgba(18,199,183,.2);border-color:rgba(18,199,183,.5)}
     .expense-tool-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.05;stroke-linecap:round;stroke-linejoin:round}
     .expense-tool-btn:hover,.expense-tool-btn.active{background:rgba(18,199,183,.18);border-color:rgba(18,199,183,.55);transform:translateY(-1px);color:#5ff7e7}
     .expense-tools-panel{display:none;align-items:center;gap:8px;margin:-4px 0 14px;flex-wrap:wrap}
@@ -1157,6 +1159,9 @@
         <div class="sec-title">💸 Gastos</div>
         <div class="sec-actions-row">
           <div class="expense-tools" aria-label="Herramientas de gastos">
+            <button type="button" class="expense-tool-btn" id="btnExpenseSort" onclick="toggleExpenseSort()" aria-label="Ordenar por fecha" title="Ordenar por fecha">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path class="sort-arrow" d="M12 19V5M6 11l6-6 6 6"></path></svg>
+            </button>
             <button type="button" class="expense-tool-btn" id="btnExpenseSearch" onclick="toggleExpenseSearch()" aria-label="Buscar gastos" title="Buscar gastos">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4.5 4.5"></path></svg>
             </button>
@@ -1737,6 +1742,7 @@ var NF_LANGS={
     iaPlaceholder:'Preguntame sobre tus finanzas…',
     iaChip1:'¿Estoy ahorrando bien este mes?', iaChip2:'¿En qué categoría gasto de más?',
     iaChip3:'Dame 3 consejos para mejorar mis finanzas', iaChip4:'¿Cómo está el balance del grupo?',
+    sortAscHint:'Más antiguos primero', sortDescHint:'Más recientes primero',
     // Ayuda (se renderiza dinamicamente para poder traducirla)
     ayudaTitulo:'📖 Ayuda',
     ayudaSecciones:[
@@ -1816,6 +1822,7 @@ var NF_LANGS={
     iaPlaceholder:'Ask me about your finances…',
     iaChip1:'Am I saving well this month?', iaChip2:'In which category do I overspend?',
     iaChip3:'Give me 3 tips to improve my finances', iaChip4:'How is the group balance?',
+    sortAscHint:'Oldest first', sortDescHint:'Newest first',
     // Help (rendered dynamically so it can be translated)
     ayudaTitulo:'📖 Help',
     ayudaSecciones:[
@@ -1895,6 +1902,7 @@ var NF_LANGS={
     iaPlaceholder:'Me pergunte sobre suas finanças…',
     iaChip1:'Estou poupando bem este mês?', iaChip2:'Em qual categoria gasto mais?',
     iaChip3:'Me dê 3 dicas para melhorar minhas finanças', iaChip4:'Como está o saldo do grupo?',
+    sortAscHint:'Mais antigos primeiro', sortDescHint:'Mais recentes primeiro',
     // Ajuda (renderizada dinamicamente para poder ser traduzida)
     ayudaTitulo:'📖 Ajuda',
     ayudaSecciones:[
@@ -3752,7 +3760,7 @@ function renderAll() {
   if (gastos.length===0) { gEl.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">${L('emptyGastos')}</div></div>`; }
   else if (visibleGastos.length===0) { gEl.innerHTML = expenseFilterEmptyHtml(); }
   else {
-    const sorted = [...visibleGastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
+    const sorted = nfSortByDay(visibleGastos);
     gEl.innerHTML = sorted.map(g=>{
       const tarjeta = getExpenseCardId(g)?tarjetas.find(t=>t.id===getExpenseCardId(g)):null;
       const isCuota = g.cuotas>1;
@@ -4015,7 +4023,7 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb,ws2,'Ingresos');
 
   const ws3=XLSX.utils.aoa_to_sheet([['Descripción','Monto','Categoría','Tipo','Medio','Quién','Día','Cuotas'],
-    ...[...gastos].sort((a,b)=>(a.dia||99)-(b.dia||99)).map(g=>{
+    ...nfSortByDay(gastos).map(g=>{
       const t=getExpenseCardId(g)?tarjetas.find(t=>t.id===getExpenseCardId(g))?.nombre||'Tarjeta':'—';
       return [g.descripcion,parseFloat(g.monto),g.cat,g.tipo,isCardPayment(g)?t:'Efectivo/Déb.',g.quien,g.dia||'',g.cuotas>1?`${g.cuota_actual}/${g.cuotas}`:''];
     }),[],['TOTAL',totalGas]]);
@@ -4642,6 +4650,40 @@ var nfExpenseFilterOpen = false;
 var nfExpenseSearchQuery = '';
 var nfExpenseCategoryFilter = 'all';
 var nfExpenseTypeFilter = 'all';
+// Orden de la lista de gastos por fecha. false = del mas viejo al mas reciente
+// (como venia). Se guarda para que la eleccion persista entre sesiones.
+var nfExpenseSortDesc = (function(){
+  try { return localStorage.getItem('nf_expense_sort') === 'desc'; } catch(e) { return false; }
+})();
+// Ordena una lista de gastos respetando la preferencia del usuario.
+function nfSortByDay(lista) {
+  var arr = (lista || []).slice();
+  arr.sort(function(a, b){
+    var da = Number(a && a.dia) || 99, db = Number(b && b.dia) || 99;
+    return nfExpenseSortDesc ? (db - da) : (da - db);
+  });
+  return arr;
+}
+function toggleExpenseSort() {
+  nfExpenseSortDesc = !nfExpenseSortDesc;
+  try { localStorage.setItem('nf_expense_sort', nfExpenseSortDesc ? 'desc' : 'asc'); } catch(e) {}
+  nfUpdateSortButton();
+  try { renderAll(); } catch(e) {}
+}
+// Refleja el estado en el boton: la flecha y el texto de ayuda cambian segun
+// el orden activo, para que se entienda que hace sin tener que probarlo.
+function nfUpdateSortButton() {
+  var btn = document.getElementById('btnExpenseSort');
+  if (!btn) return;
+  var desc = nfExpenseSortDesc;
+  var titulo = desc ? (L('sortDescHint') || 'Más recientes primero')
+                    : (L('sortAscHint')  || 'Más antiguos primero');
+  btn.setAttribute('title', titulo);
+  btn.setAttribute('aria-label', titulo);
+  btn.classList.toggle('sort-desc', desc);
+  var path = btn.querySelector('path.sort-arrow');
+  if (path) path.setAttribute('d', desc ? 'M12 5v14M6 13l6 6 6-6' : 'M12 19V5M6 11l6-6 6 6');
+}
 var nfExpenseDateFrom = '';
 var nfExpenseDateTo = '';
 
@@ -4703,6 +4745,8 @@ function expenseCategoryOptionsHtml(selected) {
 }
 
 function refreshExpenseToolsUI() {
+  // El boton de orden se actualiza siempre, aunque el panel no exista todavia
+  try { nfUpdateSortButton(); } catch(e) {}
   const panel = document.getElementById('expenseToolsPanel');
   const searchBtn = document.getElementById('btnExpenseSearch');
   const filterBtn = document.getElementById('btnExpenseFilter');
@@ -4912,7 +4956,7 @@ renderAll = function() {
   } else if (!visibleGastos.length) {
     gEl.innerHTML = expenseFilterEmptyHtml();
   } else {
-    const sorted = [...visibleGastos].sort((a,b)=>(a.dia||99)-(b.dia||99));
+    const sorted = nfSortByDay(visibleGastos);
     const moAbrev = MONTHS_SHORT[(state.mes||1)-1]||'';
     gEl.innerHTML = '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:18px;overflow:hidden">' + sorted.map(g=>{
       const t = getExpenseCardId(g)?tarjetas.find(tc=>tc.id===getExpenseCardId(g)):null;
