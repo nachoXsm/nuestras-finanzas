@@ -23,6 +23,14 @@ const DEFAULT_MODELS = [
 // plataforma devuelva un 413 en HTML que el cliente no sabe interpretar.
 const MAX_BASE64_CHARS = 4 * 1024 * 1024;
 
+// La funcion tiene maxDuration 60 s en vercel.json. Una lectura ronda los 30 s,
+// asi que con solo DOS modelos de la cadena se pasa del limite y Vercel la mata:
+// el cliente recibe un FUNCTION_INVOCATION_TIMEOUT en HTML, sin ningun mensaje
+// util. Por eso la cadena lleva su propio presupuesto y corta antes, para poder
+// devolver un error entendible.
+const LIMITE_TOTAL_MS = 48000;   // margen para responder antes de los 60 s
+const LIMITE_MODELO_MS = 40000;  // ningun modelo puede quedarse con todo el tiempo
+
 const config = {
   api: {
     bodyParser: {
@@ -56,6 +64,9 @@ function mensajeParaUsuario(message) {
   const raw = String(message || '');
   if (/quota|rate limit|too many requests|resource exhausted/i.test(raw)) {
     return 'Se alcanzó el límite de lecturas por ahora. Cargá el gasto a mano o por voz, y volvé a probar en un rato.';
+  }
+  if (/tardó|tardo|timeout|abort/i.test(raw)) {
+    return 'La lectura tardó demasiado. Probá de nuevo con mejor señal, o cargá el gasto a mano o por voz.';
   }
   if (/api.?key|permission|forbidden|unregistered|unauthenticated/i.test(raw)) {
     return 'La lectura por foto no está disponible en este momento. Cargá el gasto a mano o por voz — funciona igual.';
@@ -121,7 +132,7 @@ function limpiarTexto(text) {
 // Este payload es exactamente el que se verifico funcionando en produccion.
 // Si en el futuro se quiere volver a intentar, hay que probarlo primero con curl
 // contra el modelo puntual, no directamente en el flujo de la app.
-async function llamarGemini(apiKey, model, content, mimeType) {
+async function llamarGemini(apiKey, model, content, mimeType, topeMs) {
   const generationConfig = {
     temperature: 0,
     // Un ticket transcripto ronda los 1.500 caracteres (~400 tokens). 4096 deja
@@ -130,7 +141,14 @@ async function llamarGemini(apiKey, model, content, mimeType) {
   };
 
   const desde = Date.now();
-  const response = await fetch(`${GEMINI_URL}/models/${encodeURIComponent(model)}:generateContent`, {
+  // Corta la llamada a Gemini antes de que Vercel mate la funcion entera, asi la
+  // respuesta al usuario sale de nuestro codigo y no del gateway.
+  const ctrl = new AbortController();
+  const timer = setTimeout(function() { ctrl.abort(); }, Math.max(5000, topeMs || LIMITE_MODELO_MS));
+  let response;
+  try {
+    response = await fetch(`${GEMINI_URL}/models/${encodeURIComponent(model)}:generateContent`, {
+    signal: ctrl.signal,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -148,7 +166,15 @@ async function llamarGemini(apiKey, model, content, mimeType) {
       }],
       generationConfig: generationConfig
     })
-  });
+    });
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      return { ok: false, status: 504, message: `${model} tardó más de ${Math.round((topeMs || LIMITE_MODELO_MS) / 1000)} s`, avanzar: true };
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const data = await response.json().catch(function() { return null; });
 
@@ -179,13 +205,21 @@ async function ocrConGemini(content, mimeType) {
   }
 
   const models = getModels();
+  const arranque = Date.now();
   let ultimoError = 'Gemini API error.';
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
+    const restante = LIMITE_TOTAL_MS - (Date.now() - arranque);
+    // Sin tiempo para otro intento completo: mejor cortar con un error propio que
+    // dejar que Vercel mate la funcion y el usuario vea un HTML de gateway.
+    if (restante < 6000) {
+      console.error('[ocr-gemini] sin tiempo para probar', model, '- quedaban', restante, 'ms');
+      break;
+    }
     let res;
     try {
-      res = await llamarGemini(apiKey, model, content, mimeType);
+      res = await llamarGemini(apiKey, model, content, mimeType, Math.min(LIMITE_MODELO_MS, restante));
     } catch (e) {
       // Error de red: probamos con el siguiente modelo.
       ultimoError = (e && e.message) || 'Network error';

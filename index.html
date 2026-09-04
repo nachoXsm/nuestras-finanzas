@@ -5891,6 +5891,13 @@ async function readJsonResponse(res, label) {
     return text ? JSON.parse(text) : null;
   } catch (_) {
     const preview = text.replace(/\s+/g, ' ').slice(0, 140);
+    // Cuando la plataforma corta la función por tiempo, la respuesta es una página
+    // de error del gateway, no JSON. Ese texto crudo (con IDs internos) llegaba tal
+    // cual a la pantalla del usuario; el detalle queda en la consola.
+    if (/FUNCTION_INVOCATION_TIMEOUT|504|gateway|timed? ?out/i.test(preview)) {
+      console.error(label + ' cortado por tiempo:', preview);
+      throw new Error('La lectura tardó demasiado. Probá de nuevo con mejor señal, o cargá el gasto a mano o por voz.');
+    }
     throw new Error(label + ' no devolvió JSON. Revisá que el backend esté levantado y que la ruta exista. Respuesta: ' + preview);
   }
 }
