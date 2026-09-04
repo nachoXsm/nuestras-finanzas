@@ -124,9 +124,12 @@ function limpiarTexto(text) {
 async function llamarGemini(apiKey, model, content, mimeType) {
   const generationConfig = {
     temperature: 0,
-    maxOutputTokens: 8192
+    // Un ticket transcripto ronda los 1.500 caracteres (~400 tokens). 4096 deja
+    // margen de sobra y evita que el modelo reserve presupuesto que no va a usar.
+    maxOutputTokens: 4096
   };
 
+  const desde = Date.now();
   const response = await fetch(`${GEMINI_URL}/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: {
@@ -165,7 +168,7 @@ async function llamarGemini(apiKey, model, content, mimeType) {
     return { ok: false, status: 200, message: `Respuesta vacía (${razon})`, avanzar: true };
   }
 
-  return { ok: true, text: text, model: model };
+  return { ok: true, text: text, model: model, ms: Date.now() - desde };
 }
 
 async function ocrConGemini(content, mimeType) {
@@ -191,7 +194,9 @@ async function ocrConGemini(content, mimeType) {
     }
 
     if (res.ok) {
-      console.log('[ocr-gemini] leido con', res.model, '-', res.text.length, 'caracteres');
+      // El tiempo va al log para poder distinguir si la demora esta en el modelo
+      // o en la subida de la foto desde el celular (que no se ve desde aca).
+      console.log('[ocr-gemini] leido con', res.model, '-', res.text.length, 'caracteres en', res.ms, 'ms');
       return res.text;
     }
 

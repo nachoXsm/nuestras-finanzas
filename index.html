@@ -6014,13 +6014,18 @@ function getGoogleVisionTextFromFileResponse(data) {
   return responses.map(getGoogleVisionTextFromImageResponse).filter(Boolean).join('\n');
 }
 
-function compressImageForVision(file) {
+// maxPx/calidad son opcionales: sin ellos quedan los valores de siempre, asi que
+// los llamadores existentes no cambian de comportamiento. La cadena de OCR manda
+// una version mas chica, porque el tamano de la foto es lo que mas pesa en el
+// tiempo total: son menos bytes subiendo desde el celular Y menos trabajo para el
+// modelo, que factura la imagen por mosaicos.
+function compressImageForVision(file, maxPx, calidad) {
   return new Promise(function(resolve, reject) {
     const reader = new FileReader();
     reader.onload = function(e) {
       const img = new Image();
       img.onload = function() {
-        const MAX_PX = 1600;
+        const MAX_PX = maxPx || 1600;
         let w = img.width, h = img.height;
         if (w > MAX_PX || h > MAX_PX) {
           if (w >= h) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
@@ -6029,7 +6034,7 @@ function compressImageForVision(file) {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const dataUrl = canvas.toDataURL('image/jpeg', calidad || 0.85);
         resolve(dataUrl.split(',')[1]);
       };
       img.onerror = reject;
@@ -6065,10 +6070,11 @@ function nfOcrGeminiHabilitado() {
 // Lee una foto con Gemini y devuelve TEXTO PLANO, igual que Vision: de ahi para
 // abajo el flujo (parseTicketText, el chequeo doble del monto y los parsers de
 // resumen) es exactamente el mismo de siempre.
-// Tope de espera por motor. Una lectura normal tarda pocos segundos; si se pasa
-// de esto, conviene cortar y probar el siguiente motor antes que dejar al usuario
-// mirando una barra quieta.
-const NF_OCR_TIMEOUT_MS = 35000;
+// Tope de espera por motor. Esta por encima del maxDuration de 60 s que tienen
+// las funciones en vercel.json, a proposito: asi el que corta es el servidor —que
+// devuelve un error entendible— y no el cliente a mitad de una lectura que iba
+// bien. Se llego a 35 s y cortaba lecturas validas.
+const NF_OCR_TIMEOUT_MS = 70000;
 
 // Mientras se espera la respuesta del servidor no hay ningun progreso real que
 // informar, y la barra quieta se lee como "se colgo". Avanzamos de a poco hacia
@@ -6116,7 +6122,9 @@ function nfMensajeOCRUtil(errores) {
 // UNA sola vez y el base64 se reutiliza. Cada eslabon tiene su try/catch propio:
 // un motor caido no corta la cadena, y devolver texto vacio cuenta como fallo.
 async function extractImageTextWithFallback(file, onProgress) {
-  const content = await compressImageForVision(file);
+  // 1200 px alcanza de sobra para un ticket (el texto sigue siendo legible) y
+  // reduce bastante el tiempo total respecto de los 1600 px originales.
+  const content = await compressImageForVision(file, 1200, 0.8);
   const errores = [];
 
   if (nfOcrGeminiHabilitado()) {
