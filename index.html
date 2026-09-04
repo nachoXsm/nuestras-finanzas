@@ -8892,6 +8892,13 @@ async function processOCR(input) {
       if (aiM > 0 && rxM > 0 && Math.max(aiM, rxM) / Math.min(aiM, rxM) > 1.5) {
         montoFinal = regexParsed.monto; // difieren mucho -> confiar en el regex
         montoDudoso = true;
+      } else if (aiM > 0 && rxM > aiM && regexParsed.montoFuente === 'total') {
+        // La IA suele quedarse con el importe de un item o con el subtotal sin
+        // impuestos, en vez del total final de la factura. Como la diferencia por
+        // IVA es del 21%, quedaba MUY por debajo del umbral de 1.5 y ganaba la IA
+        // sin siquiera avisar. Cuando el regex encontro una linea "TOTAL" al pie
+        // —evidencia fuerte— y ademas es mayor, le creemos al regex.
+        montoFinal = regexParsed.monto;
       }
     }
 
@@ -8935,6 +8942,12 @@ async function parseTicketWithAI(text) {
       '{"descripcion":"nombre del comercio o servicio","monto":12345.67,"categoria":"Alimentación","fecha":"2024-03-15"}\n\n' +
       'Categorías posibles: ' + cats.join(', ') + '\n\n' +
       'Reglas:\n' +
+      '- monto: es el TOTAL FINAL que efectivamente se pagó, con impuestos incluidos.\n' +
+      '  Suele ser el último importe del comprobante, abajo de todo, junto a la palabra\n' +
+      '  TOTAL, TOTAL A PAGAR, IMPORTE TOTAL o TOTAL A ABONAR.\n' +
+      '  NUNCA uses el precio de un artículo, ni el subtotal, ni el neto gravado, ni el\n' +
+      '  importe de IVA, ni "TOTAL NETO" o "TOTAL SIN IVA". Si hay varios totales,\n' +
+      '  quedate con el MAYOR, que es el que incluye los impuestos.\n' +
       '- monto: número decimal con punto (ej: 46044.77), sin símbolo $ ni puntos de miles\n' +
       '- fecha: formato YYYY-MM-DD si existe en el texto, sino null\n' +
       '- descripcion: nombre del negocio o servicio, máximo 40 caracteres\n' +
@@ -9050,9 +9063,14 @@ function parseTicketText(text) {
     .map(m => parseOCRMoney(m[1]))
     .filter(n => n > 0);
 
+  // montoFuente registra QUE TAN confiable es el monto que encontro el regex, para
+  // que el chequeo doble contra la IA sepa a cual creerle. Una linea "TOTAL" al pie
+  // del comprobante es evidencia fuerte; el ultimo recurso (el numero mas grande)
+  // no lo es.
   if (allTotals.length) {
     // Take the last match: final total is at the bottom of the receipt
     result.monto = allTotals[allTotals.length - 1];
+    result.montoFuente = 'total';
   }
 
   if (!result.monto) {
@@ -9064,7 +9082,7 @@ function parseTicketText(text) {
     ];
     for (const pattern of fallbackPatterns) {
       const m = text.match(pattern);
-      if (m) { result.monto = parseOCRMoney(m[1]) || ''; break; }
+      if (m) { result.monto = parseOCRMoney(m[1]) || ''; result.montoFuente = 'etiqueta'; break; }
     }
   }
 
