@@ -115,16 +115,17 @@ function limpiarTexto(text) {
   return out;
 }
 
-async function llamarGemini(apiKey, model, content, mimeType, sinThinking) {
+// NO agregar thinkingConfig aca. Se intento para ganar velocidad (los modelos 3.x
+// razonan por defecto) y gemini-3.5-flash-lite lo rechazo con
+// "400 Request contains an invalid argument", rompiendo la lectura entera.
+// Este payload es exactamente el que se verifico funcionando en produccion.
+// Si en el futuro se quiere volver a intentar, hay que probarlo primero con curl
+// contra el modelo puntual, no directamente en el flujo de la app.
+async function llamarGemini(apiKey, model, content, mimeType) {
   const generationConfig = {
     temperature: 0,
     maxOutputTokens: 8192
   };
-  // Los modelos 3.x razonan antes de responder. Para transcribir un ticket eso no
-  // aporta nada y agrega varios segundos de espera, asi que lo apagamos. El campo
-  // no lo aceptan todos los modelos: si devuelve 400 se reintenta sin el (ver mas
-  // abajo), en vez de dar el modelo por perdido.
-  if (!sinThinking) generationConfig.thinkingConfig = { thinkingBudget: 0 };
 
   const response = await fetch(`${GEMINI_URL}/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
@@ -181,16 +182,7 @@ async function ocrConGemini(content, mimeType) {
     const model = models[i];
     let res;
     try {
-      res = await llamarGemini(apiKey, model, content, mimeType, false);
-      // thinkingConfig es una optimizacion de velocidad, no un requisito: cada
-      // familia de modelos lo nombra distinto y algunos directamente lo rechazan.
-      // Ante CUALQUIER fallo se reintenta el mismo modelo sin ese campo, en vez de
-      // intentar adivinar por el texto del error cuando el problema fue el payload.
-      if (!res.ok) {
-        console.warn('[ocr-gemini]', model, 'fallo con thinkingConfig, se reintenta sin el:', res.message);
-        const reintento = await llamarGemini(apiKey, model, content, mimeType, true);
-        if (reintento.ok) res = reintento;
-      }
+      res = await llamarGemini(apiKey, model, content, mimeType);
     } catch (e) {
       // Error de red: probamos con el siguiente modelo.
       ultimoError = (e && e.message) || 'Network error';
