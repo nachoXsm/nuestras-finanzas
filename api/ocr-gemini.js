@@ -159,7 +159,9 @@ async function llamarGemini(apiKey, model, content, mimeType, sinThinking) {
     // de tokens (finishReason MAX_TOKENS) o cuando el prompt fue bloqueado.
     const razon = (data && data.candidates && data.candidates[0] && data.candidates[0].finishReason) ||
       (data && data.promptFeedback && data.promptFeedback.blockReason) || 'sin texto';
-    return { ok: false, status: 200, message: `Respuesta vacía (${razon})` };
+    // avanzar: que otro modelo lo intente. Una respuesta vacia suele ser un
+    // problema de ESE modelo con ESA imagen, no de la imagen en si.
+    return { ok: false, status: 200, message: `Respuesta vacía (${razon})`, avanzar: true };
   }
 
   return { ok: true, text: text, model: model };
@@ -180,11 +182,14 @@ async function ocrConGemini(content, mimeType) {
     let res;
     try {
       res = await llamarGemini(apiKey, model, content, mimeType, false);
-      // Si el modelo no conoce thinkingConfig, se reintenta igual pero sin ese
-      // campo: es un problema del payload, no del modelo.
-      if (!res.ok && res.status === 400 && /thinking|unknown name|invalid json payload/i.test(res.message)) {
-        console.warn('[ocr-gemini]', model, 'no acepta thinkingConfig, se reintenta sin el');
-        res = await llamarGemini(apiKey, model, content, mimeType, true);
+      // thinkingConfig es una optimizacion de velocidad, no un requisito: cada
+      // familia de modelos lo nombra distinto y algunos directamente lo rechazan.
+      // Ante CUALQUIER fallo se reintenta el mismo modelo sin ese campo, en vez de
+      // intentar adivinar por el texto del error cuando el problema fue el payload.
+      if (!res.ok) {
+        console.warn('[ocr-gemini]', model, 'fallo con thinkingConfig, se reintenta sin el:', res.message);
+        const reintento = await llamarGemini(apiKey, model, content, mimeType, true);
+        if (reintento.ok) res = reintento;
       }
     } catch (e) {
       // Error de red: probamos con el siguiente modelo.
@@ -201,7 +206,7 @@ async function ocrConGemini(content, mimeType) {
     ultimoError = res.message;
     console.error('[ocr-gemini]', model, 'devolvio', res.status, res.message);
 
-    if (!esErrorDeModelo(res.status, res.message)) break;
+    if (!res.avanzar && !esErrorDeModelo(res.status, res.message)) break;
   }
 
   throw new Error(mensajeParaUsuario(ultimoError));
