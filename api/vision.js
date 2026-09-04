@@ -18,9 +18,27 @@ function getBody(req) {
   return req.body;
 }
 
+// Google devuelve errores tecnicos en ingles, con URLs internas y el numero de
+// proyecto. Eso llegaba tal cual a la pantalla del usuario y se leia como "la app
+// esta rota". Traducimos los casos conocidos a un mensaje que explique que hacer;
+// el detalle real queda en los logs del servidor para poder diagnosticar.
+function mensajeVisionParaUsuario(message) {
+  const raw = String(message || '');
+  if (/billing|facturaci/i.test(raw)) {
+    return 'La lectura por foto está temporalmente en mantenimiento. Cargá el gasto a mano o por voz — funciona igual.';
+  }
+  if (/api key|api_key|invalid key|permission|forbidden|not authorized|disabled/i.test(raw)) {
+    return 'La lectura por foto no está disponible en este momento. Cargá el gasto a mano o por voz — funciona igual.';
+  }
+  if (/quota|rate limit|too many requests|resource exhausted/i.test(raw)) {
+    return 'Se alcanzó el límite de lecturas por hoy. Cargá el gasto a mano o por voz, y volvé a probar mañana.';
+  }
+  return 'No pudimos leer la imagen en este momento. Cargá el gasto a mano o por voz — funciona igual.';
+}
+
 async function callVision(path, body) {
   const apiKey = process.env.GOOGLE_VISION_API_KEY || '';
-  if (!apiKey) throw new Error('Falta configurar GOOGLE_VISION_API_KEY en Vercel.');
+  if (!apiKey) throw new Error(mensajeVisionParaUsuario('api key'));
 
   const response = await fetch(`https://vision.googleapis.com/v1/${path}?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
@@ -30,8 +48,9 @@ async function callVision(path, body) {
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const message = data && (data.error && data.error.message || data.message);
-    throw new Error(message || 'Google Vision API error.');
+    const message = (data && (data.error && data.error.message || data.message)) || 'Google Vision API error.';
+    console.error('[vision] Google devolvio error:', response.status, message);
+    throw new Error(mensajeVisionParaUsuario(message));
   }
   return data;
 }
