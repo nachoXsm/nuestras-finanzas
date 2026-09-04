@@ -1459,6 +1459,14 @@
       </div>
       <div class="perfil-row-right">›</div>
     </div>
+    <div class="perfil-row" onclick="perfilCambiarNombreGrupo()">
+      <div class="perfil-row-icon" style="background:rgba(139,92,246,.12)">✏️</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title" id="perfilNombreGrupoTitle">Cambiar nombre</div>
+        <div class="perfil-row-sub" id="perfilNombreGrupoSub">—</div>
+      </div>
+      <div class="perfil-row-right">›</div>
+    </div>
     <div class="perfil-row" onclick="copyGroupCode()">
       <div class="perfil-row-icon" style="background:rgba(18,199,183,.12)">🔑</div>
       <div class="perfil-row-info">
@@ -2890,7 +2898,7 @@ const MASTER_CODES = [
   'U6GYTW', // Facu & Vicky (tester)
   'ZF696K', // Sonia & Adrian (tester)
   '5WXMPB', // Silvia (tester)
-  'CQMVPV', // Fabiana (tester)
+  'CQMVPV', // Fabiana & Juan (tester)
 ];
 // Recovery emails as secondary check (case-insensitive).
 // OJO: esto solo matchea si la persona configuro ese email como "email de
@@ -4293,6 +4301,7 @@ function openPerfil() {
     const initials = ps.map(n => n[0]||'').join('').toUpperCase().slice(0,2) || 'NF';
     document.getElementById('perfilName').textContent = grupo.nombre || ps.join(' & ');
     document.getElementById('perfilGroupCode').textContent = 'Código: ' + (grupo.codigo||'—');
+    nfRefrescarNombreGrupo(grupo);
     // Avatar
     const savedAvatar = localStorage.getItem('nf_avatar');
     if (savedAvatar) {
@@ -4581,6 +4590,66 @@ function configurarEmailRecuperacion() {
   var sub = document.getElementById('perfilEmailRecSub');
   if (sub) sub.textContent = ingresado;
   toast('✅ Email de recuperación guardado');
+}
+
+// ---- NOMBRE DEL HOGAR / GRUPO ----
+// El nombre vive en la fila de la tabla 'grupos', asi que renombrar lo cambia
+// para TODOS los integrantes, no solo en este telefono. Los demas lo ven la
+// proxima vez que abren la app (checkPendingNotificaciones refresca el nombre).
+function nfEsGrupoDeGastos(g) {
+  return !!(g && (g.tipo === 'grupo' || (g.esGrupo && !g.esHogar)));
+}
+
+function nfNombreGrupoActual(g) {
+  if (!g) return '';
+  var ps = g.personasArray || [g.persona1, g.persona2].filter(Boolean);
+  return g.nombre || ps.join(' & ');
+}
+
+// Refresca en pantalla todos los lugares donde se muestra el nombre.
+function nfRefrescarNombreGrupo(g) {
+  var nombre = nfNombreGrupoActual(g);
+  var pn = document.getElementById('perfilName');
+  if (pn) pn.textContent = nombre;
+  var gn = document.getElementById('groupNameDisplay');
+  if (gn) gn.textContent = nombre || 'Mi grupo';
+  var sub = document.getElementById('perfilNombreGrupoSub');
+  if (sub) sub.textContent = nombre || '—';
+  var title = document.getElementById('perfilNombreGrupoTitle');
+  if (title) title.textContent = nfEsGrupoDeGastos(g) ? 'Cambiar nombre del grupo' : 'Cambiar nombre del hogar';
+}
+
+async function perfilCambiarNombreGrupo() {
+  var g = loadGroup();
+  if (!g) { toast('No hay un hogar o grupo activo'); return; }
+
+  var esGrupo = nfEsGrupoDeGastos(g);
+  var actual = nfNombreGrupoActual(g);
+  var ingresado = (window.prompt(
+    esGrupo ? 'Nuevo nombre del grupo de gastos:' : 'Nuevo nombre de tu hogar:',
+    actual
+  ) || '').trim();
+
+  if (!ingresado || ingresado === actual) return;
+  if (ingresado.length > 40) { toast('El nombre es muy largo (máximo 40 caracteres)'); return; }
+
+  var anterior = g.nombre;
+  // Se actualiza primero en pantalla para que la respuesta sea inmediata, y si
+  // el guardado falla se vuelve atras.
+  g.nombre = ingresado;
+  saveGroupLocal(g);
+  nfRefrescarNombreGrupo(g);
+
+  try {
+    await dbPatch('grupos', g.id, { nombre: ingresado });
+    toast('✅ Nombre actualizado');
+  } catch (e) {
+    g.nombre = anterior;
+    saveGroupLocal(g);
+    nfRefrescarNombreGrupo(g);
+    console.warn('[grupo] no se pudo guardar el nombre:', e);
+    toast('No se pudo guardar. Revisá tu conexión e intentá de nuevo.');
+  }
 }
 
 function updatePerfilEmailRecSub() {
@@ -10170,6 +10239,13 @@ async function checkPendingNotificaciones() {
       var lista = typeof res[0].notificaciones === 'string' ? JSON.parse(res[0].notificaciones) : res[0].notificaciones;
       g.notificaciones = lista;
       saveGroupLocal(g);
+    }
+    // Aprovechamos esta misma consulta para traer el nombre: si otro integrante
+    // renombro el hogar o el grupo, el cambio se ve aca sin pedir nada extra.
+    if (res && res[0] && res[0].nombre && res[0].nombre !== g.nombre) {
+      g.nombre = res[0].nombre;
+      saveGroupLocal(g);
+      if (typeof nfRefrescarNombreGrupo === 'function') nfRefrescarNombreGrupo(g);
     }
   } catch(e) {}
   var notifs = g.notificaciones || [];
