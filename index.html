@@ -6028,8 +6028,11 @@ function compressImageForVision(file) {
   });
 }
 
-async function callGoogleVisionImagesAnnotate(file) {
-  const content = await compressImageForVision(file);
+// contentPrecomputado permite reutilizar la imagen ya comprimida cuando esta
+// funcion se llama dentro de la cadena de motores, para no repetir el trabajo
+// pesado de decodificar y redimensionar la foto en el celular.
+async function callGoogleVisionImagesAnnotate(file, contentPrecomputado) {
+  const content = contentPrecomputado || await compressImageForVision(file);
   const result = await postJsonWithFallback('/api/vision', {
     kind: 'image',
     content: content
@@ -6038,6 +6041,76 @@ async function callGoogleVisionImagesAnnotate(file) {
   lastOCRVisionData = data;
   window.lastOCRVisionData = data;
   return getGoogleVisionTextFromImageResponse(data);
+}
+
+// Interruptor de emergencia para volver a Google Vision sin hacer un deploy.
+// Desde la consola del navegador: localStorage.setItem('nf_ocr_gemini','off')
+function nfOcrGeminiHabilitado() {
+  try { return localStorage.getItem('nf_ocr_gemini') !== 'off'; }
+  catch (_) { return true; }
+}
+
+// Lee una foto con Gemini y devuelve TEXTO PLANO, igual que Vision: de ahi para
+// abajo el flujo (parseTicketText, el chequeo doble del monto y los parsers de
+// resumen) es exactamente el mismo de siempre.
+async function callGeminiOCRImage(content) {
+  const result = await postJsonWithFallback('/api/ocr-gemini', {
+    kind: 'image',
+    content: content,
+    mimeType: 'image/jpeg'
+  }, 'Lector Gemini');
+  // Gemini devuelve texto, no la geometria por palabra que produce Vision. Dejamos
+  // lastOCRVisionData en null, que es un estado YA soportado por los parsers: es
+  // el mismo que queda hoy al leer un PDF digital (ver extractPdfTextWithVisionFallback).
+  lastOCRVisionData = null;
+  window.lastOCRVisionData = null;
+  return (result.data && result.data.text) || '';
+}
+
+// Si fallan todos los motores, mostramos el primer mensaje que le sirva al
+// usuario (los backends ya los devuelven en castellano y explicando que hacer).
+function nfMensajeOCRUtil(errores) {
+  for (let i = 0; i < errores.length; i++) {
+    const m = String(errores[i] || '').replace(/^[^:]+:\s*/, '').trim();
+    if (m && !/no encontró texto/i.test(m)) return m;
+  }
+  return 'No pudimos leer la imagen. Cargá el gasto a mano o por voz — funciona igual.';
+}
+
+// Cadena de motores de OCR para FOTOS (el camino de los tickets: el usuario
+// revisa y confirma el formulario antes de guardar, asi que un error es visible
+// y reversible). Se prueba Gemini primero porque es gratuito y no necesita
+// facturacion habilitada; si falla se cae a Google Vision. La imagen se comprime
+// UNA sola vez y el base64 se reutiliza. Cada eslabon tiene su try/catch propio:
+// un motor caido no corta la cadena, y devolver texto vacio cuenta como fallo.
+async function extractImageTextWithFallback(file, onProgress) {
+  const content = await compressImageForVision(file);
+  const errores = [];
+
+  if (nfOcrGeminiHabilitado()) {
+    try {
+      if (onProgress) onProgress(35, 'Leyendo comprobante…', '🤖');
+      const text = await callGeminiOCRImage(content);
+      if (text && text.trim()) return text;
+      errores.push('Gemini: no encontró texto');
+    } catch (err) {
+      errores.push('Gemini: ' + ((err && err.message) || err));
+      console.warn('[OCR] Gemini falló, se prueba con Google Vision:', err);
+    }
+  }
+
+  try {
+    if (onProgress) onProgress(45, 'Leyendo comprobante…', '💳');
+    const text = await callGoogleVisionImagesAnnotate(file, content);
+    if (text && text.trim()) return text;
+    errores.push('Vision: no encontró texto');
+  } catch (err) {
+    errores.push('Vision: ' + ((err && err.message) || err));
+    console.warn('[OCR] Google Vision falló:', err);
+  }
+
+  console.warn('[OCR] ningún motor pudo leer la imagen:', errores.join(' | '));
+  throw new Error(nfMensajeOCRUtil(errores));
 }
 
 function getVisionFileMimeType(file) {
@@ -6214,9 +6287,14 @@ async function extractTextFromOCRFile(file, onProgress) {
   }
 
   if (isVisionOCRFile(file)) {
-    if (onProgress) onProgress(35, 'Leyendo resumen con Google Vision…', '💳');
-    if (isGoogleVisionFile(file)) return await callGoogleVisionFilesAnnotate(file);
-    return await callGoogleVisionImagesAnnotate(file);
+    // TIFF y GIF siguen yendo directo a Vision (files:annotate), que es el unico
+    // motor de la cadena que los acepta. Los PDF ya se capturaron mas arriba.
+    if (isGoogleVisionFile(file)) {
+      if (onProgress) onProgress(35, 'Leyendo resumen con Google Vision…', '💳');
+      return await callGoogleVisionFilesAnnotate(file);
+    }
+    // Fotos (jpeg/png/webp/heic): cadena Gemini -> Vision.
+    return await extractImageTextWithFallback(file, onProgress);
   }
 
   throw new Error('Formato no soportado. Subí una imagen, PDF, GIF, TIFF, Excel, CSV o texto.');
