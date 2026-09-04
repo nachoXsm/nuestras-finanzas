@@ -5895,15 +5895,23 @@ async function readJsonResponse(res, label) {
   }
 }
 
-async function postJsonWithFallback(path, payload, label) {
+// timeoutMs es opcional: sin el, el comportamiento es el de siempre (esperar
+// indefinidamente). Se usa en la cadena de OCR, donde un backend que no responde
+// dejaba la barra de progreso colgada para siempre sin poder pasar al siguiente
+// motor ni mostrar un error.
+async function postJsonWithFallback(path, payload, label, timeoutMs) {
   const endpoints = getNFApiEndpoints(path);
   let lastError = null;
   for (const endpoint of endpoints) {
+    let timer = null;
     try {
+      const ctrl = (timeoutMs && typeof AbortController !== 'undefined') ? new AbortController() : null;
+      if (ctrl) timer = setTimeout(function() { ctrl.abort(); }, timeoutMs);
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: ctrl ? ctrl.signal : undefined
       });
       const data = await readJsonResponse(res, label);
       if (!res.ok) {
@@ -5911,8 +5919,12 @@ async function postJsonWithFallback(path, payload, label) {
       }
       return { data, endpoint };
     } catch (err) {
-      lastError = err;
+      lastError = (err && err.name === 'AbortError')
+        ? new Error(label + ' tardó demasiado en responder.')
+        : err;
       console.warn(label + ' fallo en ' + endpoint + ':', err);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
   throw lastError || new Error(label + ' no respondió.');
@@ -6053,12 +6065,32 @@ function nfOcrGeminiHabilitado() {
 // Lee una foto con Gemini y devuelve TEXTO PLANO, igual que Vision: de ahi para
 // abajo el flujo (parseTicketText, el chequeo doble del monto y los parsers de
 // resumen) es exactamente el mismo de siempre.
+// Tope de espera por motor. Una lectura normal tarda pocos segundos; si se pasa
+// de esto, conviene cortar y probar el siguiente motor antes que dejar al usuario
+// mirando una barra quieta.
+const NF_OCR_TIMEOUT_MS = 35000;
+
+// Mientras se espera la respuesta del servidor no hay ningun progreso real que
+// informar, y la barra quieta se lee como "se colgo". Avanzamos de a poco hacia
+// un techo para que se note que sigue trabajando.
+function nfProgresoLento(onProgress, desde, hasta, texto, icono) {
+  if (!onProgress) return function() {};
+  let pct = desde;
+  onProgress(pct, texto, icono);
+  const id = setInterval(function() {
+    pct += Math.max(1, Math.round((hasta - pct) / 12));
+    if (pct >= hasta) pct = hasta;
+    onProgress(pct, texto, icono);
+  }, 600);
+  return function() { clearInterval(id); };
+}
+
 async function callGeminiOCRImage(content) {
   const result = await postJsonWithFallback('/api/ocr-gemini', {
     kind: 'image',
     content: content,
     mimeType: 'image/jpeg'
-  }, 'Lector Gemini');
+  }, 'Lector Gemini', NF_OCR_TIMEOUT_MS);
   // Gemini devuelve texto, no la geometria por palabra que produce Vision. Dejamos
   // lastOCRVisionData en null, que es un estado YA soportado por los parsers: es
   // el mismo que queda hoy al leer un PDF digital (ver extractPdfTextWithVisionFallback).
@@ -6088,25 +6120,29 @@ async function extractImageTextWithFallback(file, onProgress) {
   const errores = [];
 
   if (nfOcrGeminiHabilitado()) {
+    const frenar = nfProgresoLento(onProgress, 35, 70, 'Leyendo comprobante…', '🤖');
     try {
-      if (onProgress) onProgress(35, 'Leyendo comprobante…', '🤖');
       const text = await callGeminiOCRImage(content);
       if (text && text.trim()) return text;
       errores.push('Gemini: no encontró texto');
     } catch (err) {
       errores.push('Gemini: ' + ((err && err.message) || err));
       console.warn('[OCR] Gemini falló, se prueba con Google Vision:', err);
+    } finally {
+      frenar();
     }
   }
 
+  const frenarVision = nfProgresoLento(onProgress, 70, 88, 'Reintentando lectura…', '💳');
   try {
-    if (onProgress) onProgress(45, 'Leyendo comprobante…', '💳');
     const text = await callGoogleVisionImagesAnnotate(file, content);
     if (text && text.trim()) return text;
     errores.push('Vision: no encontró texto');
   } catch (err) {
     errores.push('Vision: ' + ((err && err.message) || err));
     console.warn('[OCR] Google Vision falló:', err);
+  } finally {
+    frenarVision();
   }
 
   console.warn('[OCR] ningún motor pudo leer la imagen:', errores.join(' | '));

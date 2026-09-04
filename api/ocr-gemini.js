@@ -115,7 +115,17 @@ function limpiarTexto(text) {
   return out;
 }
 
-async function llamarGemini(apiKey, model, content, mimeType) {
+async function llamarGemini(apiKey, model, content, mimeType, sinThinking) {
+  const generationConfig = {
+    temperature: 0,
+    maxOutputTokens: 8192
+  };
+  // Los modelos 3.x razonan antes de responder. Para transcribir un ticket eso no
+  // aporta nada y agrega varios segundos de espera, asi que lo apagamos. El campo
+  // no lo aceptan todos los modelos: si devuelve 400 se reintenta sin el (ver mas
+  // abajo), en vez de dar el modelo por perdido.
+  if (!sinThinking) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+
   const response = await fetch(`${GEMINI_URL}/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: {
@@ -132,10 +142,7 @@ async function llamarGemini(apiKey, model, content, mimeType) {
           { text: PROMPT_OCR }
         ]
       }],
-      generationConfig: {
-        temperature: 0,
-        maxOutputTokens: 8192
-      }
+      generationConfig: generationConfig
     })
   });
 
@@ -172,7 +179,13 @@ async function ocrConGemini(content, mimeType) {
     const model = models[i];
     let res;
     try {
-      res = await llamarGemini(apiKey, model, content, mimeType);
+      res = await llamarGemini(apiKey, model, content, mimeType, false);
+      // Si el modelo no conoce thinkingConfig, se reintenta igual pero sin ese
+      // campo: es un problema del payload, no del modelo.
+      if (!res.ok && res.status === 400 && /thinking|unknown name|invalid json payload/i.test(res.message)) {
+        console.warn('[ocr-gemini]', model, 'no acepta thinkingConfig, se reintenta sin el');
+        res = await llamarGemini(apiKey, model, content, mimeType, true);
+      }
     } catch (e) {
       // Error de red: probamos con el siguiente modelo.
       ultimoError = (e && e.message) || 'Network error';
