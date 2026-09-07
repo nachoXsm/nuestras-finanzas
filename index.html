@@ -1459,6 +1459,15 @@
       </div>
       <div class="perfil-row-right">›</div>
     </div>
+    <div class="perfil-row">
+      <div class="perfil-row-icon" style="background:rgba(30,201,120,.12)">💱</div>
+      <div class="perfil-row-info">
+        <div class="perfil-row-title">Moneda principal</div>
+        <div class="perfil-row-sub">Los totales se muestran en esta moneda</div>
+      </div>
+      <select id="perfilMonedaBase" onchange="perfilCambiarMonedaBase(this.value)"
+        style="background:rgba(255,255,255,.06);color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px 10px;font-weight:700;font-size:.85rem"></select>
+    </div>
     <div class="perfil-row" onclick="perfilCambiarNombreGrupo()">
       <div class="perfil-row-icon" style="background:rgba(139,92,246,.12)">✏️</div>
       <div class="perfil-row-info">
@@ -2142,8 +2151,28 @@ const COUNTRY_CURRENCY_BY_TZ = {
   'America/Bogota':'COP','America/Mexico_City':'MXN','America/Montevideo':'UYU',
   'America/Asuncion':'PYG','America/Lima':'PEN','America/La_Paz':'BOB','America/New_York':'USD'
 };
+// Pais (ISO 3166-1 alpha-2) -> moneda. Es mucho mas confiable que la zona
+// horaria: el mapa de zonas solo cubria 10 paises de Latinoamerica, asi que a un
+// usuario de Espana (Europe/Madrid) le quedaba ARS sin que nada se lo avisara.
+const COUNTRY_CURRENCY_BY_REGION = {
+  AR:'ARS', BR:'BRL', CL:'CLP', CO:'COP', MX:'MXN', UY:'UYU', PY:'PYG', PE:'PEN', BO:'BOB',
+  US:'USD', EC:'USD', SV:'USD', PA:'USD',
+  CA:'CAD', GB:'GBP', JP:'JPY', CH:'CHF',
+  // Eurozona
+  ES:'EUR', DE:'EUR', FR:'EUR', IT:'EUR', PT:'EUR', NL:'EUR', BE:'EUR', AT:'EUR',
+  IE:'EUR', FI:'EUR', GR:'EUR', SK:'EUR', SI:'EUR', LT:'EUR', LV:'EUR', EE:'EUR',
+  LU:'EUR', MT:'EUR', CY:'EUR', HR:'EUR'
+};
 function txCurrencyMeta(code){ return TX_CURRENCIES.find(c=>c.code===code) || TX_CURRENCIES[0]; }
 function inferDefaultCurrency(){
+  // 1) Region del navegador ("es-ES" -> ES). Refleja como configuro el telefono
+  //    el usuario, que es mejor senal que donde esta parado.
+  try {
+    var loc = (Intl.DateTimeFormat().resolvedOptions().locale || navigator.language || '');
+    var m = String(loc).toUpperCase().match(/[-_]([A-Z]{2})(?:[-_]|$)/);
+    if (m && COUNTRY_CURRENCY_BY_REGION[m[1]]) return COUNTRY_CURRENCY_BY_REGION[m[1]];
+  } catch(e) {}
+  // 2) Zona horaria, por si el idioma viene sin region (un "es" a secas).
   try { var tz = Intl.DateTimeFormat().resolvedOptions().timeZone; if (COUNTRY_CURRENCY_BY_TZ[tz]) return COUNTRY_CURRENCY_BY_TZ[tz]; } catch(e) {}
   return 'ARS';
 }
@@ -4304,6 +4333,7 @@ function openPerfil() {
     document.getElementById('perfilName').textContent = grupo.nombre || ps.join(' & ');
     document.getElementById('perfilGroupCode').textContent = 'Código: ' + (grupo.codigo||'—');
     nfRefrescarNombreGrupo(grupo);
+    perfilRefrescarMonedaBase();
     // Avatar
     const savedAvatar = localStorage.getItem('nf_avatar');
     if (savedAvatar) {
@@ -4592,6 +4622,32 @@ function configurarEmailRecuperacion() {
   var sub = document.getElementById('perfilEmailRecSub');
   if (sub) sub.textContent = ingresado;
   toast('✅ Email de recuperación guardado');
+}
+
+// ---- MONEDA PRINCIPAL ----
+// Hasta ahora la moneda base se elegia SOLO al crear el hogar y no habia forma de
+// cambiarla despues. Un tester de Espana quedo con ARS y sin salida: los totales
+// le aparecian en pesos argentinos para siempre.
+function perfilRefrescarMonedaBase() {
+  var sel = document.getElementById('perfilMonedaBase');
+  if (!sel) return;
+  var actual = getDefaultCurrency();
+  sel.innerHTML = TX_CURRENCIES.map(function(c) {
+    return '<option value="' + c.code + '"' + (c.code === actual ? ' selected' : '') + '>' +
+      c.flag + ' ' + c.code + '</option>';
+  }).join('');
+}
+
+function perfilCambiarMonedaBase(code) {
+  if (!code || code === getDefaultCurrency()) return;
+  setDefaultCurrency(code);
+  // Los movimientos guardan su propia moneda; la base solo define en que se
+  // muestran los totales, asi que alcanza con volver a dibujar.
+  try {
+    if (typeof renderAll === 'function') renderAll();
+    if (typeof renderAllGrupo === 'function' && typeof esModoGrupo === 'function' && esModoGrupo()) renderAllGrupo();
+  } catch (e) { console.warn('[moneda] no se pudo redibujar:', e); }
+  toast('✅ Moneda principal: ' + txCurrencyMeta(code).code);
 }
 
 // ---- NOMBRE DEL HOGAR / GRUPO ----
