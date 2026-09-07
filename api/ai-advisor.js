@@ -126,10 +126,19 @@ async function handler(req, res) {
 
     const systemPrompt = buildSystemPrompt(body.context);
 
+    // 0.7 es lo correcto para el asesor: hace que las respuestas suenen naturales
+    // y no repetidas. Pero este mismo endpoint se usa para EXTRAER datos de un
+    // comprobante, y ahi ese azar hace que el mismo ticket devuelva montos
+    // distintos en dos lecturas seguidas. Por eso quien extrae datos puede pedir
+    // temperature 0; si no se manda nada, el asesor queda igual que siempre.
+    const temperatura = (typeof body.temperature === 'number' && isFinite(body.temperature))
+      ? Math.min(1, Math.max(0, body.temperature))
+      : 0.7;
+
     const result = await groqChat(apiKey, {
       messages: [{ role: 'system', content: systemPrompt }].concat(messages),
       max_tokens: 800,
-      temperature: 0.7,
+      temperature: temperatura,
     });
 
     if (!result.ok) return sendJson(res, 502, { error: result.error });

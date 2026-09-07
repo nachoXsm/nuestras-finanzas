@@ -9075,7 +9075,10 @@ async function parseTicketWithAI(text) {
     var res = await fetch(IA_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
-      body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], context: {} }),
+      // temperature 0: extraer el monto de un ticket no es una charla. Con el 0.7
+      // que usa el asesor, el MISMO comprobante podia devolver montos distintos
+      // en dos lecturas seguidas.
+      body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], context: {}, temperature: 0 }),
     });
     if (!res.ok) return null;
     var data = await res.json();
