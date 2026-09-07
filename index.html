@@ -6132,18 +6132,35 @@ async function callGoogleVisionImagesAnnotate(file, contentPrecomputado) {
   const result = await postJsonWithFallback('/api/vision', {
     kind: 'image',
     content: content
-  }, 'Google Vision backend');
+  }, 'Google Vision backend', NF_OCR_TIMEOUT_VISION_MS);
   const data = result.data;
   lastOCRVisionData = data;
   window.lastOCRVisionData = data;
   return getGoogleVisionTextFromImageResponse(data);
 }
 
-// Interruptor de emergencia para volver a Google Vision sin hacer un deploy.
+// Interruptores de emergencia para apagar un motor sin hacer un deploy.
 // Desde la consola del navegador: localStorage.setItem('nf_ocr_gemini','off')
-function nfOcrGeminiHabilitado() {
-  try { return localStorage.getItem('nf_ocr_gemini') !== 'off'; }
+function nfOcrMotorHabilitado(clave) {
+  try { return localStorage.getItem(clave) !== 'off'; }
   catch (_) { return true; }
+}
+function nfOcrGeminiHabilitado() { return nfOcrMotorHabilitado('nf_ocr_gemini'); }
+function nfOcrSpaceHabilitado() { return nfOcrMotorHabilitado('nf_ocr_space'); }
+
+// OCR.space: 25.000 lecturas por mes sin tarjeta. Devuelve texto plano, igual
+// que los otros dos motores.
+async function callOcrSpaceImage(content) {
+  const result = await postJsonWithFallback('/api/ocr-space', {
+    kind: 'image',
+    content: content,
+    mimeType: 'image/jpeg'
+  }, 'Lector OCR.space', NF_OCR_TIMEOUT_VISION_MS);
+  // Como Gemini, no produce la geometria por palabra de Vision. null es un estado
+  // ya soportado por los parsers (es el mismo de los PDF digitales).
+  lastOCRVisionData = null;
+  window.lastOCRVisionData = null;
+  return (result.data && result.data.text) || '';
 }
 
 // Lee una foto con Gemini y devuelve TEXTO PLANO, igual que Vision: de ahi para
@@ -6154,6 +6171,9 @@ function nfOcrGeminiHabilitado() {
 // devuelve un error entendible— y no el cliente a mitad de una lectura que iba
 // bien. Se llego a 35 s y cortaba lecturas validas.
 const NF_OCR_TIMEOUT_MS = 70000;
+// OCR.space y Vision responden en segundos. Si no contestan en 25 s, algo anda
+// mal y conviene pasar al siguiente motor en vez de hacer esperar al usuario.
+const NF_OCR_TIMEOUT_VISION_MS = 25000;
 
 // Mientras se espera la respuesta del servidor no hay ningun progreso real que
 // informar, y la barra quieta se lee como "se colgo". Avanzamos de a poco hacia
@@ -6206,30 +6226,48 @@ async function extractImageTextWithFallback(file, onProgress) {
   const content = await compressImageForVision(file, 1200, 0.8);
   const errores = [];
 
-  if (nfOcrGeminiHabilitado()) {
-    const frenar = nfProgresoLento(onProgress, 35, 70, 'Leyendo comprobante…', '🤖');
+  // Orden de la cadena: primero los rapidos y confiables. Gemini quedo ultimo
+  // porque su latencia es intermitente e inservible como motor principal (se
+  // verifico con los logs: hasta una llamada de metadatos, sin imagen, tardo mas
+  // de 60 s), pero como respaldo sigue sirviendo: lee bien.
+  if (nfOcrSpaceHabilitado()) {
+    const frenarSpace = nfProgresoLento(onProgress, 35, 60, 'Leyendo comprobante…', '🔎');
     try {
-      const text = await callGeminiOCRImage(content);
+      const text = await callOcrSpaceImage(content);
       if (text && text.trim()) return text;
-      errores.push('Gemini: no encontró texto');
+      errores.push('OCR.space: no encontró texto');
     } catch (err) {
-      errores.push('Gemini: ' + ((err && err.message) || err));
-      console.warn('[OCR] Gemini falló, se prueba con Google Vision:', err);
+      errores.push('OCR.space: ' + ((err && err.message) || err));
+      console.warn('[OCR] OCR.space falló, se prueba con Google Vision:', err);
     } finally {
-      frenar();
+      frenarSpace();
     }
   }
 
-  const frenarVision = nfProgresoLento(onProgress, 70, 88, 'Reintentando lectura…', '💳');
+  const frenarVision = nfProgresoLento(onProgress, 60, 78, 'Reintentando lectura…', '💳');
   try {
     const text = await callGoogleVisionImagesAnnotate(file, content);
     if (text && text.trim()) return text;
     errores.push('Vision: no encontró texto');
   } catch (err) {
     errores.push('Vision: ' + ((err && err.message) || err));
-    console.warn('[OCR] Google Vision falló:', err);
+    console.warn('[OCR] Google Vision falló, se prueba con Gemini:', err);
   } finally {
     frenarVision();
+  }
+
+  if (nfOcrGeminiHabilitado()) {
+    const frenar = nfProgresoLento(onProgress, 78, 90, 'Reintentando lectura…', '🤖');
+    try {
+      const text = await callGeminiOCRImage(content);
+      if (text && text.trim()) return text;
+      errores.push('Gemini: no encontró texto');
+    } catch (err) {
+      errores.push('Gemini: ' + ((err && err.message) || err));
+      console.warn('[OCR] Gemini falló:', err);
+    } finally {
+      frenar();
+    }
   }
 
   console.warn('[OCR] ningún motor pudo leer la imagen:', errores.join(' | '));
