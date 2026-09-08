@@ -2146,10 +2146,36 @@ const TX_CURRENCIES = [
   { code:'JPY', symbol:'¥', flag:'🇯🇵', name:'Yen japonés' },
   { code:'CHF', symbol:'CHF', flag:'🇨🇭', name:'Franco suizo' }
 ];
+// Zona horaria -> moneda. Es la senal MAS confiable porque dice donde esta
+// parado el usuario. Se compara por prefijo, asi que 'America/Argentina/' cubre
+// Cordoba, Mendoza, Salta y todas las demas variantes de una.
 const COUNTRY_CURRENCY_BY_TZ = {
-  'America/Argentina/Buenos_Aires':'ARS','America/Sao_Paulo':'BRL','America/Santiago':'CLP',
-  'America/Bogota':'COP','America/Mexico_City':'MXN','America/Montevideo':'UYU',
-  'America/Asuncion':'PYG','America/Lima':'PEN','America/La_Paz':'BOB','America/New_York':'USD'
+  'America/Argentina/':'ARS','America/Buenos_Aires':'ARS','America/Cordoba':'ARS',
+  'America/Rosario':'ARS','America/Mendoza':'ARS','America/Catamarca':'ARS',
+  'America/Jujuy':'ARS',
+  'America/Sao_Paulo':'BRL','America/Bahia':'BRL','America/Fortaleza':'BRL',
+  'America/Recife':'BRL','America/Manaus':'BRL','America/Belem':'BRL',
+  'America/Santiago':'CLP','Pacific/Easter':'CLP',
+  'America/Bogota':'COP',
+  'America/Mexico_City':'MXN','America/Monterrey':'MXN','America/Cancun':'MXN',
+  'America/Tijuana':'MXN','America/Merida':'MXN','America/Chihuahua':'MXN',
+  'America/Montevideo':'UYU','America/Asuncion':'PYG','America/Lima':'PEN',
+  'America/La_Paz':'BOB',
+  'America/New_York':'USD','America/Chicago':'USD','America/Denver':'USD',
+  'America/Los_Angeles':'USD','America/Phoenix':'USD','America/Anchorage':'USD',
+  'Pacific/Honolulu':'USD','America/Panama':'USD','America/Guayaquil':'USD',
+  'America/El_Salvador':'USD',
+  'America/Toronto':'CAD','America/Vancouver':'CAD','America/Edmonton':'CAD',
+  'America/Winnipeg':'CAD','America/Halifax':'CAD','America/St_Johns':'CAD',
+  'Europe/London':'GBP','Europe/Zurich':'CHF','Asia/Tokyo':'JPY',
+  // Eurozona
+  'Europe/Madrid':'EUR','Europe/Berlin':'EUR','Europe/Paris':'EUR','Europe/Rome':'EUR',
+  'Europe/Lisbon':'EUR','Europe/Amsterdam':'EUR','Europe/Brussels':'EUR',
+  'Europe/Vienna':'EUR','Europe/Dublin':'EUR','Europe/Helsinki':'EUR',
+  'Europe/Athens':'EUR','Europe/Bratislava':'EUR','Europe/Ljubljana':'EUR',
+  'Europe/Vilnius':'EUR','Europe/Riga':'EUR','Europe/Tallinn':'EUR',
+  'Europe/Luxembourg':'EUR','Europe/Malta':'EUR','Europe/Nicosia':'EUR',
+  'Europe/Zagreb':'EUR','Atlantic/Canary':'EUR','Africa/Ceuta':'EUR'
 };
 // Pais (ISO 3166-1 alpha-2) -> moneda. Es mucho mas confiable que la zona
 // horaria: el mapa de zonas solo cubria 10 paises de Latinoamerica, asi que a un
@@ -2165,15 +2191,26 @@ const COUNTRY_CURRENCY_BY_REGION = {
 };
 function txCurrencyMeta(code){ return TX_CURRENCIES.find(c=>c.code===code) || TX_CURRENCIES[0]; }
 function inferDefaultCurrency(){
-  // 1) Region del navegador ("es-ES" -> ES). Refleja como configuro el telefono
-  //    el usuario, que es mejor senal que donde esta parado.
+  // 1) ZONA HORARIA primero. Dice donde esta parado el usuario, que es lo que
+  //    importa. El idioma NO sirve como primera senal: muchos Android de
+  //    Latinoamerica reportan "es-US" (asi llama Android al espanol
+  //    latinoamericano), y leyendo eso a un argentino le quedaba USD.
+  try {
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (COUNTRY_CURRENCY_BY_TZ[tz]) return COUNTRY_CURRENCY_BY_TZ[tz];
+    // Prefijos como 'America/Argentina/' cubren todas las provincias.
+    for (var pref in COUNTRY_CURRENCY_BY_TZ) {
+      if (pref.slice(-1) === '/' && tz.indexOf(pref) === 0) return COUNTRY_CURRENCY_BY_TZ[pref];
+    }
+  } catch(e) {}
+  // 2) Region del idioma, solo si la zona horaria no dijo nada. Se ignora 'US'
+  //    a proposito: es el falso positivo de "es-US" y quien realmente esta en
+  //    Estados Unidos ya quedo resuelto por su zona horaria.
   try {
     var loc = (Intl.DateTimeFormat().resolvedOptions().locale || navigator.language || '');
     var m = String(loc).toUpperCase().match(/[-_]([A-Z]{2})(?:[-_]|$)/);
-    if (m && COUNTRY_CURRENCY_BY_REGION[m[1]]) return COUNTRY_CURRENCY_BY_REGION[m[1]];
+    if (m && m[1] !== 'US' && COUNTRY_CURRENCY_BY_REGION[m[1]]) return COUNTRY_CURRENCY_BY_REGION[m[1]];
   } catch(e) {}
-  // 2) Zona horaria, por si el idioma viene sin region (un "es" a secas).
-  try { var tz = Intl.DateTimeFormat().resolvedOptions().timeZone; if (COUNTRY_CURRENCY_BY_TZ[tz]) return COUNTRY_CURRENCY_BY_TZ[tz]; } catch(e) {}
   return 'ARS';
 }
 function getDefaultCurrency(){
