@@ -1102,7 +1102,7 @@
       <!-- Bloque INGRESOS: se muestra/oculta segun la pestaña elegida -->
       <div id="secIngresos">
       <div class="sec-head">
-        <div class="sec-title" id="incTitle" onclick="toggleIngresos()" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:7px">💰 Ingresos <svg id="incToggleIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .25s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg></div>
+        <div class="sec-title" data-i18n="secIngresos" id="incTitle" onclick="toggleIngresos()" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:7px">💰 Ingresos <svg id="incToggleIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .25s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg></div>
         <button class="sec-action" onclick="toggleForm('fIngreso')">+ Agregar</button>
       </div>
       <div class="form-panel" id="fIngreso">
@@ -1156,7 +1156,7 @@
       <!-- Bloque GASTOS -->
       <div id="secGastos">
       <div class="sec-head" id="gastosHead" style="margin-top:24px">
-        <div class="sec-title">💸 Gastos</div>
+        <div class="sec-title" data-i18n="secGastos">💸 Gastos</div>
         <div class="sec-actions-row">
           <div class="expense-tools" aria-label="Herramientas de gastos">
             <button type="button" class="expense-tool-btn" id="btnExpenseSort" onclick="toggleExpenseSort()" aria-label="Ordenar por fecha" title="Ordenar por fecha">
@@ -1302,7 +1302,7 @@
   <!-- TARJETAS TAB -->
   <div class="tab-content" id="tab-tarjetas">
     <div class="sec-wrap">
-      <div class="sec-head"><div class="sec-title">💳 Tarjetas</div><button class="sec-action" onclick="toggleForm('fTarjeta')">+ Agregar</button></div>
+      <div class="sec-head"><div class="sec-title" data-i18n="secTarjetas">💳 Tarjetas</div><button class="sec-action" onclick="toggleForm('fTarjeta')">+ Agregar</button></div>
       <div class="form-panel" id="fTarjeta">
         <div class="form-grid">
           <div class="field" style="grid-column:1/-1"><label>Nombre</label><input type="text" id="t_nombre" placeholder="Visa Santander"></div>
@@ -1320,7 +1320,7 @@
 
   <!-- CATEGORIAS TAB -->
   <div class="tab-content" id="tab-categorias">
-    <div class="sec-wrap"><div class="sec-head"><div class="sec-title">📊 Por categoría</div></div><div id="catList"></div></div>
+    <div class="sec-wrap"><div class="sec-head"><div class="sec-title" data-i18n="secCat">📊 Por categoría</div></div><div id="catList"></div></div>
   </div>
 
   <!-- FLUJO TAB -->
@@ -2822,13 +2822,19 @@ function nfSetLang(c){
     if(id==='nav-analisis') nav.innerHTML=navIcon('analisis')+LD.navAnalisis;
   });
 
-  // Secciones principales
-  document.querySelectorAll('.sec-title').forEach(function(el){
-    var t = el.textContent.trim();
-    if(t.includes('Ingreso') || t.includes('Income') || t.includes('Receita'))  { var _sv=el.querySelector('svg'); el.textContent = LD.secIngresos; if(_sv) el.appendChild(_sv); }
-    if(t.includes('Gasto') || t.includes('Expense') || t.includes('Despesa'))   el.textContent = LD.secGastos;
-    if(t.includes('Tarjeta') || t.includes('Card') || t.includes('Cartão'))     el.textContent = LD.secTarjetas;
-    if(t.includes('categor') || t.includes('Categor') || t.includes('categ'))   el.textContent = LD.secCat;
+  // Secciones principales. Cada una declara QUE es con data-i18n, en vez de que
+  // el codigo lo adivine comparando el texto que ya tiene en pantalla. Ese metodo
+  // fallaba en silencio ante cualquier palabra no listada: el diccionario
+  // portugues dice "Cartões" (plural) pero se buscaba "Cartão" (singular), asi
+  // que al pasar de portugues a espanol el titulo quedaba pegado en portugues.
+  document.querySelectorAll('.sec-title[data-i18n]').forEach(function(el){
+    var texto = LD[el.getAttribute('data-i18n')];
+    if(!texto) return;
+    // El titulo de Ingresos lleva adentro la flecha de desplegar: se saca antes
+    // de reemplazar el texto y se vuelve a poner.
+    var svg = el.querySelector('svg');
+    el.textContent = texto;
+    if(svg) el.appendChild(svg);
   });
 
   // Botones + Agregar
