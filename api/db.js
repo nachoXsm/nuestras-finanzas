@@ -364,10 +364,74 @@ async function opCrearGrupo(req, res, cuerpo) {
   return reenviar(res, 'POST', '/grupos', 'return=representation', limpio);
 }
 
+// ---------------------------------------------------------------------------
+// AUTODIAGNOSTICO
+// ---------------------------------------------------------------------------
+// Existe porque probar un POST desde el navegador obliga a pegar codigo en la
+// consola, y Chrome lo bloquea (con razon). Esto se abre como una direccion
+// normal y verifica la cadena entera: configuracion, conexion con la base y la
+// autorizacion real entre dos grupos distintos.
+//
+// No expone NADA: responde solo true/false. Nunca ids, codigos, cantidades ni
+// filas. Por eso puede quedar publicado sin riesgo.
+async function autodiagnostico(res) {
+  const salida = { ok: false, configurado: !!(SB_URL && SB_SERVICE_KEY) };
+  if (!salida.configurado) {
+    salida.detalle = 'Faltan las variables de entorno en Vercel, o falta el redeploy.';
+    return sendJson(res, 200, salida);
+  }
+
+  try {
+    const ping = await fetch(REST + '/grupos?select=id&limit=2&order=created_at.asc',
+      { headers: cabecerasServicio() });
+    salida.base_alcanzable = ping.ok;
+    if (!ping.ok) {
+      salida.detalle = 'La clave secreta no es valida o la base no responde.';
+      return sendJson(res, 200, salida);
+    }
+    const grupos = await ping.json();
+
+    const p = {};
+    // Un codigo inventado no puede autorizar nada.
+    p.codigo_inventado_rechazado = (await idsAutorizados(['ZZZZZZ'])).length === 0;
+    // Sin cabecera de codigos no hay credencial posible.
+    p.sin_credencial_rechazado = leerCodigos({ headers: {} }).length === 0;
+    // Un filtro que el cliente no deberia poder mandar se rechaza.
+    p.filtro_invasivo_rechazado = parsearFiltros('gastos', 'select=*') === null;
+
+    // Aislamiento real: el codigo del primer grupo autoriza ese grupo y NO el
+    // segundo. Es exactamente la comprobacion que hace cada pedido.
+    if (grupos && grupos.length >= 2) {
+      const f = await fetch(
+        REST + '/grupos?id=eq.' + encodeURIComponent(grupos[0].id) + '&select=codigo_norm',
+        { headers: cabecerasServicio() }
+      );
+      const fila = f.ok ? (await f.json())[0] : null;
+      if (fila && fila.codigo_norm) {
+        const ids = await idsAutorizados([fila.codigo_norm]);
+        p.grupo_propio_permitido = ids.indexOf(String(grupos[0].id)) !== -1;
+        p.grupo_ajeno_rechazado = ids.indexOf(String(grupos[1].id)) === -1;
+      }
+    }
+
+    salida.pruebas = p;
+    const claves = Object.keys(p);
+    salida.ok = claves.length > 0 && claves.every(function (k) { return p[k] === true; });
+    if (!salida.ok) salida.detalle = 'Alguna comprobacion fallo. No sigas con la etapa siguiente.';
+  } catch (e) {
+    console.error('[db] autodiagnostico fallo:', e && e.message);
+    salida.detalle = 'No se pudo completar el diagnostico.';
+  }
+  return sendJson(res, 200, salida);
+}
+
 async function handler(req, res) {
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
-  // Solo POST: un GET quedaria cacheado por el service worker del cliente
-  // ("if (e.request.method !== 'GET') return" en sw.js) y serviria datos viejos.
+  // GET es SOLO el autodiagnostico: no devuelve datos de nadie.
+  if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'no-store');
+    return autodiagnostico(res);
+  }
   if (req.method !== 'POST') {
     return sendError(res, 405, 'nf_metodo_no_aceptado', 'Operación no permitida.');
   }

@@ -1,4 +1,4 @@
-const CACHE = 'nf-v115';
+const CACHE = 'nf-v116';
 // Solo lo esencial en el precache. Si un archivo del precache falla (p. ej. durante
 // un deploy en curso) NO debe romper toda la instalación del SW.
 const PRECACHE = [
@@ -11,6 +11,10 @@ const PRECACHE = [
 // manifest.webmanifest is intentionally excluded from precache so Android
 // always reads the latest version and never shows a "name changed" warning.
 const NEVER_CACHE = ['/manifest.webmanifest'];
+// Las respuestas de /api/ NUNCA se cachean: son datos vivos (gastos, grupos,
+// lecturas de comprobantes). Cachearlas servia informacion vieja desde el
+// celular sin que nadie se diera cuenta.
+const NEVER_CACHE_PREFIX = ['/api/'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -36,7 +40,8 @@ self.addEventListener('fetch', e => {
   if (url.hostname !== self.location.hostname) return;
 
   // Always fetch manifest fresh from network — never serve from cache
-  if (NEVER_CACHE.some(p => url.pathname === p)) {
+  if (NEVER_CACHE.some(p => url.pathname === p) ||
+      NEVER_CACHE_PREFIX.some(p => url.pathname.indexOf(p) === 0)) {
     e.respondWith(fetch(e.request));
     return;
   }
