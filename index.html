@@ -2579,7 +2579,10 @@ function rememberRecordInstallments(table, id, record){
 function applyRecordInstallments(table, rows){
   var m = getInstallmentStore(table);
   var toRepair = [];
-  var NON_DB = ['cuotas','cuota_actual','moneda','tarjeta_id','gasto_origen_id','division'];
+  // 'tc' va aca porque applyRecordCurrencies le pega el tipo de cambio desde
+  // localStorage a filas que volvieron sin el: si se reenviara, la reparacion
+  // fallaria contra una base que todavia no tenga la columna.
+  var NON_DB = ['cuotas','cuota_actual','moneda','tc','tarjeta_id','gasto_origen_id','division'];
   (rows||[]).forEach(function(r){
     if(!r || !r.id) return;
     var stored = m[r.id];
@@ -2600,15 +2603,15 @@ function applyRecordInstallments(table, rows){
       var body = {};
       Object.keys(item.row).forEach(function(k){ if(NON_DB.indexOf(k) === -1) body[k] = item.row[k]; });
       body.descripcion = newDesc;
-      var url = API + '/' + table + '?on_conflict=id';
-      var h = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'resolution=merge-duplicates,return=minimal' };
-      return fetch(url, { method:'POST', headers:h, body:JSON.stringify(body) })
-        .then(function(res){
-          if (!res.ok) return res.text().then(function(t){ throw new Error(t); });
+      // Antes esto era un upsert directo contra Supabase con la clave publica,
+      // el unico camino de red que no pasaba por dbGet/dbPost/dbPatch/dbDelete.
+      // Es un UPDATE de una fila que ya existe, asi que va por el proxy como tal.
+      return dbPatch(table, item.row.id, body)
+        .then(function(){
           repaired++;
           item.row.descripcion = newDesc;
         })
-        .catch(function(e){ console.error('[cuota-repair] Error upsert:', e.message); });
+        .catch(function(e){ console.error('[cuota-repair] Error al reparar:', e.message); });
     })).then(function(){
       if (repaired > 0 && typeof renderAll === 'function') {
         toast('✅ ' + repaired + ' cuotas sincronizadas. Refrescá el celular.');
@@ -2620,8 +2623,14 @@ function applyRecordInstallments(table, rows){
 }
 function isUnknownColumnError(e){
   var msg=String((e&&e.message)||e||'');
+  // Los errores propios del proxy (nf_*) NO son errores de columna: si se
+  // confundieran, una escritura rechazada por falta de permiso se reintentaria
+  // borrando campos, y el gasto se guardaria incompleto.
+  if (msg.indexOf('nf_') !== -1) return false;
+  // 'tc' faltaba en esta lista pero el respaldo SI borra esa columna, asi que un
+  // gasto con tipo de cambio manual contra una base sin la columna se perdia.
   return (msg.includes('column') || msg.includes('schema') || msg.includes('PGRST204') || msg.includes('PGRST'))
-    && /moneda|tarjeta_id|cuotas|cuota_actual|gasto_origen_id|division|dia/i.test(msg);
+    && /moneda|tarjeta_id|cuotas|cuota_actual|gasto_origen_id|division|\btc\b|dia/i.test(msg);
 }
 async function dbPostMoney(table, body){
   try {
@@ -2715,6 +2724,16 @@ function getHogarId() {
 }
 function setHogarId(id) {
   localStorage.setItem('nf_hogar_id', id);
+}
+
+// El codigo del hogar es la credencial que el dispositivo le presenta a /api/db.
+// Se guarda aparte del grupo activo porque hay pantallas (volver al hogar, el
+// consolidado) que leen el hogar cuando el grupo activo es otro.
+function setHogarCodigo(codigo) {
+  var c = String(codigo || '').trim().toUpperCase();
+  if (!c) return;
+  try { localStorage.setItem('nf_hogar_codigo', c); } catch(e) {}
+  if (typeof nfRegistrarCodigo === 'function') nfRegistrarCodigo(c);
 }
 function esModoGrupo() {
   var g = loadGroup();
@@ -3017,30 +3036,88 @@ function clearPremiumSubscription() {
 }
 
 // ============================================
-// SUPABASE CONFIG
 // ============================================
-const SB_URL = 'https://gzjhohwuyquumkgiehan.supabase.co';
-const SB_KEY = 'sb_publishable_2YKu-8E5kpmXYpWs9eOjNw_C4QNFJnO';
-const API = SB_URL + '/rest/v1';
-const H = { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Prefer':'return=representation' };
+// BASE DE DATOS (a traves de /api/db)
+// ============================================
+// El navegador ya NO habla con Supabase. La clave que puede leer y escribir vive
+// solo en el servidor; desde aca viaja unicamente el codigo de hogar, que es lo
+// que /api/db usa para decidir a que grupo se puede tocar.
+const DB_API = '/api/db';
 
+// Codigos que este dispositivo puede presentar. Se recalcula en cada pedido
+// porque el usuario cambia de grupo sin recargar la pagina, y porque hay
+// pantallas (el consolidado, volver al hogar) que leen un grupo que no es el
+// activo en ese momento.
+const _nfCodigosSesion = [];
+
+// Se normaliza EXACTAMENTE igual que en el servidor (api/db.js, normCodigo):
+// mayusculas y solo letras y numeros. Si no, 'te3-xnb' y 'TE3XNB' viajarian
+// como dos credenciales distintas del mismo grupo.
+function nfNormCodigo(c) {
+  return String(c == null ? '' : c).toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function nfRegistrarCodigo(codigo) {
+  const c = nfNormCodigo(codigo);
+  if (!c) return;
+  if (_nfCodigosSesion.indexOf(c) === -1) _nfCodigosSesion.push(c);
+}
+
+function nfCodigosDisponibles() {
+  const out = [];
+  const sumar = function(c) {
+    const v = nfNormCodigo(c);
+    if (v && out.indexOf(v) === -1) out.push(v);
+  };
+  try { const g = loadGroup(); if (g) sumar(g.codigo); } catch(e) {}
+  try { sumar(localStorage.getItem('nf_hogar_codigo')); } catch(e) {}
+  try { (getGruposGuardados() || []).forEach(function(g){ sumar(g && g.codigo); }); } catch(e) {}
+  _nfCodigosSesion.forEach(sumar);
+  return out.slice(0, 25);
+}
+
+function nfPedidoDb(op, t, extra) {
+  const payload = Object.assign({ op: op, table: t }, extra || {});
+  return fetch(DB_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-NF-Codigos': nfCodigosDisponibles().join(',')
+    },
+    body: JSON.stringify(payload)
+  });
+}
+
+// Las cuatro mantienen la firma, el valor de retorno y —lo que mas importa— el
+// TEXTO CRUDO del error: isUnknownColumnError() lo inspecciona para decidir si
+// reintenta una escritura sin las columnas nuevas. /api/db reenvia la respuesta
+// de PostgREST sin tocarla justamente por eso.
 async function dbGet(t, q='') {
-  const r = await fetch(`${API}/${t}?${q}&order=created_at.asc`, {headers:H});
+  const r = await nfPedidoDb('select', t, { q: q });
   if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const filas = await r.json();
+  // Toda fila de 'grupos' que se logro leer trae su codigo: pasa a ser una
+  // credencial de este dispositivo. Esto habilita el PATCH que viene justo
+  // despues de "unirse con codigo", cuando todavia no se guardo nada local.
+  if (t === 'grupos' && filas && filas.length) {
+    filas.forEach(function(fila){ if (fila && fila.codigo) nfRegistrarCodigo(fila.codigo); });
+  }
+  return filas;
 }
 async function dbPost(t, body) {
-  const r = await fetch(`${API}/${t}`, {method:'POST', headers:H, body:JSON.stringify(body)});
+  const r = await nfPedidoDb('insert', t, { body: body });
   if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const filas = await r.json();
+  if (t === 'grupos' && filas && filas[0] && filas[0].codigo) nfRegistrarCodigo(filas[0].codigo);
+  return filas;
 }
 async function dbPatch(t, id, body) {
-  const r = await fetch(`${API}/${t}?id=eq.${id}`, {method:'PATCH', headers:{...H,'Prefer':'return=representation'}, body:JSON.stringify(body)});
+  const r = await nfPedidoDb('update', t, { id: id, body: body });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function dbDelete(t, id) {
-  const r = await fetch(`${API}/${t}?id=eq.${id}`, {method:'DELETE', headers:{...H,'Prefer':'return=minimal'}});
+  const r = await nfPedidoDb('delete', t, { id: id });
   if (!r.ok) throw new Error(await r.text());
 }
 
@@ -9174,7 +9251,7 @@ async function parseTicketWithAI(text) {
 
     var res = await fetch(IA_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+      headers: { 'Content-Type': 'application/json' },
       // temperature 0: extraer el monto de un ticket no es una charla. Con el 0.7
       // que usa el asesor, el MISMO comprobante podia devolver montos distintos
       // en dos lecturas seguidas.
@@ -10013,11 +10090,11 @@ async function ingresarConCodigo() {
   btn.textContent = 'Buscando…';
   err.textContent = '';
   try {
-    // Buscar con ambos formatos
+    // Una sola consulta: el servidor normaliza el codigo (quita guiones y pasa
+    // a mayuscula) y busca por codigo_norm, asi que las dos variantes resuelven
+    // al mismo grupo. Antes se consultaba dos veces y, cuando el codigo no tenia
+    // guion, la segunda era identica a la primera.
     var res = await dbGet('grupos', 'codigo=eq.' + codigoConGuion);
-    if (!res || res.length === 0) {
-      res = await dbGet('grupos', 'codigo=eq.' + codigo);
-    }
     if (!res || res.length === 0) {
       err.textContent = 'Código no encontrado. Verificá e intentá de nuevo.';
       btn.textContent = 'Entrar →';
@@ -10034,6 +10111,7 @@ async function ingresarConCodigo() {
     saveGroupLocal(grupo);
     if (grupo.moneda) setDefaultCurrency(grupo.moneda);
     setHogarId(grupo.id); // Guardar como hogar permanentemente
+    setHogarCodigo(grupo.codigo);
     toast('✅ ¡Bienvenido/a de vuelta!');
     enterApp();
   } catch(e) {
@@ -10069,6 +10147,7 @@ async function crearHogar() {
     grupo.moneda = moneda;
     saveGroupLocal(grupo);
     setHogarId(grupo.id);
+    setHogarCodigo(grupo.codigo);
     localStorage.setItem('nf_mi_nombre', nombre1);
     setModoHogar();
     _tipoCreado = 'hogar'; // Marcar que se creó un hogar
@@ -10415,6 +10494,16 @@ async function startApp() {
   const grupo = loadGroup();
   if (!grupo) return;
   state.grupoId = grupo.id;
+
+  // Instalaciones que ya existian no tienen guardado el codigo del hogar: se
+  // completa solo la primera vez que arrancan con esta version.
+  try {
+    var _hogarId = getHogarId();
+    if (grupo.codigo && (!_hogarId || grupo.id === _hogarId) &&
+        !localStorage.getItem('nf_hogar_codigo')) {
+      setHogarCodigo(grupo.codigo);
+    }
+  } catch(e) {}
 
   // DETECTAR MODO al iniciar — comparar grupo activo con hogar guardado
   var hogarId = getHogarId();
@@ -10890,7 +10979,7 @@ async function parseVoiceExpenseWithAI(transcript){
     if(!reply){
       var res = await fetch(IA_ENDPOINT, {
         method:'POST',
-        headers:{ 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY },
+        headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({ messages:[{ role:'user', content:prompt }], context:{} })
       });
       if(!res.ok) return _voiceFallback(transcript, personas);
@@ -12186,7 +12275,7 @@ async function iaSend() {
   try {
     var res = await fetch(IA_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: iaMessages, context: iaBuildContext() }),
     });
     var data = await res.json();
