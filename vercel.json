@@ -1,5 +1,6 @@
 {
   "functions": {
+    "api/db.js": { "maxDuration": 30 },
     "api/ocr-gemini.js": { "maxDuration": 60 },
     "api/vision.js": { "maxDuration": 60 }
   },
