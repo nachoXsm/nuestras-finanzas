@@ -3,8 +3,9 @@ const nodemailer = require('nodemailer');
 function sendJson(res, status, data) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  // Sin Access-Control-Allow-Origin: la app llama a este endpoint desde el mismo
+  // dominio, asi que no lo necesita. El comodin '*' permitia que cualquier sitio
+  // web lo usara desde el navegador de sus visitantes.
   res.end(JSON.stringify(data));
 }
 

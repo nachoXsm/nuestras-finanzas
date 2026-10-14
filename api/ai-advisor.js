@@ -18,8 +18,10 @@ const GROQ_MODELS = [
 function sendJson(res, status, data) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+  // Sin Access-Control-Allow-Origin: la app llama a este endpoint desde el mismo
+  // dominio ('/api/ai-advisor'), asi que no lo necesita. Con el comodin '*' que
+  // habia antes, cualquier sitio web podia usar la cuenta de Groq desde el
+  // navegador de sus visitantes y leer la respuesta.
   res.end(JSON.stringify(data));
 }
 

@@ -12421,66 +12421,17 @@ function _renderPaywall() {
   if (sheet) sheet.innerHTML = html;
 }
 
+// El cobro por Google Play se saco: la app no se publica en Play, asi que la
+// Digital Goods API nunca existe en un navegador y esa rama no podia correr.
+// Ademas llamaba a /api/verify-purchase, que sin credenciales de Google
+// devolvia 30 dias de premium a cualquiera, desde cualquier dominio.
+// El cobro por Mercado Pago se engancha aca cuando este listo.
 async function startPremiumPurchase() {
-  // Digital Goods API (TWA / Play Store)
-  if (window.getDigitalGoodsService) {
-    try {
-      var service = await window.getDigitalGoodsService('https://play.google.com/billing');
-      var productId = _pwSelectedPlan === 'yearly' ? 'premium_yearly' : 'premium_monthly';
-      var request = new PaymentRequest(
-        [{ supportedMethods: 'https://play.google.com/billing', data: { sku: productId } }],
-        { total: { label: 'Premium', amount: { currency: 'USD', value: _pwSelectedPlan === 'yearly' ? '29.99' : '2.99' } } }
-      );
-      var response = await request.show();
-      await response.complete('success');
-      // Verify with backend
-      var result = await fetch('/api/verify-purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: response.details.token, productId: productId })
-      }).then(function(r){ return r.json(); });
-      if (result && result.ok && result.expiresAt) {
-        setPremiumSubscription(result.expiresAt, productId);
-        closePaywall();
-        toast('✅ ¡Premium activado!');
-      } else {
-        toast('❌ ' + (result && result.error || 'Error al verificar compra'));
-      }
-    } catch(e) {
-      if (e.name !== 'AbortError') toast('❌ ' + (e.message || 'Error en la compra'));
-    }
-    return;
-  }
-  // Fallback: web purchase not yet implemented
-  toast('Disponible en la app de Play Store');
+  toast('El pago todavía no está habilitado. Escribinos y te damos una mano.');
 }
 
 async function restorePremiumPurchase() {
-  if (window.getDigitalGoodsService) {
-    try {
-      var service = await window.getDigitalGoodsService('https://play.google.com/billing');
-      var purchases = await service.listPurchases();
-      var active = purchases.find(function(p){ return p.itemId === 'premium_monthly' || p.itemId === 'premium_yearly'; });
-      if (active) {
-        var result = await fetch('/api/verify-purchase', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: active.purchaseToken, productId: active.itemId })
-        }).then(function(r){ return r.json(); });
-        if (result && result.ok && result.expiresAt) {
-          setPremiumSubscription(result.expiresAt, active.itemId);
-          closePaywall();
-          toast('✅ Compra restaurada');
-          return;
-        }
-      }
-      toast('No se encontró una compra activa');
-    } catch(e) {
-      toast('❌ ' + (e.message || 'Error al restaurar'));
-    }
-    return;
-  }
-  toast('Disponible en la app de Play Store');
+  toast('El pago todavía no está habilitado. Escribinos y te damos una mano.');
 }
 
 // Guard helper: call before any premium feature.
