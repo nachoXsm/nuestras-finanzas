@@ -1,3 +1,4 @@
+const { verificarPremium } = require('./_premium');
 // Asesor financiero IA — versión Vercel.
 // Port de supabase/functions/ai-advisor/index.ts para poder desplegarlo con un
 // simple `git push` (la Edge Function de Supabase requiere el CLI desde la PC).
@@ -117,6 +118,11 @@ Basate siempre en estos datos para dar consejos personalizados y concretos.`;
 async function handler(req, res) {
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  // Este endpoint cuesta plata. Mientras NF_PREMIUM_EXIGIR no incluya
+  // 'ia' solo se registra en el log y no se corta a nadie.
+  const _acceso = await verificarPremium(req, 'ia');
+  if (!_acceso.permitido) return sendJson(res, 402, { error: _acceso.mensaje });
 
   const apiKey = process.env.GROQ_KEY || '';
   if (!apiKey) return sendJson(res, 500, { error: 'Falta configurar GROQ_KEY en Vercel.' });

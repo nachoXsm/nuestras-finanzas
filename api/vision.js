@@ -1,3 +1,4 @@
+const { verificarPremium } = require('./_premium');
 const config = {
   api: {
     bodyParser: {
@@ -58,6 +59,11 @@ async function callVision(path, body) {
 async function handler(req, res) {
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  // Este endpoint cuesta plata. Mientras NF_PREMIUM_EXIGIR no incluya
+  // 'ocr' solo se registra en el log y no se corta a nadie.
+  const _acceso = await verificarPremium(req, 'ocr');
+  if (!_acceso.permitido) return sendJson(res, 402, { error: _acceso.mensaje });
 
   try {
     const payload = getBody(req);

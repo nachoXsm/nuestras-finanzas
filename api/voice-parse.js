@@ -1,3 +1,4 @@
+const { verificarPremium } = require('./_premium');
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 // Extraccion estructurada (JSON) de un dictado corto: prioriza VELOCIDAD y
 // costo, que para esta tarea rinde igual que un modelo grande.
@@ -56,6 +57,11 @@ function getBody(req) {
 async function handler(req, res) {
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  // Este endpoint cuesta plata. Mientras NF_PREMIUM_EXIGIR no incluya
+  // 'voice' solo se registra en el log y no se corta a nadie.
+  const _acceso = await verificarPremium(req, 'voice');
+  if (!_acceso.permitido) return sendJson(res, 402, { error: _acceso.mensaje });
 
   const apiKey = process.env.GROQ_KEY || '';
   if (!apiKey) return sendJson(res, 500, { error: 'Falta configurar GROQ_KEY en Vercel.' });

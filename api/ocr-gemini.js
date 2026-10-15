@@ -1,3 +1,4 @@
+const { verificarPremium } = require('./_premium');
 // OCR con Google Gemini: recibe una imagen (o PDF) en base64 y devuelve el TEXTO
 // plano del comprobante. Es un reemplazo directo de /api/vision: devuelve texto,
 // no JSON estructurado, para que todos los parsers que ya existen en el cliente
@@ -278,6 +279,11 @@ async function handler(req, res) {
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
   if (req.method === 'GET') return await listarModelos(res);
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  // Este endpoint cuesta plata. Mientras NF_PREMIUM_EXIGIR no incluya
+  // 'ocr' solo se registra en el log y no se corta a nadie.
+  const _acceso = await verificarPremium(req, 'ocr');
+  if (!_acceso.permitido) return sendJson(res, 402, { error: _acceso.mensaje });
 
   try {
     const payload = getBody(req);

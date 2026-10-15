@@ -3126,14 +3126,20 @@ function nfCodigosDisponibles() {
   return out.slice(0, 25);
 }
 
+// Cabeceras para TODOS los pedidos a /api/: el proxy de la base las usa para
+// saber a que grupo se puede tocar, y los endpoints que cuestan plata (IA,
+// lectura de comprobantes, voz) para saber si el hogar tiene premium.
+function nfCabecerasApi(extra) {
+  const h = { 'Content-Type': 'application/json' };
+  try { h['X-NF-Codigos'] = nfCodigosDisponibles().join(','); } catch(e) {}
+  return Object.assign(h, extra || {});
+}
+
 function nfPedidoDb(op, t, extra) {
   const payload = Object.assign({ op: op, table: t }, extra || {});
   return fetch(DB_API, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-NF-Codigos': nfCodigosDisponibles().join(',')
-    },
+    headers: nfCabecerasApi(),
     body: JSON.stringify(payload)
   });
 }
@@ -6221,7 +6227,7 @@ async function postJsonWithFallback(path, payload, label, timeoutMs) {
       if (ctrl) timer = setTimeout(function() { ctrl.abort(); }, timeoutMs);
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: nfCabecerasApi(),
         body: JSON.stringify(payload),
         signal: ctrl ? ctrl.signal : undefined
       });
@@ -9306,7 +9312,7 @@ async function parseTicketWithAI(text) {
 
     var res = await fetch(IA_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: nfCabecerasApi(),
       // temperature 0: extraer el monto de un ticket no es una charla. Con el 0.7
       // que usa el asesor, el MISMO comprobante podia devolver montos distintos
       // en dos lecturas seguidas.
@@ -11030,7 +11036,7 @@ async function parseVoiceExpenseWithAI(transcript){
     try{
       var resG = await fetch('/api/voice-parse', {
         method:'POST',
-        headers:{ 'Content-Type':'application/json' },
+        headers: nfCabecerasApi(),
         body: JSON.stringify({ prompt: prompt })
       });
       if(resG.ok){ var dataG=await resG.json(); reply=(dataG.reply||'').trim(); }
@@ -11039,7 +11045,7 @@ async function parseVoiceExpenseWithAI(transcript){
     if(!reply){
       var res = await fetch(IA_ENDPOINT, {
         method:'POST',
-        headers:{ 'Content-Type':'application/json' },
+        headers: nfCabecerasApi(),
         body: JSON.stringify({ messages:[{ role:'user', content:prompt }], context:{} })
       });
       if(!res.ok) return _voiceFallback(transcript, personas);
@@ -12335,7 +12341,7 @@ async function iaSend() {
   try {
     var res = await fetch(IA_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: nfCabecerasApi(),
       body: JSON.stringify({ messages: iaMessages, context: iaBuildContext() }),
     });
     var data = await res.json();

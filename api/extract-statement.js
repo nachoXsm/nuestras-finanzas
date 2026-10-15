@@ -1,3 +1,4 @@
+const { verificarPremium } = require('./_premium');
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 const MAX_TEXT_CHARS = 120000;
 const config = {
@@ -134,6 +135,11 @@ async function callGemini(payload) {
 async function handler(req, res) {
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+
+  // Este endpoint cuesta plata. Mientras NF_PREMIUM_EXIGIR no incluya
+  // 'ocr' solo se registra en el log y no se corta a nadie.
+  const _acceso = await verificarPremium(req, 'ocr');
+  if (!_acceso.permitido) return sendJson(res, 402, { error: _acceso.mensaje });
 
   try {
     const gastos = await callGemini(getBody(req));
