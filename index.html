@@ -3016,23 +3016,73 @@ function isMasterUser() {
   return !!email && MASTER_EMAILS.map(function(e){ return e.toLowerCase(); }).includes(email);
 }
 
-// isPremium: master OR purchased subscription
+// isPremium: master OR suscripcion vigente
+//
+// El estado premium vive en la BASE (grupos.premium_hasta), no en el navegador.
+// Aca abajo hay una copia local para dos cosas: que la app funcione sin internet
+// y que no haya que esperar una consulta cada vez que se abre una pantalla.
+//
+// IMPORTANTE, para no engañarse: esta copia se puede editar desde la consola del
+// navegador, igual que la anterior. Lo que de verdad impide el fraude es que los
+// endpoints que cuestan plata (IA, lectura de comprobantes, voz) verifiquen el
+// premium del lado del SERVIDOR. Esto de aca es la experiencia de usuario; el
+// candado es aquello.
+const NF_PREMIUM_CACHE = 'nf_premium_hogar';
+
+// El premium es del HOGAR, no del grupo activo. Si estas dentro de un grupo de
+// gastos compartido y se leyera de ahi, se te apagaria al cambiar de grupo.
+function nfHogarIdParaPremium() {
+  var h = getHogarId();
+  if (h) return String(h);
+  var g = loadGroup();
+  return (g && g.id) ? String(g.id) : '';
+}
+
+function nfLeerCachePremium() {
+  try { return JSON.parse(localStorage.getItem(NF_PREMIUM_CACHE) || 'null'); }
+  catch(e) { return null; }
+}
+
+// Asignacion incondicional: si la base dice que ya no hay premium, se apaga.
+// Un "solo escribir si viene con fecha" dejaria el premium prendido para siempre.
+function nfGuardarCachePremium(grupoId, hasta) {
+  try {
+    localStorage.setItem(NF_PREMIUM_CACHE, JSON.stringify({
+      grupoId: String(grupoId || ''),
+      hasta: hasta || null
+    }));
+  } catch(e) {}
+}
+
+// Se la llama con una fila de 'grupos' que ya se leyo por otro motivo, asi no
+// hace falta una consulta extra. Se descarta sola si no es la del hogar.
+function nfAplicarFilaPremium(fila) {
+  if (!fila || !fila.id) return;
+  var hogar = nfHogarIdParaPremium();
+  if (!hogar || String(fila.id) !== hogar) return;
+  nfGuardarCachePremium(fila.id, fila.premium_hasta || null);
+}
+
+async function nfSincronizarPremium() {
+  var hogar = nfHogarIdParaPremium();
+  if (!hogar) return;
+  try {
+    var filas = await dbGet('grupos', 'id=eq.' + hogar);
+    if (filas && filas[0]) nfAplicarFilaPremium(filas[0]);
+  } catch(e) {
+    // Sin conexion se mantiene la copia local: quien pago no pierde el premium
+    // por quedarse sin internet.
+    console.warn('[premium] no se pudo sincronizar:', (e && e.message) || e);
+  }
+}
+
 function isPremium() {
   if (isMasterUser()) return true;
-  try {
-    var sub = JSON.parse(localStorage.getItem('nf_premium') || 'null');
-    if (!sub) return false;
-    // sub = { expiresAt: ISO string, productId: string }
-    return sub.expiresAt && new Date(sub.expiresAt) > new Date();
-  } catch(e) { return false; }
-}
-
-function setPremiumSubscription(expiresAt, productId) {
-  localStorage.setItem('nf_premium', JSON.stringify({ expiresAt: expiresAt, productId: productId }));
-}
-
-function clearPremiumSubscription() {
-  localStorage.removeItem('nf_premium');
+  var c = nfLeerCachePremium();
+  if (!c || !c.hasta) return false;
+  // La copia pertenece a un hogar concreto: si cambiaste de hogar, no vale.
+  if (c.grupoId && c.grupoId !== nfHogarIdParaPremium()) return false;
+  return new Date(c.hasta) > new Date();
 }
 
 // ============================================
@@ -4435,6 +4485,11 @@ async function initApp() {
     } else {
       if (typeof activarModoHogar === 'function') activarModoHogar();
     }
+    // El premium se refresca desde la base en cada arranque, sin bloquear la
+    // pantalla. Va aca y no en startApp() porque startApp solo corre al entrar
+    // con codigo o al crear un hogar: quien ya tiene la app instalada entra por
+    // init() -> initApp(), y ahi nunca se habria enterado de que pago.
+    setTimeout(function(){ nfSincronizarPremium(); }, 0);
   } catch(e) {
     console.error('initApp error:', e);
     var sub = document.querySelector('.ld-sub');
@@ -10468,6 +10523,11 @@ async function checkPendingNotificaciones() {
       g.nombre = res[0].nombre;
       saveGroupLocal(g);
       if (typeof nfRefrescarNombreGrupo === 'function') nfRefrescarNombreGrupo(g);
+    }
+    // Y el premium, por lo mismo: esta consulta ya se esta haciendo. Si la fila
+    // no es la del hogar, nfAplicarFilaPremium la descarta sola.
+    if (res && res[0] && typeof nfAplicarFilaPremium === 'function') {
+      nfAplicarFilaPremium(res[0]);
     }
   } catch(e) {}
   var notifs = g.notificaciones || [];
