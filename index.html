@@ -2978,43 +2978,15 @@ function nfSetLang(c){
 // ============================================
 // PREMIUM / MASTER CONFIG
 // ============================================
-const MASTER_GROUP_IDS = [
-  'be5bf4c3-515f-496f-a770-a60815dd853e', // Nacho & Celi
-];
-// Codigos de hogar con acceso completo (testers). Es la via mas confiable:
-// el codigo se lee en la pantalla de perfil del propio grupo. Se normaliza,
-// asi que da igual mayusculas, guiones o espacios.
-const MASTER_CODES = [
-  'VPHVAC', // Hernán & Gaby (tester)
-  'U6GYTW', // Facu & Vicky (tester)
-  'ZF696K', // Sonia & Adrian (tester)
-  '5WXMPB', // Silvia (tester)
-  'CQMVPV', // Fabiana & Juan (tester)
-  'Z3437T', // Hernán (tester)
-  'TQD7KD', // Alejandro (tester)
-  '3ED5HV', // Fer (tester)
-];
-// Recovery emails as secondary check (case-insensitive).
-// OJO: esto solo matchea si la persona configuro ese email como "email de
-// recuperacion" dentro de la app; no alcanza con que sea su cuenta de Google.
-const MASTER_EMAILS = [
-  'isanchezmoser@gmail.com',
-  'sonia.bulgheroni@gmail.com',   // tester
-  'mazzottafacundo@gmail.com',    // tester
-];
-
-function nfNormalizeCode(c) {
-  return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-
-function isMasterUser() {
-  var g = loadGroup() || {};
-  if (g.id && MASTER_GROUP_IDS.includes(g.id)) return true;
-  var code = nfNormalizeCode(g.codigo);
-  if (code && MASTER_CODES.map(nfNormalizeCode).includes(code)) return true;
-  var email = (localStorage.getItem('nf_recovery_email') || '').toLowerCase().trim();
-  return !!email && MASTER_EMAILS.map(function(e){ return e.toLowerCase(); }).includes(email);
-}
+// Aca vivia una lista de codigos de hogar y emails con premium de cortesia, en
+// texto plano. Cuando el codigo de hogar paso a ser la CREDENCIAL de acceso a los
+// datos, publicar esos codigos en el HTML se volvio un agujero: cualquiera que
+// mirara el codigo fuente podia entrar a esos hogares.
+//
+// Ahora el premium de cortesia se otorga en la base, igual que el pago:
+//   update public.grupos set premium_hasta = '2028-12-31' where codigo_norm = 'XXXXXX';
+// Asi no hay ningun dato sensible en el navegador y se puede dar o quitar sin
+// tocar una linea de codigo ni esperar un deploy.
 
 // isPremium: master OR suscripcion vigente
 //
@@ -3077,7 +3049,6 @@ async function nfSincronizarPremium() {
 }
 
 function isPremium() {
-  if (isMasterUser()) return true;
   var c = nfLeerCachePremium();
   if (!c || !c.hasta) return false;
   // La copia pertenece a un hogar concreto: si cambiaste de hogar, no vale.
