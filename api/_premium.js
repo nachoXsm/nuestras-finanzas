@@ -94,15 +94,22 @@ async function verificarPremium(req, funcion) {
   const codigos = leerCodigos(req);
 
   if (!codigos.length) {
+    // Este corte es INDEPENDIENTE de exigir premium, a proposito: son dos cosas
+    // distintas. Un pedido sin ninguna credencial no viene de la app —viene de
+    // curl o de un script— y rechazarlo no afecta a ningun usuario real, porque
+    // todos tienen un hogar y mandan su codigo. Exigir premium, en cambio, si
+    // corta a usuarios reales, y eso no tiene sentido antes de que exista una
+    // forma de pagar.
     const cortar = String(process.env.NF_PREMIUM_SIN_CABECERA || '').toLowerCase() === 'rechazar';
-    console.log('[premium]', funcion, cortar ? 'rechazado sin cabecera' : 'pasa sin cabecera');
-    if (cortar && seExige) {
+    if (cortar) {
+      console.log('[premium]', funcion, 'rechazado sin credencial');
       return {
         permitido: false,
         estado: 'sin-cabecera',
         mensaje: 'Actualizá la app para seguir usando esta función: cerrala por completo y volvé a abrirla.'
       };
     }
+    console.log('[premium]', funcion, 'pasa sin cabecera');
     return { permitido: true, estado: 'sin-cabecera' };
   }
 
