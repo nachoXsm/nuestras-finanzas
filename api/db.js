@@ -376,6 +376,17 @@ async function opCrearGrupo(req, res, cuerpo) {
 // filas. Por eso puede quedar publicado sin riesgo.
 async function autodiagnostico(res) {
   const salida = { ok: false, configurado: !!(SB_URL && SB_SERVICE_KEY) };
+
+  // Estado de los interruptores de premium. Vercel oculta el valor de las
+  // variables marcadas como sensibles, asi que no hay forma de confirmar desde
+  // el panel que el servidor las este viendo. Aca se muestra lo que el servidor
+  // realmente tiene. No expone ningun secreto: son dos ajustes de comportamiento.
+  salida.interruptores = {
+    // 'rechazar' corta los pedidos que no presentan credencial (curl, scripts).
+    sin_credencial: String(process.env.NF_PREMIUM_SIN_CABECERA || '').trim() || '(ninguno)',
+    // Lista de funciones que exigen premium: ocr, ia, voice.
+    exigir_premium: String(process.env.NF_PREMIUM_EXIGIR || '').trim() || '(ninguna)'
+  };
   if (!salida.configurado) {
     salida.detalle = 'Faltan las variables de entorno en Vercel, o falta el redeploy.';
     return sendJson(res, 200, salida);
